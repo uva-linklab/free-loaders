@@ -110,7 +110,7 @@ def __mqtt_message_received(client, data, msg):
             if k not in task_request:
                 log.w('Task request is malformed.')
 
-        log.i('request to execute: {}'.format(task_request['task_id']))
+        log.i('request to execute: offload_id {}, task_id {}'.format(task_request['offload_id'], task_request['task_id']))
         # Look at the executor ID to see if the task is really for this instance.
         our_id = data['executor_id']
         if task_request['executer_id'] != data['executor_id']:
@@ -149,7 +149,7 @@ def __executor_task_entry(mqtt_client, task_request):
         mqtt_client.publish(MQTTTopicTaskResponse,
                             result.encode('utf-8'))
     except (EOFError, OSError):
-        log.e(f'process failed with exit code = {process.exitcode}')
+        log.e(f'process for offload_id {task_request["offload_id"]} failed with exit code = {process.exitcode}')
         # Collect current state and send it, along with the result.
         current_state = stats.fetch()
         response = {
@@ -175,7 +175,8 @@ def __process_task_entry(pipe, task_request):
 
     config.configure_process()
 
-    log.i('executing task')
+    start_time = time.time()
+    log.i(f'executing task for offload_id {task_request["offload_id"]}')
     # Execute task here.
     task_id = task_request['task_id']
     res = ""
@@ -188,7 +189,7 @@ def __process_task_entry(pipe, task_request):
     else:
         print(f'ERROR: task_id {task_id} is undefined')
 
-    log.i('completed executing task')
+    log.i(f'completed executing task for offload_id {task_request["offload_id"]}. time={(time.time() - start_time)*1000}')
 
     # Collect current state and send it, along with the result.
     current_state = stats.fetch()
