@@ -110,12 +110,12 @@ def __mqtt_message_received(client, data, msg):
             if k not in task_request:
                 log.w('Task request is malformed.')
 
-        log.i('request to execute: offload_id {}, task_id {}'.format(task_request['offload_id'], task_request['task_id']))
+        log.i(f'offload_id={task_request["offload_id"]}. request to execute task_id={task_request["task_id"]} ')
         # Look at the executor ID to see if the task is really for this instance.
         our_id = data['executor_id']
         if task_request['executer_id'] != data['executor_id']:
-            log.d('task not for this instance (ours: {} != requested: {})'.format(
-                our_id, task_request['executer_id']))
+            log.d('offload_id={}. task not for this instance (ours: {} != requested: {})'.format(
+                task_request["offload_id"], our_id, task_request['executer_id']))
         else:
             __execute_task(client, task_request)
 
@@ -124,22 +124,21 @@ def __execute_task(client, task_request):
 
     Sends a response to the controller after completion.
     '''
-
+    log.i(f'offload_id={task_request["offload_id"]}. in __execute_task')
     thread = threading.Thread(target=__executor_task_entry,
                               # Hm. Is the MQTT client thread-safe?
                               args=(client, task_request))
     thread.start()
+    log.i(f'offload_id={task_request["offload_id"]}. thread created.')
 
     return thread
 
 def __executor_task_entry(mqtt_client, task_request):
+    log.i(f'offload_id={task_request["offload_id"]}. in __executor_task_entry')
     (p_recv, p_send) = Pipe([False])
     process = Process(target=__process_task_entry, args=(p_send, task_request))
     process.start()
-    log.i('started PID {} for task ID {}, offload ID {}'.format(
-        process.pid,
-        task_request['task_id'],
-        task_request['offload_id']))
+    log.i(f'offload_id={task_request["offload_id"]}. started PID {process.pid}')
 
     p_send.close()
 
@@ -149,7 +148,7 @@ def __executor_task_entry(mqtt_client, task_request):
         mqtt_client.publish(MQTTTopicTaskResponse,
                             result.encode('utf-8'))
     except (EOFError, OSError):
-        log.e(f'process for offload_id {task_request["offload_id"]} failed with exit code = {process.exitcode}')
+        log.e(f'offload_id={task_request["offload_id"]}. process failed with exit code = {process.exitcode}')
         # Collect current state and send it, along with the result.
         current_state = stats.fetch()
         response = {
@@ -172,11 +171,11 @@ def __process_task_entry(pipe, task_request):
 
     Executes the task and sends the result and state to the controller.
     '''
-
+    log.e(f'offload_id={task_request["offload_id"]}. in __process_task_entry')
     config.configure_process()
 
     start_time = time.time()
-    log.i(f'executing task for offload_id {task_request["offload_id"]}')
+    log.i(f'offload_id={task_request["offload_id"]}. executing task')
     # Execute task here.
     task_id = task_request['task_id']
     res = ""
@@ -189,7 +188,7 @@ def __process_task_entry(pipe, task_request):
     else:
         print(f'ERROR: task_id {task_id} is undefined')
 
-    log.i(f'completed executing task for offload_id {task_request["offload_id"]}. time={(time.time() - start_time)*1000}')
+    log.i(f'offload_id={task_request["offload_id"]}. completed executing task. time={(time.time() - start_time)*1000}')
 
     # Collect current state and send it, along with the result.
     current_state = stats.fetch()
