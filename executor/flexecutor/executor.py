@@ -141,7 +141,7 @@ def __executor_task_entry(mqtt_client, task_request):
     try:
         log.i(f'offload_id={task_request["offload_id"]}. before process.start()')
         process.start()
-        log.i(f'offload_id={task_request["offload_id"]}. finished process.start(). PID={process.pid}')
+        log.i(f'offload_id={task_request["offload_id"]}. finished process.start(). PID={process.pid}. process.is_alive()={process.is_alive()}')
 
         p_send.close()
 
