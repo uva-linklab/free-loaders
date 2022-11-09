@@ -145,10 +145,21 @@ def __executor_task_entry(mqtt_client, task_request):
 
         p_send.close()
 
+        log.i(f'offload_id={task_request["offload_id"]}. finished p_send.close()')
+
         result = p_recv.recv()  # block and waits for data from the process
+
+        log.i(f'offload_id={task_request["offload_id"]}. finished result = p_recv.recv()')
+
         process.join()  # wait for process to finish up
+
+        log.i(f'offload_id={task_request["offload_id"]}. finished process.join()')
+
         mqtt_client.publish(MQTTTopicTaskResponse,
                             result.encode('utf-8'))
+
+        log.i(f'offload_id={task_request["offload_id"]}. finished mqtt_client.publish')
+
     except (EOFError, OSError):
         log.e(f'offload_id={task_request["offload_id"]}. process failed with exit code = {process.exitcode}')
         # Collect current state and send it, along with the result.
@@ -166,8 +177,10 @@ def __executor_task_entry(mqtt_client, task_request):
         log.i(f'offload_id={task_request["offload_id"]}. hit exception!')
         log.e(error)
     finally:
+        log.i(f'offload_id={task_request["offload_id"]}. in finally block')
         p_recv.close()
         process.terminate()
+        log.i(f'offload_id={task_request["offload_id"]}. finished finally block')
 
 
 
