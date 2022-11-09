@@ -156,7 +156,8 @@ def __executor_task_entry(mqtt_client, task_request):
         log.i(f'offload_id={task_request["offload_id"]}. finished process.join()')
 
         mqtt_client.publish(MQTTTopicTaskResponse,
-                            result.encode('utf-8'))
+                            result.encode('utf-8'),
+                            qos=1)
 
         log.i(f'offload_id={task_request["offload_id"]}. finished mqtt_client.publish')
 
@@ -172,7 +173,8 @@ def __executor_task_entry(mqtt_client, task_request):
             'status': process.exitcode  # inform the controller that we failed
         }
         mqtt_client.publish(MQTTTopicTaskResponse,
-                            json.dumps(response).encode('utf-8'))
+                            json.dumps(response).encode('utf-8'),
+                            qos=1)
     except Exception as error:
         log.i(f'offload_id={task_request["offload_id"]}. hit exception!')
         log.e(error)
