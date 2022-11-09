@@ -137,12 +137,14 @@ def __executor_task_entry(mqtt_client, task_request):
     log.i(f'offload_id={task_request["offload_id"]}. in __executor_task_entry')
     (p_recv, p_send) = Pipe([False])
     process = Process(target=__process_task_entry, args=(p_send, task_request))
-    process.start()
-    log.i(f'offload_id={task_request["offload_id"]}. started PID {process.pid}')
-
-    p_send.close()
-
+    log.i(f'offload_id={task_request["offload_id"]}. created process object')
     try:
+        log.i(f'offload_id={task_request["offload_id"]}. before process.start()')
+        process.start()
+        log.i(f'offload_id={task_request["offload_id"]}. finished process.start(). PID={process.pid}')
+
+        p_send.close()
+
         result = p_recv.recv()  # block and waits for data from the process
         process.join()  # wait for process to finish up
         mqtt_client.publish(MQTTTopicTaskResponse,
@@ -160,6 +162,9 @@ def __executor_task_entry(mqtt_client, task_request):
         }
         mqtt_client.publish(MQTTTopicTaskResponse,
                             json.dumps(response).encode('utf-8'))
+    except Exception as error:
+        log.i(f'offload_id={task_request["offload_id"]}. hit exception!')
+        log.e(error)
     finally:
         p_recv.close()
         process.terminate()
