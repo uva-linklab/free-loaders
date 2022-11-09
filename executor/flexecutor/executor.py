@@ -50,7 +50,9 @@ def __executor_entry(controller_addr, executor_id, log_level):
 
     log.i('started')
 
-    mqtt_client = paho.mqtt.client.Client(userdata={'executor_id': executor_id})
+    mqtt_client = paho.mqtt.client.Client(client_id=f"flexecutor-{executor_id}",
+                                          clean_session=False,
+                                          userdata={'executor_id': executor_id})
     mqtt_client.on_connect = __mqtt_on_connect
     mqtt_client.on_message = __mqtt_message_received
     mqtt_client.on_disconnect = __mqtt_on_disconnect
@@ -95,7 +97,7 @@ def __signal_handler(signal_no, stack_frame):
 
 def __mqtt_on_connect(client, userdata, flags, rc):
     log.i('Connected to server with result: {}'.format(rc))
-    client.subscribe(MQTTTopicExecuteTask)
+    client.subscribe(MQTTTopicExecuteTask, qos=1)
 
 def __mqtt_on_disconnect(client, userdata, rc=0):
     log.w('Disconnected from server: {}'.format(rc))
