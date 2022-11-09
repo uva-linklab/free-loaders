@@ -36,13 +36,14 @@ __ValToLevel = {
 }
 
 def _log(level, msg):
-    global __LogLevel
-
-    this_thread = threading.current_thread()
-    thread_name = this_thread.name
-    if this_thread.ident == threading.main_thread().ident and not thread_name.startswith('Thread-'):
-        thread_name = 'MAIN-{}'.format(thread_name)
-
-    if level <= __LogLevel:
-        print('[{}][{}] - {}'.format(
-            __ValToLevel[level], thread_name, msg))
+    # global __LogLevel
+    #
+    # this_thread = threading.current_thread()
+    # thread_name = this_thread.name
+    # if this_thread.ident == threading.main_thread().ident and not thread_name.startswith('Thread-'):
+    #     thread_name = 'MAIN-{}'.format(thread_name)
+    #
+    # if level <= __LogLevel:
+    #     print('[{}][{}] - {}'.format(
+    #         __ValToLevel[level], thread_name, msg))
+    pass
