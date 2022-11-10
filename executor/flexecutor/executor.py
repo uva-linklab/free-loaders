@@ -196,6 +196,10 @@ def __process_task_entry(pipe, task_request):
     log.e(f'offload_id={task_request["offload_id"]}. in __process_task_entry')
     config.configure_process()
 
+    # Lower process priority.
+    os.nice(12)
+
+    log.i('executing task')
     start_time = time.time()
     log.i(f'offload_id={task_request["offload_id"]}. executing task')
     # Execute task here.
