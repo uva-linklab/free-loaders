@@ -175,6 +175,9 @@ def __process_task_entry(pipe, task_request):
 
     config.configure_process()
 
+    # Lower process priority.
+    os.nice(12)
+
     log.i('executing task')
     # Execute task here.
     task_id = task_request['task_id']
