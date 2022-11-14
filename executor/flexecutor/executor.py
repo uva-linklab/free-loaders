@@ -197,7 +197,7 @@ def __process_task_entry(pipe, task_request):
     config.configure_process()
 
     # Lower process priority.
-    os.nice(12)
+    # os.nice(12)
 
     log.i('executing task')
     start_time = time.time()
