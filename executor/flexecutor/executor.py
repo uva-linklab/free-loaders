@@ -103,7 +103,7 @@ def __mqtt_on_disconnect(client, userdata, rc=0):
     log.w('Disconnected from server: {}'.format(rc))
 
 def __mqtt_message_received(client, data, msg):
-    log.i('received message (on {})'.format(msg.topic))
+    # log.i('received message (on {})'.format(msg.topic))
 
     if msg.topic == MQTTTopicExecuteTask:
         task_request = json.loads(msg.payload)
@@ -126,42 +126,57 @@ def __execute_task(client, task_request):
 
     Sends a response to the controller after completion.
     '''
-    log.i(f'offload_id={task_request["offload_id"]}. in __execute_task')
+    # log.i(f'offload_id={task_request["offload_id"]}. in __execute_task')
     thread = threading.Thread(target=__executor_task_entry,
                               # Hm. Is the MQTT client thread-safe?
                               args=(client, task_request))
     thread.start()
-    log.i(f'offload_id={task_request["offload_id"]}. thread created.')
+    # log.i(f'offload_id={task_request["offload_id"]}. thread created.')
 
     return thread
 
 def __executor_task_entry(mqtt_client, task_request):
-    log.i(f'offload_id={task_request["offload_id"]}. in __executor_task_entry')
+    # log.i(f'offload_id={task_request["offload_id"]}. in __executor_task_entry')
     (p_recv, p_send) = Pipe([False])
     process = Process(target=__process_task_entry, args=(p_send, task_request))
-    log.i(f'offload_id={task_request["offload_id"]}. created process object')
+    # log.i(f'offload_id={task_request["offload_id"]}. created process object')
     try:
-        log.i(f'offload_id={task_request["offload_id"]}. before process.start()')
+        # log.i(f'offload_id={task_request["offload_id"]}. before process.start()')
         process.start()
-        log.i(f'offload_id={task_request["offload_id"]}. finished process.start(). PID={process.pid}. process.is_alive()={process.is_alive()}')
+        # log.i(f'offload_id={task_request["offload_id"]}. finished process.start(). PID={process.pid}. process.is_alive()={process.is_alive()}')
 
         p_send.close()
 
-        log.i(f'offload_id={task_request["offload_id"]}. finished p_send.close()')
+        # log.i(f'offload_id={task_request["offload_id"]}. finished p_send.close()')
 
         result = p_recv.recv()  # block and waits for data from the process
 
-        log.i(f'offload_id={task_request["offload_id"]}. finished result = p_recv.recv()')
+        # log.i(f'offload_id={task_request["offload_id"]}. finished result = p_recv.recv()')
 
-        process.join()  # wait for process to finish up
-
-        log.i(f'offload_id={task_request["offload_id"]}. finished process.join()')
-
-        mqtt_client.publish(MQTTTopicTaskResponse,
-                            result.encode('utf-8'),
-                            qos=1)
-
-        log.i(f'offload_id={task_request["offload_id"]}. finished mqtt_client.publish')
+        process.join(2 * 60)  # wait for process to finish up
+        log.i(f'offload_id={task_request["offload_id"]}. after process.join()')
+        # check if the process exited
+        if process.exitcode is not None:
+            log.i(f'offload_id={task_request["offload_id"]}. exitcode not None. process terminated.')
+            mqtt_client.publish(MQTTTopicTaskResponse,
+                                result.encode('utf-8'),
+                                qos=1)
+        else:
+            log.i(f'offload_id={task_request["offload_id"]}. exitcode = None. process failed to join. timed out.')
+            process.terminate()
+            log.i(f'offload_id={task_request["offload_id"]}. process terminated. process.is_alive()={process.is_alive()}. process.exitcode={process.exitcode}')
+            current_state = stats.fetch()
+            response = {
+                'executor_id': task_request['executer_id'],
+                'task_id': task_request['task_id'],
+                'offload_id': task_request['offload_id'],
+                'state': current_state,
+                'status': process.exitcode  # inform the controller that we failed
+            }
+            mqtt_client.publish(MQTTTopicTaskResponse,
+                                json.dumps(response).encode('utf-8'),
+                                qos=1)
+        # log.i(f'offload_id={task_request["offload_id"]}. finished mqtt_client.publish')
 
     except (EOFError, OSError):
         log.e(f'offload_id={task_request["offload_id"]}. process failed with exit code = {process.exitcode}')
@@ -181,10 +196,9 @@ def __executor_task_entry(mqtt_client, task_request):
         log.i(f'offload_id={task_request["offload_id"]}. hit exception!')
         log.e(error)
     finally:
-        log.i(f'offload_id={task_request["offload_id"]}. in finally block')
+        # log.i(f'offload_id={task_request["offload_id"]}. in finally block')
         p_recv.close()
-        process.terminate()
-        log.i(f'offload_id={task_request["offload_id"]}. finished finally block')
+        # log.i(f'offload_id={task_request["offload_id"]}. finished finally block')
 
 
 
@@ -193,15 +207,15 @@ def __process_task_entry(pipe, task_request):
 
     Executes the task and sends the result and state to the controller.
     '''
-    log.e(f'offload_id={task_request["offload_id"]}. in __process_task_entry')
+    # log.e(f'offload_id={task_request["offload_id"]}. in __process_task_entry')
     config.configure_process()
 
     # Lower process priority.
     # os.nice(12)
 
-    log.i('executing task')
+    # log.i('executing task')
     start_time = time.time()
-    log.i(f'offload_id={task_request["offload_id"]}. executing task')
+    # log.i(f'offload_id={task_request["offload_id"]}. executing task')
     # Execute task here.
     task_id = task_request['task_id']
     res = ""
