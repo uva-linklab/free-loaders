@@ -161,14 +161,13 @@ def __executor_task_entry(mqtt_client, task_request):
         log.i(f'offload_id={task_request["offload_id"]}. after process.join()')
         # check if the process exited
         if process.exitcode is not None:
-            log.i(f'offload_id={task_request["offload_id"]}. exitcode not None. process terminated.')
+            log.i(f'offload_id={task_request["offload_id"]}. process finished gracefully.')
             mqtt_client.publish(MQTTTopicTaskResponse,
                                 result.encode('utf-8'),
                                 qos=2)
         else:
-            log.i(f'offload_id={task_request["offload_id"]}. exitcode = None. process failed to join. timed out.')
             process.terminate()
-            log.i(f'offload_id={task_request["offload_id"]}. process terminated. process.is_alive()={process.is_alive()}. process.exitcode={process.exitcode}')
+            log.i(f'offload_id={task_request["offload_id"]}. process failed to join. timed out. terminated.')
             current_state = stats.fetch()
             response = {
                 'executor_id': task_request['executer_id'],
@@ -180,7 +179,7 @@ def __executor_task_entry(mqtt_client, task_request):
             mqtt_client.publish(MQTTTopicTaskResponse,
                                 json.dumps(response).encode('utf-8'),
                                 qos=2)
-        # log.i(f'offload_id={task_request["offload_id"]}. finished mqtt_client.publish')
+            log.i(f'offload_id={task_request["offload_id"]}. finished mqtt_client.publish')
 
     except (EOFError, OSError):
         log.e(f'offload_id={task_request["offload_id"]}. process failed with exit code = {process.exitcode}')
@@ -196,6 +195,7 @@ def __executor_task_entry(mqtt_client, task_request):
         mqtt_client.publish(MQTTTopicTaskResponse,
                             json.dumps(response).encode('utf-8'),
                             qos=2)
+        log.i(f'offload_id={task_request["offload_id"]}. finished mqtt_client.publish')
     except Exception as error:
         log.i(f'offload_id={task_request["offload_id"]}. hit exception!')
         log.e(error)
