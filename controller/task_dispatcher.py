@@ -44,7 +44,7 @@ class TaskDispatcher:
     def __init__(self, rl_scheduler, executers):
         self.rl_scheduler = rl_scheduler
         self.executers = executers
-        self.mqtt_client = mqtt.Client()
+        self.mqtt_client = mqtt.Client(client_id="fl-controller", clean_session=False)
         self.execution_times = {}  # offload_id -> start_time
         self.deadlines = {}  # offload_id -> deadline
         self.deadlines_met = 0
@@ -56,13 +56,18 @@ class TaskDispatcher:
         clientloop_thread = Thread(target=self.connect, args=(self.mqtt_client,))
         clientloop_thread.start()
 
+        # initialize the rl scheduler's feedback consumer thread
+        Thread(target=rl_scheduler.feedback_consumer).start()
+
+
+
     def on_connect(self, client, userdata, flags, rc):
         print("[td] connected to mqtt with result code " + str(rc))
 
         # Subscribing in on_connect() means that if we lose the connection and
         # reconnect then subscriptions will be renewed.
-        client.subscribe(offloader_controller_feedback_response_topic)
-        client.subscribe(executer_controller_task_response_topic)
+        client.subscribe(offloader_controller_feedback_response_topic, qos=2)
+        client.subscribe(executer_controller_task_response_topic, qos=2)
 
     def on_message(self, client, userdata, mqtt_message):
         # mqtt_message is of type MQTTMessage. Has fields topic, payload,..
@@ -71,8 +76,11 @@ class TaskDispatcher:
 
         try:
             message_json = json.loads(payload)
+            print(f'[td] new mqtt message! response for offload_id={message_json["offload_id"]}')
         except Exception as e:
+            print(f"[td] hit exception in mqtt json parse")
             print(e)
+            print(payload)
         else:
             if topic == offloader_controller_feedback_response_topic:
                 pass
@@ -107,16 +115,27 @@ class TaskDispatcher:
                 dsr = self.deadlines_met/(self.finished_tasks+self.failed_tasks)
                 print(f"[td] deadlines_met={self.deadlines_met}, finished_tasks={self.finished_tasks}, failed_tasks={self.failed_tasks}, pending_tasks={self.total_tasks-(self.finished_tasks+self.failed_tasks)}, dsr={dsr}")
 
-                # give the feedback to the rl scheduler
-                self.rl_scheduler.task_finished(offload_id, exec_time_ms, state_of_executor, str(executor_id))
+                # # give the feedback to the rl scheduler
+                # self.rl_scheduler.task_finished(offload_id, exec_time_ms, state_of_executor, str(executor_id))
+                self.rl_scheduler.feedback_q.put({
+                    "offload_id": offload_id,
+                    "exec_time": exec_time_ms,
+                    "new_state_of_executor": state_of_executor,
+                    "exec_id": str(executor_id)
+                })
 
                 del message_json["state"] # exclude state from being sent to the offloader
                 # publish this to the offloader
-                client.publish(controller_offloader_task_response_topic, json.dumps(message_json).encode('utf-8'))
+                client.publish(controller_offloader_task_response_topic,
+                               json.dumps(message_json).encode('utf-8'),
+                               qos=2)
 
                 # remove the offload_id's execution time and deadline from memory
                 del self.execution_times[offload_id]
                 del self.deadlines[offload_id]
+
+                print(f"[td] pending task offload_ids: {self.execution_times.keys()}")
+
 
     def on_disconnect(self, client, userdata, rc=0):
         print("DisConnected result code " + str(rc))
@@ -142,7 +161,14 @@ class TaskDispatcher:
             "task_id": task.task_id,
             "input_data": task.input_data
         }
-        self.mqtt_client.publish(controller_executer_task_execute_topic, json.dumps(task_request_msg).encode('utf-8'))
+
+        executor_topic = f'{controller_executer_task_execute_topic}-{executer_id}'
+
+        self.mqtt_client.publish(executor_topic,
+                                 json.dumps(task_request_msg).encode('utf-8'),
+                                 qos=2)
+
+        print(f'published to {executor_topic}')
 
     def get_executer_state(self):
         # create a list of all executer ips with a specific http endpoint
@@ -165,6 +191,7 @@ class TaskDispatcher:
         executer_id = self.rl_scheduler.schedule(state_of_executors, task)
 
         print(f"[td] scheduled task(offload_id={task.offload_id}, task_id={task.task_id}) on executer_id={executer_id}")
+
         self.send_task_to_executer(executer_id, task)
 
         self.total_tasks += 1

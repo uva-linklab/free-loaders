@@ -11,6 +11,9 @@ import chainer.functions as F
 import chainer.links as L
 import numpy as np
 from chainer import serializers
+import queue
+
+rewards_csv_file='reward_loss.csv'
 
 class RLScheduler:
 
@@ -65,6 +68,12 @@ class RLScheduler:
         self.total_losses = []
 
         self.state_table = {}
+
+        self.feedback_q = queue.Queue()
+
+        # ensure we clear the csv file before we start
+        if os.path.exists(rewards_csv_file):
+            os.remove(rewards_csv_file)
 
     def save_state(self, task, state, act):
 
@@ -158,7 +167,7 @@ class RLScheduler:
         if len(self.memory) == self.memory_size:
 
             # f = open('result/reward_loss.csv', 'a', newline='')
-            with open('reward_loss.csv', 'w', newline='') as f:
+            with open(rewards_csv_file, 'a', newline='') as f:
                 total_reward = 0
                 total_loss = 0
 
@@ -216,3 +225,16 @@ class RLScheduler:
                 # f.close()
 
             serializers.save_npz('Q.model', self.Q)
+
+    def feedback_consumer(self):
+        print("[rls] starting feedback consumer")
+        while True:
+            item = self.feedback_q.get()
+
+            self.task_finished(item["offload_id"],
+                               item["exec_time"],
+                               item["new_state_of_executor"],
+                               item["exec_id"])
+
+            self.feedback_q.task_done()
+

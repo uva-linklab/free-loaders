@@ -45,22 +45,27 @@ def offload_one(address, device_id, task_id):
     if task_id < 50:
         # For loop task.
         payload['input_data'] = 0
+        payload['deadline'] = 202 * (task_id + 1) + 854
 
     elif task_id < 100:
         # Matrix multiplication task.
         # Generate a matrix and send it as the input data.
-        size = round(20 + ((task_id - 50) * 20))
+        # size = round(20 + ((task_id - 50) * 20))
+        size = (task_id - 49) * 10
         a = np.random.rand(size,size)
         b = np.random.rand(size,size)
         payload['input_data'] = {
             'a': a,
             'b': b,
         }
+        payload['deadline'] = 41 * (task_id - 49) + 259 + 5000
+
 
     elif task_id < 150:
         # Image classification task.
         # the image classification batch size is dependent on the task_id, we don't send any input data
         payload['input_data'] = {}
+        payload['deadline'] = 200 * (task_id - 99) + 2000
 
     # Send the task to the controller.
     url = 'http://{}:{}/submit-task'.format(address, ControllerHTTPPort)
