@@ -97,7 +97,7 @@ def __signal_handler(signal_no, stack_frame):
 
 def __mqtt_on_connect(client, userdata, flags, rc):
     log.i('Connected to server with result: {}'.format(rc))
-    client.subscribe(MQTTTopicExecuteTask, qos=1)
+    client.subscribe(MQTTTopicExecuteTask, qos=2)
 
 def __mqtt_on_disconnect(client, userdata, rc=0):
     log.w('Disconnected from server: {}'.format(rc))
@@ -160,7 +160,7 @@ def __executor_task_entry(mqtt_client, task_request):
             log.i(f'offload_id={task_request["offload_id"]}. exitcode not None. process terminated.')
             mqtt_client.publish(MQTTTopicTaskResponse,
                                 result.encode('utf-8'),
-                                qos=1)
+                                qos=2)
         else:
             log.i(f'offload_id={task_request["offload_id"]}. exitcode = None. process failed to join. timed out.')
             process.terminate()
@@ -175,7 +175,7 @@ def __executor_task_entry(mqtt_client, task_request):
             }
             mqtt_client.publish(MQTTTopicTaskResponse,
                                 json.dumps(response).encode('utf-8'),
-                                qos=1)
+                                qos=2)
         # log.i(f'offload_id={task_request["offload_id"]}. finished mqtt_client.publish')
 
     except (EOFError, OSError):
@@ -191,7 +191,7 @@ def __executor_task_entry(mqtt_client, task_request):
         }
         mqtt_client.publish(MQTTTopicTaskResponse,
                             json.dumps(response).encode('utf-8'),
-                            qos=1)
+                            qos=2)
     except Exception as error:
         log.i(f'offload_id={task_request["offload_id"]}. hit exception!')
         log.e(error)
