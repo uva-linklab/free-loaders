@@ -51,7 +51,7 @@ def __executor_entry(controller_addr, executor_id, log_level):
     log.i('started')
 
     mqtt_client = paho.mqtt.client.Client(client_id=f"flexecutor-{executor_id}",
-                                          clean_session=False,
+                                          clean_session=True,
                                           userdata={'executor_id': executor_id})
     mqtt_client.on_connect = __mqtt_on_connect
     mqtt_client.on_message = __mqtt_message_received
