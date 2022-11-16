@@ -107,7 +107,9 @@ def __mqtt_on_disconnect(client, userdata, rc=0):
 def __mqtt_message_received(client, data, msg):
     # log.i('received message (on {})'.format(msg.topic))
 
-    if msg.topic == MQTTTopicExecuteTask:
+    topic = f'{MQTTTopicExecuteTask}-{data["executor_id"]}'
+
+    if msg.topic == topic:
         task_request = json.loads(msg.payload)
         # Check fields.
         for k in ['task_id', 'executer_id', 'input_data', 'offload_id']:
