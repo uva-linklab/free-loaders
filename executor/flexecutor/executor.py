@@ -97,7 +97,9 @@ def __signal_handler(signal_no, stack_frame):
 
 def __mqtt_on_connect(client, userdata, flags, rc):
     log.i('Connected to server with result: {}'.format(rc))
-    client.subscribe(MQTTTopicExecuteTask, qos=2)
+    topic = f'{MQTTTopicExecuteTask}-{userdata["executor_id"]}'
+    client.subscribe(topic, qos=2)
+    log.i(f'subscribed to {topic}')
 
 def __mqtt_on_disconnect(client, userdata, rc=0):
     log.w('Disconnected from server: {}'.format(rc))
