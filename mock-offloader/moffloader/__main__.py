@@ -5,14 +5,17 @@ import time
 import numpy as np
 
 import requests
+import torch
 
 ControllerHTTPPort = 8001
+
 
 class NumpyEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, np.ndarray):
             return obj.tolist()
         return json.JSONEncoder.default(self, obj)
+
 
 def main(args):
     if args.task_id == None:
@@ -25,15 +28,17 @@ def main(args):
                     args.device_id,
                     args.task_id)
 
+
 def offload_many(address, device_id, count, rate):
     intertask_delay = 1 / (rate / 60)
     print('Sending tasks every {} sec.'.format(intertask_delay))
 
     for i in range(0, count):
         # Send the task.
-        task_id = random.randint(0, 149) # Random selection.
+        task_id = random.randint(0, 149)  # Random selection.
         offload_one(address, device_id, task_id)
         time.sleep(intertask_delay)
+
 
 def offload_one(address, device_id, task_id):
     payload = {
@@ -50,20 +55,26 @@ def offload_one(address, device_id, task_id):
     elif task_id < 100:
         # Matrix multiplication task.
         # Generate a matrix and send it as the input data.
-        size = (task_id - 49) * 8
-        a = np.random.rand(size,size)
-        b = np.random.rand(size,size)
+        size = (task_id - 49) * 4  # 4x4 -> 200x200
+        a = np.random.rand(size, size)
+        b = np.random.rand(size, size)
         payload['input_data'] = {
             'a': a,
             'b': b,
         }
         payload['deadline'] = 41 * (task_id - 49) + 259 + 5000
 
-
     elif task_id < 150:
         # Image classification task.
-        # the image classification batch size is dependent on the task_id, we don't send any input data
-        payload['input_data'] = {}
+        channels = 1
+        image_dim = 28
+        batch_size = (task_id - 99) * 30  # task_id: [100, 149], batch size: [30, 1500]
+        images = torch.randint(255, (batch_size, channels, image_dim, image_dim))
+
+        payload['input_data'] = {
+            'batch_size': batch_size,
+            'images': images
+        }
         payload['deadline'] = 200 * (task_id - 99) + 2000
 
     # Send the task to the controller.
@@ -77,6 +88,7 @@ def offload_one(address, device_id, task_id):
             print('{}'.format(line))
     except requests.exceptions.ConnectionError:
         print('...cannot connect to server.')
+
 
 if __name__ == '__main__':
     ap = argparse.ArgumentParser(description='Task offloading utility')

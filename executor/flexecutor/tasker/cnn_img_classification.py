@@ -44,6 +44,7 @@ class CNN(torch.nn.Module):
         torch.nn.init.xavier_uniform_(self.fc2.weight) # initialize parameters
 
     def forward(self, x):
+        x = x.float()
         out = self.layer1(x)
         out = self.layer2(out)
         out = self.layer3(out)
@@ -53,47 +54,42 @@ class CNN(torch.nn.Module):
         return out
 
 
-# instantiate CNN model
-# model = CNN()
-
-def profile_img_classification_task():
-    dev = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-    image_dim = 28
-    batch_size = 7500
-
-    print(dev)
-    print("using gpu")
-    start = torch.cuda.Event(enable_timing=True)
-    end = torch.cuda.Event(enable_timing=True)
-    start.record()
-    # unsqueeze: 3072 -> 1x3072
-    # images = torch.tensor(input_data["image"]).unsqueeze(0).to(dev)
-    images = torch.rand(batch_size, 1, image_dim, image_dim).to(dev)
-    classifier = CNN().to(dev)
-    output_class_weights = classifier(images).exp()
-    output_class = torch.argmax(output_class_weights).item()
-    end.record()
-    torch.cuda.synchronize()
-    print(f'time(ms) = {start.elapsed_time(end)}')
-
-    print("using cpu")
-    start = time.time()
-    images = torch.rand(batch_size, 1, image_dim, image_dim)
-    classifier = CNN()
-    output_class_weights = classifier(images).exp()
-    output_class = torch.argmax(output_class_weights).item()
-    print(f'time(ms) = {(time.time() - start)*1000}')
-    return output_class
+# def profile_img_classification_task():
+#     dev = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+#     image_dim = 28
+#     batch_size = 7500
+#
+#     print(dev)
+#     print("using gpu")
+#     start = torch.cuda.Event(enable_timing=True)
+#     end = torch.cuda.Event(enable_timing=True)
+#     start.record()
+#     # unsqueeze: 3072 -> 1x3072
+#     # images = torch.tensor(input_data["image"]).unsqueeze(0).to(dev)
+#     images = torch.rand(batch_size, 1, image_dim, image_dim).to(dev)
+#     classifier = CNN().to(dev)
+#     output_class_weights = classifier(images).exp()
+#     output_class = torch.argmax(output_class_weights).item()
+#     end.record()
+#     torch.cuda.synchronize()
+#     print(f'time(ms) = {start.elapsed_time(end)}')
+#
+#     print("using cpu")
+#     start = time.time()
+#     images = torch.rand(batch_size, 1, image_dim, image_dim)
+#     classifier = CNN()
+#     output_class_weights = classifier(images).exp()
+#     output_class = torch.argmax(output_class_weights).item()
+#     print(f'time(ms) = {(time.time() - start)*1000}')
+#     return output_class
 
 def run_img_classification_task(task_id, input_data):
     using_cuda = torch.cuda.is_available()
     dev = torch.device("cuda") if using_cuda else torch.device("cpu")
-    channels = 1
-    image_dim = 28
-    # batch_size = 122 * (task_id - 99) + 1378 # task_id: [100, 149], batch size: ~[1500, 7500]
-    batch_size = (task_id - 99) * 30  # task_id: [100, 149], batch size: [30, 1500]
 
-    images = torch.rand(batch_size, channels, image_dim, image_dim).to(dev)
+    images = input_data["images"].to(dev)
+    batch_size = input_data["batch_size"]
+    print(images.shape)
     classifier = CNN().to(dev)
     output_class_weights = classifier(images).exp()
     if using_cuda:
@@ -103,9 +99,22 @@ def run_img_classification_task(task_id, input_data):
     output_size = batch_size
     return output_class_weights.tolist()[:output_size]
 
+
 if __name__ == '__main__':
-    if len(sys.argv) != 3:
-        print("needs task_id, input as arg")
+    if len(sys.argv) != 2:
+        print("needs task_id as arg")
         sys.exit(1)
 
-    run_img_classification_task(int(sys.argv[1]), sys.argv[2])
+    channels = 1
+    image_dim = 28
+    # batch_size = 122 * (task_id - 99) + 1378 # task_id: [100, 149], batch size: ~[1500, 7500]
+    task_id = int(sys.argv[1])
+    batch_size = (task_id - 99) * 30  # task_id: [100, 149], batch size: [30, 1500]
+    images = torch.randint(255, (batch_size, channels, image_dim, image_dim))
+
+    input_data = {
+        "batch_size": batch_size,
+        "images": images
+    }
+
+    run_img_classification_task(task_id, input_data)
