@@ -5,7 +5,6 @@ import time
 import numpy as np
 
 import requests
-import torch
 
 ControllerHTTPPort = 8001
 
@@ -69,7 +68,7 @@ def offload_one(address, device_id, task_id):
         channels = 1
         image_dim = 28
         batch_size = (task_id - 99) * 30  # task_id: [100, 149], batch size: [30, 1500]
-        images = torch.randint(255, (batch_size, channels, image_dim, image_dim))
+        images = np.random.randint(256, size=(batch_size, channels, image_dim, image_dim))
 
         payload['input_data'] = {
             'batch_size': batch_size,

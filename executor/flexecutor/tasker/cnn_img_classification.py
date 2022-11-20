@@ -1,6 +1,7 @@
 import sys
 import time
 import torch
+import numpy as np
 # Implementation of CNN/ConvNet Model using PyTorch
 # ref: https://towardsdatascience.com/convolutional-neural-network-for-image-classification-with-implementation-on-python-using-pytorch-7b88342c9ca9
 
@@ -87,7 +88,9 @@ def run_img_classification_task(task_id, input_data):
     using_cuda = torch.cuda.is_available()
     dev = torch.device("cuda") if using_cuda else torch.device("cpu")
 
-    images = input_data["images"].to(dev)
+    images = torch.from_numpy(input_data["images"]).to(dev)
+
+    #images = input_data["images"].to(dev)
     batch_size = input_data["batch_size"]
     print(images.shape)
     classifier = CNN().to(dev)
@@ -110,7 +113,8 @@ if __name__ == '__main__':
     # batch_size = 122 * (task_id - 99) + 1378 # task_id: [100, 149], batch size: ~[1500, 7500]
     task_id = int(sys.argv[1])
     batch_size = (task_id - 99) * 30  # task_id: [100, 149], batch size: [30, 1500]
-    images = torch.randint(255, (batch_size, channels, image_dim, image_dim))
+    #images = torch.randint(255, (batch_size, channels, image_dim, image_dim))
+    images = np.random.randint(256, size=(batch_size, channels, image_dim, image_dim))
 
     input_data = {
         "batch_size": batch_size,
