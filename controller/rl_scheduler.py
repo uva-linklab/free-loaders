@@ -147,7 +147,8 @@ class RLScheduler:
         return pact
 
 
-    def task_finished(self, offload_id, exec_time, new_state_of_executor, exec_id):
+    def task_finished(self, offload_id, exec_id, status, exec_time, energy, new_state_of_executor):
+        # status = 0 => successful task, status != 0 => failed task
 
         task, before_state, pact, deadline = self.get_saved_state(offload_id)
         new_state = self.generate_new_state(before_state, new_state_of_executor, exec_id)
@@ -232,9 +233,11 @@ class RLScheduler:
             item = self.feedback_q.get()
 
             self.task_finished(item["offload_id"],
+                               item["exec_id"],
+                               item["status"],
                                item["exec_time"],
-                               item["new_state_of_executor"],
-                               item["exec_id"])
+                               item["energy"],
+                               item["new_state_of_executor"])
 
             self.feedback_q.task_done()
 

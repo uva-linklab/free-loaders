@@ -97,31 +97,32 @@ class TaskDispatcher:
                     print(f"[td] ignored response for task (offload_id={offload_id}, task_id={task_id}) from executer_id={executor_id}")
                     return
 
+                # compute execution time
+                exec_time_ms = (time.time() - self.execution_times[offload_id]) * 1000
                 deadline = self.deadlines[offload_id]
+
                 if status != 0:
-                    # execution failed to finish - set exec_time to 2*deadline
-                    # TODO future work: explicitly inform rl scheduler that the executer had a failure!
-                    exec_time_ms = 2 * deadline
-                    print(f"[td] failed task(offload_id={offload_id}, task_id={task_id}) on executer_id={executor_id}, status={status}. time(ms)={exec_time_ms}, deadline={deadline}, deadline_met={False}")
+                    # execution failed to finish
+                    print(f"[td] failed task(offload_id={offload_id}, task_id={task_id}) on executer_id={executor_id}, status={status}. deadline={deadline}, deadline_met={False}")
                     self.failed_tasks += 1
                 else:
-                    # compute execution time
-                    exec_time_ms = (time.time() - self.execution_times[offload_id]) * 1000
                     print(f"[td] finished task(offload_id={offload_id}, task_id={task_id}) on executer_id={executor_id}. time(ms)={exec_time_ms}, deadline={deadline}, deadline_met={exec_time_ms <= deadline}")
                     self.finished_tasks += 1
+                    deadline_met = exec_time_ms <= deadline
+                    self.deadlines_met += (1 if deadline_met else 0)
 
-                deadline_met = exec_time_ms <= deadline
-                self.deadlines_met += (1 if deadline_met else 0)
                 dsr = self.deadlines_met/(self.finished_tasks+self.failed_tasks)
                 print(f"[td] deadlines_met={self.deadlines_met}, finished_tasks={self.finished_tasks}, failed_tasks={self.failed_tasks}, pending_tasks={self.total_tasks-(self.finished_tasks+self.failed_tasks)}, dsr={dsr}")
 
                 # # give the feedback to the rl scheduler
-                # self.rl_scheduler.task_finished(offload_id, exec_time_ms, state_of_executor, str(executor_id))
+                # TODO update energy consumption
                 self.rl_scheduler.feedback_q.put({
                     "offload_id": offload_id,
+                    "exec_id": str(executor_id),
+                    "status": status,
                     "exec_time": exec_time_ms,
-                    "new_state_of_executor": state_of_executor,
-                    "exec_id": str(executor_id)
+                    "energy": 1,
+                    "new_state_of_executor": state_of_executor
                 })
 
                 del message_json["state"] # exclude state from being sent to the offloader
