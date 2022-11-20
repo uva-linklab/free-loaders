@@ -50,8 +50,7 @@ def offload_one(address, device_id, task_id):
     elif task_id < 100:
         # Matrix multiplication task.
         # Generate a matrix and send it as the input data.
-        # size = round(20 + ((task_id - 50) * 20))
-        size = (task_id - 49) * 10
+        size = (task_id - 49) * 8
         a = np.random.rand(size,size)
         b = np.random.rand(size,size)
         payload['input_data'] = {
