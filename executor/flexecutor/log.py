@@ -45,4 +45,4 @@ def _log(level, msg):
 
     if level <= __LogLevel:
         print('[{}][{}] - {}'.format(
-            __ValToLevel[level], thread_name, msg))
+            __ValToLevel[level], thread_name, msg), flush=True)
