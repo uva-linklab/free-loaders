@@ -117,13 +117,7 @@ def __mqtt_message_received(client, data, msg):
                 log.w('Task request is malformed.')
 
         log.i(f'offload_id={task_request["offload_id"]}. request to execute task_id={task_request["task_id"]} ')
-        # Look at the executor ID to see if the task is really for this instance.
-        our_id = data['executor_id']
-        if task_request['executer_id'] != data['executor_id']:
-            log.d('offload_id={}. task not for this instance (ours: {} != requested: {})'.format(
-                task_request["offload_id"], our_id, task_request['executer_id']))
-        else:
-            __execute_task(client, task_request)
+        __execute_task(client, task_request)
 
 def __execute_task(client, task_request):
     '''Begin executing a task in a new thread.
