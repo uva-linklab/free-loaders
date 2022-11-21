@@ -85,16 +85,13 @@ class CNN(torch.nn.Module):
 #     return output_class
 
 def run_img_classification_task(task_id, input_data):
-    images_np = np.array(input_data["images"])
-
     using_cuda = torch.cuda.is_available()
     dev = torch.device("cuda") if using_cuda else torch.device("cpu")
 
+    images_np = np.array(input_data["images"])
+    batch_size = input_data["batch_size"]
     images = torch.from_numpy(images_np).to(dev)
 
-    #images = input_data["images"].to(dev)
-    batch_size = input_data["batch_size"]
-    print(images.shape)
     classifier = CNN().to(dev)
     output_class_weights = classifier(images).exp()
     if using_cuda:
