@@ -67,7 +67,7 @@ def offload_one(address, device_id, task_id):
         # Image classification task.
         channels = 1
         image_dim = 28
-        batch_size = (task_id - 99) * 30  # task_id: [100, 149], batch size: [30, 1500]
+        batch_size = (task_id - 99) * 10  # task_id: [100, 149], batch size: [10, 500]
         images = np.random.randint(256, size=(batch_size, channels, image_dim, image_dim))
 
         payload['input_data'] = {
