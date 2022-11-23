@@ -86,7 +86,8 @@ class CNN(torch.nn.Module):
 
 def run_img_classification_task(task_id, input_data):
     using_cuda = torch.cuda.is_available()
-    dev = torch.device("cuda") if using_cuda else torch.device("cpu")
+    # dev = torch.device("cuda") if using_cuda else torch.device("cpu")
+    dev = torch.device("cpu")
 
     images_np = np.array(input_data["images"])
     batch_size = input_data["batch_size"]
