@@ -8,7 +8,7 @@ class RandomScheduler:
         self.needs_feedback = False
 
     def schedule(self, before_state, task):
-        return random.choice(self.executors.keys())
+        return random.choice(list(self.executors.keys()))
 
     # status = 0 => successful task, status != 0 => failed task
     def task_finished(self, offload_id, exec_id, status, exec_time, energy, new_state_of_executor):

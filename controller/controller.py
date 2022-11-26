@@ -17,10 +17,6 @@ ap.add_argument('-s', '--scheduler', help='Set the scheduler.',
                 dest='scheduler', default='rl')
 args = ap.parse_args()
 
-print(args.scheduler)
-
-
-# TODO remove and add to executers.json
 executers = {
     0: Executer(0, "172.27.153.31"),  # nano
 
@@ -53,6 +49,8 @@ elif args.scheduler == "energy-wrr":
     scheduler = EnergyWRRScheduler(executers)
 elif args.scheduler == "load-bal":
     scheduler = LoadBalancingScheduler(executers)
+
+print(f'[controller] using {args.scheduler} scheduler')
 
 # start the task dispatcher
 task_dispatcher = TaskDispatcher(scheduler, executers)
