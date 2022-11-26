@@ -1,7 +1,24 @@
+import argparse
 from server import ControllerServer
 from task_dispatcher import TaskDispatcher
-from rl_scheduler import RLScheduler
+from schedulers.random_scheduler import RandomScheduler
+from schedulers.rl_scheduler import RLScheduler
+from schedulers.time_greedy_scheduler import TimeGreedyScheduler
+from schedulers.energy_greedy_scheduler import EnergyGreedyScheduler
+from schedulers.time_wrr_scheduler import TimeWRRScheduler
+from schedulers.energy_wrr_scheduler import EnergyWRRScheduler
+from schedulers.load_balancing_scheduler import LoadBalancingScheduler
 from classes.executer import Executer
+
+ap = argparse.ArgumentParser(description='fReeLoaders controller.')
+ap.add_argument('-s', '--scheduler', help='Set the scheduler.',
+                metavar='SCHEDULER',
+                choices=['rl', 'random', 'time-greedy', 'energy-greedy', 'time-wrr', 'energy-wrr', 'load-bal'],
+                dest='scheduler', default='rl')
+args = ap.parse_args()
+
+print(args.scheduler)
+
 
 # TODO remove and add to executers.json
 executers = {
@@ -20,11 +37,25 @@ executers = {
     9: Executer(9, "172.27.133.131"),  # desktop
 }
 
-# initialize the RLScheduler
-rl_scheduler = RLScheduler(executers)
+scheduler = None
+
+if args.scheduler == "rl":
+    scheduler = RLScheduler(executers)
+elif args.scheduler == "random":
+    scheduler = RandomScheduler(executers)
+elif args.scheduler == "time-greedy":
+    scheduler = TimeGreedyScheduler(executers)
+elif args.scheduler == "energy-greedy":
+    scheduler = EnergyGreedyScheduler(executers)
+elif args.scheduler == "time-wrr":
+    scheduler = TimeWRRScheduler(executers)
+elif args.scheduler == "energy-wrr":
+    scheduler = EnergyWRRScheduler(executers)
+elif args.scheduler == "load-bal":
+    scheduler = LoadBalancingScheduler(executers)
 
 # start the task dispatcher
-task_dispatcher = TaskDispatcher(rl_scheduler, executers)
+task_dispatcher = TaskDispatcher(scheduler, executers)
 
 # start the http server to receive tasks from offloaders
 controller_server = ControllerServer(task_dispatcher)

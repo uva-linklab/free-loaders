@@ -41,8 +41,8 @@ async def make_requests(url_tuples: list, **kwargs) -> None:
 
 
 class TaskDispatcher:
-    def __init__(self, rl_scheduler, executers):
-        self.rl_scheduler = rl_scheduler
+    def __init__(self, scheduler, executers):
+        self.scheduler = scheduler
         self.executers = executers
         self.mqtt_client = mqtt.Client(client_id="fl-controller", clean_session=False)
         self.execution_times = {}  # offload_id -> start_time
@@ -56,8 +56,9 @@ class TaskDispatcher:
         clientloop_thread = Thread(target=self.connect, args=(self.mqtt_client,))
         clientloop_thread.start()
 
-        # initialize the rl scheduler's feedback consumer thread
-        Thread(target=rl_scheduler.feedback_consumer).start()
+        # initialize the scheduler's feedback consumer thread
+        if self.scheduler.needs_feedback:
+            Thread(target=scheduler.feedback_consumer).start()
 
 
 
@@ -116,14 +117,15 @@ class TaskDispatcher:
 
                 # # give the feedback to the rl scheduler
                 # TODO update energy consumption
-                self.rl_scheduler.feedback_q.put({
-                    "offload_id": offload_id,
-                    "exec_id": str(executor_id),
-                    "status": status,
-                    "exec_time": exec_time_ms,
-                    "energy": 1,
-                    "new_state_of_executor": state_of_executor
-                })
+                if self.scheduler.needs_feedback:
+                    self.scheduler.feedback_q.put({
+                        "offload_id": offload_id,
+                        "exec_id": str(executor_id),
+                        "status": status,
+                        "exec_time": exec_time_ms,
+                        "energy": 1,
+                        "new_state_of_executor": state_of_executor
+                    })
 
                 del message_json["state"] # exclude state from being sent to the offloader
                 # publish this to the offloader
@@ -183,13 +185,14 @@ class TaskDispatcher:
         self.execution_times[task.offload_id] = time.time()
         self.deadlines[task.offload_id] = task.deadline
 
-        # query all executers for their state
-        state_of_executors = self.get_executer_state()
-
-        #print(f'[td] before_state = {state_of_executors}')
+        state_of_executors = None
+        # only for the rl scheduler and the dynamic load based scheduler which need
+        if self.scheduler.needs_before_state:
+            # query all executers for their state
+            state_of_executors = self.get_executer_state()
 
         # request rl scheduler to schedule this task
-        executer_id = self.rl_scheduler.schedule(state_of_executors, task)
+        executer_id = self.scheduler.schedule(state_of_executors, task)
 
         print(f"[td] scheduled task(offload_id={task.offload_id}, task_id={task.task_id}) on executer_id={executer_id}")
 

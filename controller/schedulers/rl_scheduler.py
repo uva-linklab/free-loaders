@@ -19,6 +19,8 @@ class RLScheduler:
 
     def __init__(self, executers):
         self.executers = executers
+        self.needs_before_state = True
+        self.needs_feedback = True
 
         class Q_Network(chainer.Chain):
 
