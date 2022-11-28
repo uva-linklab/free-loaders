@@ -25,7 +25,7 @@ MQTTTopicExecuteTask = 'ctrl-exec-task-execute'
 # Topic the executor uses to send responses back to the controller.
 MQTTTopicTaskResponse = 'exec-ctrl-task-response'
 
-def start_executor(controller_addr, executor_id, log_level):
+def start_executor(controller_addr, executor_id, energy, log_level):
     '''Launches the task executor process.
 
     Accepts the ID to use as its executor ID, which it uses to listen for work.
@@ -33,12 +33,12 @@ def start_executor(controller_addr, executor_id, log_level):
 
     p = Process(name='executor',
                 target=__executor_entry,
-                args=(controller_addr, executor_id, log_level))
+                args=(controller_addr, executor_id, energy, log_level))
     p.start()
 
     return p
 
-def __executor_entry(controller_addr, executor_id, log_level):
+def __executor_entry(controller_addr, executor_id, energy, log_level):
     '''Executor thread entry function.
 
     Listens for MQTT messages carrying tasks to run.
@@ -52,7 +52,7 @@ def __executor_entry(controller_addr, executor_id, log_level):
 
     mqtt_client = paho.mqtt.client.Client(client_id=f"flexecutor-{executor_id}",
                                           clean_session=False,
-                                          userdata={'executor_id': executor_id})
+                                          userdata={'executor_id': executor_id, 'energy': energy})
     mqtt_client.on_connect = __mqtt_on_connect
     mqtt_client.on_message = __mqtt_message_received
     mqtt_client.on_disconnect = __mqtt_on_disconnect
@@ -117,9 +117,9 @@ def __mqtt_message_received(client, data, msg):
                 log.w('Task request is malformed.')
 
         log.i(f'offload_id={task_request["offload_id"]}. request to execute task_id={task_request["task_id"]} ')
-        __execute_task(client, task_request)
+        __execute_task(client, data['energy'], task_request)
 
-def __execute_task(client, task_request):
+def __execute_task(client, energy, task_request):
     '''Begin executing a task in a new thread.
 
     Sends a response to the controller after completion.
@@ -127,16 +127,16 @@ def __execute_task(client, task_request):
     # log.i(f'offload_id={task_request["offload_id"]}. in __execute_task')
     thread = threading.Thread(target=__executor_task_entry,
                               # Hm. Is the MQTT client thread-safe?
-                              args=(client, task_request))
+                              args=(client, energy, task_request))
     thread.start()
     # log.i(f'offload_id={task_request["offload_id"]}. thread created.')
 
     return thread
 
-def __executor_task_entry(mqtt_client, task_request):
+def __executor_task_entry(mqtt_client, energy, task_request):
     # log.i(f'offload_id={task_request["offload_id"]}. in __executor_task_entry')
     (p_recv, p_send) = Pipe([False])
-    process = Process(target=__process_task_entry, args=(p_send, task_request))
+    process = Process(target=__process_task_entry, args=(p_send, energy, task_request))
     # log.i(f'offload_id={task_request["offload_id"]}. created process object')
     try:
         # log.i(f'offload_id={task_request["offload_id"]}. before process.start()')
@@ -168,6 +168,7 @@ def __executor_task_entry(mqtt_client, task_request):
                 'task_id': task_request['task_id'],
                 'offload_id': task_request['offload_id'],
                 'state': current_state,
+                'energy': energy,
                 'status': process.exitcode  # inform the controller that we failed
             }
             mqtt_client.publish(MQTTTopicTaskResponse,
@@ -200,7 +201,7 @@ def __executor_task_entry(mqtt_client, task_request):
 
 
 
-def __process_task_entry(pipe, task_request):
+def __process_task_entry(pipe, energy, task_request):
     '''Task execution process entry.
 
     Executes the task and sends the result and state to the controller.
@@ -236,6 +237,7 @@ def __process_task_entry(pipe, task_request):
         'offload_id': task_request['offload_id'],
         'result': res,
         'state': current_state,
+        'energy': energy,
         'status': 0
     }
     pipe.send(json.dumps(response))

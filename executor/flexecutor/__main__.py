@@ -31,7 +31,7 @@ def main(args):
     gpu_monitor_thread = stats.start_gpu_monitor_thread()
     state_http_server_thread = service.start_state_server()
     __Children['executor'] = __start_executor(
-        args.controller, args.id, args.log_level)
+        args.controller, args.id, args.energy, args.log_level)
 
     # Idle around.
     while True:
@@ -42,11 +42,11 @@ def main(args):
         if not __Children['executor'].is_alive():
             log.w('executor died')
             __Children['executor'] = __start_executor(
-                args.controller, args.id, args.log_level)
+                args.controller, args.id, args.energy, args.log_level)
 
-def __start_executor(controller_addr, executor_id, log_level):
+def __start_executor(controller_addr, executor_id, energy, log_level):
     log.i('starting executor')
-    proc = executor.start_executor(controller_addr, executor_id, log_level)
+    proc = executor.start_executor(controller_addr, executor_id, energy, log_level)
     log.i('started executor (PID {})'.format(proc.pid))
 
     return proc
@@ -75,6 +75,8 @@ if __name__ == '__main__':
                     metavar='ADDR')
     ap.add_argument('id', help='ID the executor should use.',
                     metavar='NUM', type=int)
+    ap.add_argument('energy', help='Energy value sent back after task executions',
+                    metavar='ENERGY', type=int)
 
     args = ap.parse_args()
 
