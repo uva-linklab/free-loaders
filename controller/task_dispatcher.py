@@ -91,6 +91,7 @@ class TaskDispatcher:
                 executor_id = message_json["executor_id"]
                 task_id = message_json["task_id"]
                 status = message_json["status"]
+                energy = message_json["energy"]
 
                 if offload_id not in self.execution_times.keys():
                     # ignore a response if we're not expecting it
@@ -121,7 +122,7 @@ class TaskDispatcher:
                     "exec_id": str(executor_id),
                     "status": status,
                     "exec_time": exec_time_ms,
-                    "energy": 1,
+                    "energy": energy,
                     "new_state_of_executor": state_of_executor
                 })
 
