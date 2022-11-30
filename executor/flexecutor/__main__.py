@@ -76,7 +76,7 @@ if __name__ == '__main__':
     ap.add_argument('id', help='ID the executor should use.',
                     metavar='NUM', type=int)
     ap.add_argument('energy', help='Energy value sent back after task executions',
-                    metavar='ENERGY', type=int)
+                    metavar='ENERGY', type=float)
 
     args = ap.parse_args()
 
