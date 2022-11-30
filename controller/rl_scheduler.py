@@ -19,6 +19,8 @@ class RLScheduler:
 
     def __init__(self, executers):
         self.executers = executers
+        self.alpha = 0.8
+        self.threshold = 200
 
         class Q_Network(chainer.Chain):
 
@@ -110,14 +112,15 @@ class RLScheduler:
 
         return new_state
 
-    def generate_reward(self, deadline, exec_time):
+    def generate_reward(self, deadline, exec_time, status, energy):
 
-        # print("----------------\n Time: ", deadline, exec_time)
+        if status !=0:
+            return -10
 
         if exec_time > deadline:
-            reward = -np.tanh(exec_time/deadline)
+            reward = self.alpha*(-np.tanh(exec_time/deadline)) + (1-self.alpha)*(-(energy/self.threshold))
         else:
-            reward = 1-np.tanh(exec_time/(deadline+exec_time))
+            reward = self.alpha*(1-np.tanh(exec_time/(deadline+exec_time))) + (1-self.alpha)*(1-(energy/self.threshold))
 
         return reward
 
@@ -156,7 +159,7 @@ class RLScheduler:
         pobs = self.process_state(before_state, task)
         obs =  self.process_state(new_state, task)
 
-        reward = self.generate_reward(deadline, exec_time)
+        reward = self.generate_reward(deadline, exec_time, status, energy)
         done = self.done_with_learning(reward)
 
         # add memory
