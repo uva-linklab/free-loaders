@@ -1,12 +1,13 @@
 import struct
 
-def pack(json, file_path):
+def pack(json, file_path=None):
     '''Create a byte array containing JSON and a file.
     '''
 
     file_data = b''
-    with open(file_path, 'rb') as fh:
-        file_data = fh.read()
+    if file_path != None:
+        with open(file_path, 'rb') as fh:
+            file_data = fh.read()
 
     # Place file's size in the first four bytes,
     # then the encoded JSON,
@@ -21,7 +22,12 @@ def unpack(data):
     '''
 
     file_size = (struct.unpack('I', data[0:4]))[0]
-    encoded_json = data[4:-(file_size)]
-    file_data = data[-(file_size):]
+    encoded_json = b''
+    file_data = None
+    if file_size == 0:
+        encoded_json = data[4:]
+    else:
+        encoded_json = data[4:-(file_size)]
+        file_data = data[-(file_size):]
 
-    return (encoded_json, file_data)
+    return (encoded_json.decode(), file_data)
