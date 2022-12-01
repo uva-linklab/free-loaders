@@ -188,6 +188,7 @@ def __executor_task_entry(mqtt_client, power, task_request):
             'task_id': task_request['task_id'],
             'offload_id': task_request['offload_id'],
             'state': current_state,
+            'energy': 0,
             'status': process.exitcode  # inform the controller that we failed
         }
         mqtt_client.publish(MQTTTopicTaskResponse,
