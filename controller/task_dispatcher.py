@@ -4,6 +4,7 @@ import json
 import asyncio
 from aiohttp import ClientSession
 import time
+import flomqtt.serialize as flserialize
 
 executer_server_port = 8088
 
@@ -157,17 +158,41 @@ class TaskDispatcher:
     def send_task_to_executer(self, executer_id, task):
         # publish on mqtt to executer
         # assumption: each executer knows its id
-        task_request_msg = {
+        task_json = json.dumps({
             "executer_id": executer_id,
             "offload_id": task.offload_id,
             "task_id": task.task_id,
-            "input_data": task.input_data
-        }
+        })
+
+        import struct
+        mqtt_message = b''
+        if task.task_id < 50:
+            # Loop task. Place the value as the input data.
+            mqtt_message = flserialize.pack(task_json, struct.pack('I', task.input_data))
+        elif task.task_id < 100:
+            # Matrix multiplication.
+            import numpy as np
+            # Input data are lists of lists of integers.
+            # Create the numpy array from that, turn it into bytes.
+            m1_bytes = np.array(task.input_data['a']).tobytes()
+            m2_bytes = np.array(task.input_data['b']).tobytes()
+            # Serialize the numpy arrays, placing the length of the first matrix as the first piece of data.
+            payload = struct.pack('I', len(m1_bytes)) + m1_bytes + m2_bytes
+            mqtt_message = flserialize.pack(task_json, payload)
+        elif task.task_id < 150:
+            # FFT.
+            import numpy as np
+            # Input data is a list of floats.
+            # Create the numpy array from that, turn it into bytes.
+            arr_bytes = np.array(task.input_data).tobytes()
+            mqtt_message = flserialize.pack(task_json, arr_bytes)
+        else:
+            print('bad task ID: {}'.format(task.task_id))
 
         executor_topic = f'{controller_executer_task_execute_topic}-{executer_id}'
 
         self.mqtt_client.publish(executor_topic,
-                                 json.dumps(task_request_msg).encode('utf-8'),
+                                 mqtt_message,
                                  qos=2)
 
         print(f'published to {executor_topic}')
@@ -185,12 +210,13 @@ class TaskDispatcher:
         self.deadlines[task.offload_id] = task.deadline
 
         # query all executers for their state
-        state_of_executors = self.get_executer_state()
+        # state_of_executors = self.get_executer_state()
 
         #print(f'[td] before_state = {state_of_executors}')
 
         # request rl scheduler to schedule this task
-        executer_id = self.rl_scheduler.schedule(state_of_executors, task)
+        # executer_id = self.rl_scheduler.schedule(state_of_executors, task)
+        executer_id = 0
 
         print(f"[td] scheduled task(offload_id={task.offload_id}, task_id={task.task_id}) on executer_id={executer_id}")
 

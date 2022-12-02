@@ -17,6 +17,7 @@ import stats
 from tasker.loop import run_loop_task
 from tasker.mm import run_mm_task
 from tasker.cnn_img_classification import run_img_classification_task
+from tasker.fft import run_fft_task
 
 # MQTT server port; fixed to 1883.
 MQTTServerPort = 1883
@@ -230,7 +231,7 @@ def __process_task_entry(pipe, power, task_request, additional_data):
         res = run_loop_task(task_request['task_id'], loop_iter_count)
     elif 50 <= task_id < 100:
         # Additional data is the length of the first matrix, the first matrix, and the second matrix.
-        first_matrix_data_len = struct.unpack('I', additional_data[:4])
+        first_matrix_data_len = struct.unpack('I', additional_data[:4])[0]
         matrix_a_bytes = additional_data[4:(4+first_matrix_data_len)]
         matrix_b_bytes = additional_data[(4+first_matrix_data_len):]
 
@@ -239,15 +240,17 @@ def __process_task_entry(pipe, power, task_request, additional_data):
         import math
         arr_a = np.frombuffer(matrix_a_bytes, int)
         arr_b = np.frombuffer(matrix_b_bytes, int)
-        dim = math.sqrt(arr_a)
+        # We are guaranteed to have square matrices for this evaluation.
+        dim = int(math.sqrt(len(arr_a)))
         log.d('Matrices are {}x{}'.format(dim, dim))
 
         res = run_mm_task(arr_a.reshape((dim, dim)),
-                          arr_b.reshape((dim, dim)))
+                          arr_b.reshape((dim, dim))).tolist()
     elif 100 <= task_id < 150:
         # Additional data is the signal samples.
+        import numpy as np
         samples = np.frombuffer(additional_data)
-        res = run_fft_task(samples)
+        res = list(map(lambda x: str(x), run_fft_task(samples)))
     else:
         print(f'ERROR: task_id {task_id} is undefined')
     end_time = time.time()

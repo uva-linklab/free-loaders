@@ -55,8 +55,8 @@ def offload_one(address, device_id, task_id):
         # Matrix multiplication task.
         # Generate a matrix and send it as the input data.
         size = (task_id - 49) * 4  # 4x4 -> 200x200
-        a = np.random.rand(size, size)
-        b = np.random.rand(size, size)
+        a = np.random.randint(low=1, high=256, size=(size,size), dtype=int)
+        b = np.random.randint(low=1, high=256, size=(size,size), dtype=int)
         payload['input_data'] = {
             'a': a,
             'b': b,
@@ -64,16 +64,10 @@ def offload_one(address, device_id, task_id):
         payload['deadline'] = 41 * (task_id - 49) + 259 + 5000
 
     elif task_id < 150:
-        # Image classification task.
-        channels = 1
-        image_dim = 28
-        batch_size = (task_id - 99) * 30  # task_id: [100, 149], batch size: [30, 1500]
-        images = np.random.randint(256, size=(batch_size, channels, image_dim, image_dim))
+        # FFT task.
+        samples = np.random.rand(22050 * (task_id - 100 + 1))
 
-        payload['input_data'] = {
-            'batch_size': batch_size,
-            'images': images
-        }
+        payload['input_data'] = samples
         payload['deadline'] = 200 * (task_id - 99) + 2000
 
     # Send the task to the controller.
