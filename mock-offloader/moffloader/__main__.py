@@ -34,7 +34,7 @@ def offload_many(address, device_id, count, rate):
 
     for i in range(0, count):
         # Send the task.
-        task_id = random.randint(0, 149)  # Random selection.
+        task_id = random.randint(0, 29)  # Random selection.
         offload_one(address, device_id, task_id)
         time.sleep(intertask_delay)
 
@@ -46,29 +46,29 @@ def offload_one(address, device_id, task_id):
         'input_data': '',
     }
 
-    if task_id < 50:
+    if task_id < 10:
         # For loop task.
         payload['input_data'] = 0
         payload['deadline'] = 202 * (task_id + 1) + 854
 
-    elif task_id < 100:
+    elif task_id < 20:
         # Matrix multiplication task.
         # Generate a matrix and send it as the input data.
-        size = (task_id - 49) * 4  # 4x4 -> 200x200
+        size = 750 + (83 * (task_id - 10))  # 750x750 -> ~1500x1500
         a = np.random.randint(low=1, high=256, size=(size,size), dtype=int)
         b = np.random.randint(low=1, high=256, size=(size,size), dtype=int)
         payload['input_data'] = {
             'a': a,
             'b': b,
         }
-        payload['deadline'] = 41 * (task_id - 49) + 259 + 5000
+        payload['deadline'] = 41 * (task_id - 9) + 259 + 5000
 
-    elif task_id < 150:
-        # FFT task.
-        samples = np.random.rand(22050 * (task_id - 100 + 1))
+    elif task_id < 30:
+        # FFT task. 1s -> 10s of audio data
+        samples = np.random.rand(44100 * (task_id - 19))
 
         payload['input_data'] = samples
-        payload['deadline'] = 200 * (task_id - 99) + 2000
+        payload['deadline'] = 200 * (task_id - 19) + 2000
 
     # Send the task to the controller.
     url = 'http://{}:{}/submit-task'.format(address, ControllerHTTPPort)
