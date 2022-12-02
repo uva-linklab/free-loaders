@@ -210,13 +210,12 @@ class TaskDispatcher:
         self.deadlines[task.offload_id] = task.deadline
 
         # query all executers for their state
-        # state_of_executors = self.get_executer_state()
+        state_of_executors = self.get_executer_state()
 
         #print(f'[td] before_state = {state_of_executors}')
 
         # request rl scheduler to schedule this task
-        # executer_id = self.rl_scheduler.schedule(state_of_executors, task)
-        executer_id = 0
+        executer_id = self.rl_scheduler.schedule(state_of_executors, task)
 
         print(f"[td] scheduled task(offload_id={task.offload_id}, task_id={task.task_id}) on executer_id={executer_id}")
 
