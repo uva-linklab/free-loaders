@@ -3,11 +3,13 @@ import log
 import multiprocessing
 import os
 import signal
+import struct
 import sys
 import threading
 import time
 from multiprocessing import Process, Pipe
 
+import flomqtt.serialize as flserialize
 import paho.mqtt.client
 
 import config
@@ -15,7 +17,6 @@ import stats
 from tasker.loop import run_loop_task
 from tasker.mm import run_mm_task
 from tasker.cnn_img_classification import run_img_classification_task
-
 
 # MQTT server port; fixed to 1883.
 MQTTServerPort = 1883
@@ -110,16 +111,17 @@ def __mqtt_message_received(client, data, msg):
     topic = f'{MQTTTopicExecuteTask}-{data["executor_id"]}'
 
     if msg.topic == topic:
-        task_request = json.loads(msg.payload)
+        (task_json, additional_data) = flserialize.unpack(msg.payload)
+        task_request = json.loads(task_json)
         # Check fields.
-        for k in ['task_id', 'executer_id', 'input_data', 'offload_id']:
+        for k in ['task_id', 'executer_id', 'offload_id']:
             if k not in task_request:
                 log.w('Task request is malformed.')
 
         log.i(f'offload_id={task_request["offload_id"]}. request to execute task_id={task_request["task_id"]} ')
-        __execute_task(client, data['power'], task_request)
+        __execute_task(client, data['power'], task_request, additional_data)
 
-def __execute_task(client, power, task_request):
+def __execute_task(client, power, task_request, additional_data):
     '''Begin executing a task in a new thread.
 
     Sends a response to the controller after completion.
@@ -127,7 +129,7 @@ def __execute_task(client, power, task_request):
     # log.i(f'offload_id={task_request["offload_id"]}. in __execute_task')
     thread = threading.Thread(target=__executor_task_entry,
                               # Hm. Is the MQTT client thread-safe?
-                              args=(client, power, task_request))
+                              args=(client, power, task_request, additional_data))
     thread.start()
     # log.i(f'offload_id={task_request["offload_id"]}. thread created.')
 
@@ -136,10 +138,10 @@ def __execute_task(client, power, task_request):
 # Task execution timeout.
 ExecutionTimeout = 2 * 60
 
-def __executor_task_entry(mqtt_client, power, task_request):
+def __executor_task_entry(mqtt_client, power, task_request, additional_data):
     # log.i(f'offload_id={task_request["offload_id"]}. in __executor_task_entry')
     (p_recv, p_send) = Pipe([False])
-    process = Process(target=__process_task_entry, args=(p_send, power, task_request))
+    process = Process(target=__process_task_entry, args=(p_send, power, task_request, additional_data))
     # log.i(f'offload_id={task_request["offload_id"]}. created process object')
     try:
         # log.i(f'offload_id={task_request["offload_id"]}. before process.start()')
@@ -203,13 +205,12 @@ def __executor_task_entry(mqtt_client, power, task_request):
         p_recv.close()
         # log.i(f'offload_id={task_request["offload_id"]}. finished finally block')
 
-
-
-def __process_task_entry(pipe, power, task_request):
+def __process_task_entry(pipe, power, task_request, additional_data):
     '''Task execution process entry.
 
     Executes the task and sends the result and state to the controller.
     '''
+
     # log.e(f'offload_id={task_request["offload_id"]}. in __process_task_entry')
     config.configure_process()
 
@@ -220,14 +221,33 @@ def __process_task_entry(pipe, power, task_request):
     start_time = time.time()
     # log.i(f'offload_id={task_request["offload_id"]}. executing task')
     # Execute task here.
+    # TODO: update tasks that need to use data from files.
     task_id = task_request['task_id']
     res = ""
     if task_id < 50:
-        res = run_loop_task(task_request['task_id'], task_request['input_data'])
+        # Additional data is the value to start loop iterations with.
+        loop_iter_count = struct.unpack('I', additional_data[:4])
+        res = run_loop_task(task_request['task_id'], loop_iter_count)
     elif 50 <= task_id < 100:
-        res = run_mm_task(task_request['input_data'])
+        # Additional data is the length of the first matrix, the first matrix, and the second matrix.
+        first_matrix_data_len = struct.unpack('I', additional_data[:4])
+        matrix_a_bytes = additional_data[4:(4+first_matrix_data_len)]
+        matrix_b_bytes = additional_data[(4+first_matrix_data_len):]
+
+        # Recover the matrices, including their lost shape.
+        import numpy as np
+        import math
+        arr_a = np.frombuffer(matrix_a_bytes, int)
+        arr_b = np.frombuffer(matrix_b_bytes, int)
+        dim = math.sqrt(arr_a)
+        log.d('Matrices are {}x{}'.format(dim, dim))
+
+        res = run_mm_task(arr_a.reshape((dim, dim)),
+                          arr_b.reshape((dim, dim)))
     elif 100 <= task_id < 150:
-        res = run_img_classification_task(task_request['task_id'], task_request['input_data'])
+        # Additional data is the signal samples.
+        samples = np.frombuffer(additional_data)
+        res = run_fft_task(samples)
     else:
         print(f'ERROR: task_id {task_id} is undefined')
     end_time = time.time()
