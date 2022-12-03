@@ -171,7 +171,11 @@ class TaskDispatcher:
         })
 
         import struct
+        import numpy as np
         mqtt_message = b''
+        # Define a consistent byte order.
+        adt = np.dtype('<i4')
+
         if task.task_id < 10:
             # Loop task. Place the value as the input data.
             mqtt_message = flserialize.pack(task_json, struct.pack('I', task.input_data))
@@ -180,8 +184,8 @@ class TaskDispatcher:
             import numpy as np
             # Input data are lists of lists of integers.
             # Create the numpy array from that, turn it into bytes.
-            m1_bytes = np.array(task.input_data['a']).tobytes()
-            m2_bytes = np.array(task.input_data['b']).tobytes()
+            m1_bytes = np.array(task.input_data['a'], dtype=adt).tobytes()
+            m2_bytes = np.array(task.input_data['b'], dtype=adt).tobytes()
             # Serialize the numpy arrays, placing the length of the first matrix as the first piece of data.
             payload = struct.pack('I', len(m1_bytes)) + m1_bytes + m2_bytes
             mqtt_message = flserialize.pack(task_json, payload)
@@ -190,7 +194,7 @@ class TaskDispatcher:
             import numpy as np
             # Input data is a list of floats.
             # Create the numpy array from that, turn it into bytes.
-            arr_bytes = np.array(task.input_data).tobytes()
+            arr_bytes = np.array(task.input_data, dtype=adt).tobytes()
             mqtt_message = flserialize.pack(task_json, arr_bytes)
         else:
             print('bad task ID: {}'.format(task.task_id))

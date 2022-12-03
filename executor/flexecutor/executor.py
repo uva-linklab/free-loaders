@@ -247,20 +247,19 @@ def __process_task_entry(pipe, executor_id, power, task_request, additional_data
             mm_fn = run_mm_task
 
         import math
-        arr_a = np.frombuffer(matrix_a_bytes, int)
-        arr_b = np.frombuffer(matrix_b_bytes, int)
+        adt = np.dtype('<i4')
+        arr_a = np.frombuffer(matrix_a_bytes, adt)
+        arr_b = np.frombuffer(matrix_b_bytes, adt)
         # We are guaranteed to have square matrices for this evaluation.
         dim = int(math.sqrt(len(arr_a)))
         log.d('Matrices are {}x{}'.format(dim, dim))
-        res = mm_fn(arr_a.reshape((dim, dim)),
-                    arr_b.reshape((dim, dim))).tolist()
-
-        res_data = run_mm_task(arr_a.reshape((dim, dim)),
-                               arr_b.reshape((dim, dim))).tobytes()
+        res_data = mm_fn(arr_a.reshape((dim, dim)),
+                         arr_b.reshape((dim, dim))).tobytes()
     elif task_id < 30:
         # Additional data is the signal samples.
         import numpy as np
-        samples = np.frombuffer(additional_data)
+        adt = np.dtype('<i4')
+        samples = np.frombuffer(additional_data, adt)
         res_data = run_fft_task(samples).tobytes()
     else:
         print(f'ERROR: task_id {task_id} is undefined')
