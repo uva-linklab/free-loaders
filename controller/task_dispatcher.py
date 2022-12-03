@@ -108,7 +108,9 @@ class TaskDispatcher:
                     print(f"[td] failed task(offload_id={offload_id}, task_id={task_id}) on executer_id={executor_id}, status={status}. deadline={deadline}, deadline_met={False}")
                     self.failed_tasks += 1
                 else:
-                    print(f"[td] finished task(offload_id={offload_id}, task_id={task_id}) on executer_id={executor_id}. time(ms)={exec_time_ms}, deadline={deadline}, deadline_met={exec_time_ms <= deadline}")
+                    print(f"[td] finished task(offload_id={offload_id}, task_id={task_id}) on executer_id={executor_id}."
+                          f" time(ms)={exec_time_ms}, deadline={deadline}, deadline_met={exec_time_ms <= deadline},"
+                          f" energy={energy}")
                     self.finished_tasks += 1
                     deadline_met = exec_time_ms <= deadline
                     self.deadlines_met += (1 if deadline_met else 0)
