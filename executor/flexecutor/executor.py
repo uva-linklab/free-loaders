@@ -228,7 +228,7 @@ def __process_task_entry(pipe, executor_id, power, task_request, additional_data
     if task_id < 10:
         # Additional data is the value to start loop iterations with.
         loop_iter_count = struct.unpack('I', additional_data[:4])[0]
-        res = run_loop_task(task_request['task_id'], loop_iter_count)
+        res = run_loop_task(loop_iter_count)
         res_data = struct.pack('I', res)
     elif task_id < 20:
         # Additional data is the length of the first matrix, the first matrix, and the second matrix.
