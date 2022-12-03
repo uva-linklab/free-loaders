@@ -159,7 +159,7 @@ def __executor_task_entry(mqtt_client, executor_id, power, task_request, additio
         if process.exitcode is not None:
             log.i(f'offload_id={task_request["offload_id"]}. process finished gracefully.')
             mqtt_client.publish(MQTTTopicTaskResponse,
-                                result.encode('utf-8'),
+                                result,
                                 qos=2)
         else:
             process.terminate()
@@ -174,7 +174,7 @@ def __executor_task_entry(mqtt_client, executor_id, power, task_request, additio
                 'status': process.exitcode  # inform the controller that we failed
             }
             mqtt_client.publish(MQTTTopicTaskResponse,
-                                json.dumps(response).encode('utf-8'),
+                                flserialize.pack(json.dumps(response), b''),
                                 qos=2)
             log.i(f'offload_id={task_request["offload_id"]}. finished mqtt_client.publish')
 
@@ -191,7 +191,7 @@ def __executor_task_entry(mqtt_client, executor_id, power, task_request, additio
             'status': process.exitcode  # inform the controller that we failed
         }
         mqtt_client.publish(MQTTTopicTaskResponse,
-                            json.dumps(response).encode('utf-8'),
+                            flserialize.pack(json.dumps(response), b''),
                             qos=2)
         log.i(f'offload_id={task_request["offload_id"]}. finished mqtt_client.publish')
     except Exception as error:
@@ -220,14 +220,16 @@ def __process_task_entry(pipe, executor_id, power, task_request, additional_data
     # Execute task here.
     # TODO: update tasks that need to use data from files.
     task_id = task_request['task_id']
-    res = ""
+
+    res_data = b''
     # TODO: remove hardcoding
     cuda_executors = [0, 8, 9]
 
     if task_id < 10:
         # Additional data is the value to start loop iterations with.
         loop_iter_count = struct.unpack('I', additional_data[:4])[0]
-        res = run_loop_task(loop_iter_count)
+        res = run_loop_task(task_request['task_id'], loop_iter_count)
+        res_data = struct.pack('I', res)
     elif task_id < 20:
         # Additional data is the length of the first matrix, the first matrix, and the second matrix.
         first_matrix_data_len = struct.unpack('I', additional_data[:4])[0]
@@ -253,11 +255,13 @@ def __process_task_entry(pipe, executor_id, power, task_request, additional_data
         res = mm_fn(arr_a.reshape((dim, dim)),
                     arr_b.reshape((dim, dim))).tolist()
 
+        res_data = run_mm_task(arr_a.reshape((dim, dim)),
+                               arr_b.reshape((dim, dim))).tobytes()
     elif task_id < 30:
         # Additional data is the signal samples.
         import numpy as np
         samples = np.frombuffer(additional_data)
-        res = list(map(lambda x: str(x), run_fft_task(samples)))
+        res_data = run_fft_task(samples).tobytes()
     else:
         print(f'ERROR: task_id {task_id} is undefined')
     end_time = time.time()
@@ -266,14 +270,15 @@ def __process_task_entry(pipe, executor_id, power, task_request, additional_data
 
     # Collect current state and send it, along with the result.
     current_state = stats.fetch()
-    response = {
+    response_json = json.dumps({
         'executor_id': task_request['executer_id'],
         'task_id': task_request['task_id'],
         'offload_id': task_request['offload_id'],
-        'result': res,
         'state': current_state,
         'energy': power * (end_time - start_time),
         'status': 0
-    }
-    pipe.send(json.dumps(response))
+    })
+    response_data = flserialize.pack(response_json, res_data)
+
+    pipe.send(response_data)
     pipe.close()

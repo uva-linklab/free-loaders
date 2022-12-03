@@ -76,12 +76,16 @@ class TaskDispatcher:
         payload = mqtt_message.payload
 
         try:
-            message_json = json.loads(payload)
+            # We are not actually using _data here.
+            (message_json, _data) = flserialize.unpack(payload)
+            message_json = json.loads(message_json)
             print(f'[td] new mqtt message! response for offload_id={message_json["offload_id"]}')
         except Exception as e:
+            import traceback
             print(f"[td] hit exception in mqtt json parse")
             print(e)
             print(payload)
+            traceback.print_exception(type(e), e, e.__traceback__)
         else:
             if topic == offloader_controller_feedback_response_topic:
                 pass
