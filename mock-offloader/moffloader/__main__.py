@@ -48,7 +48,7 @@ def offload_one(address, device_id, task_id):
 
     if task_id < 10:
         # For loop task.
-        payload['input_data'] = 0
+        payload['input_data'] = (task_id + 1) * 1000000  # 1,000,000 -> 10,000,000 loops
         payload['deadline'] = 202 * (task_id + 1) + 854
 
     elif task_id < 20:
