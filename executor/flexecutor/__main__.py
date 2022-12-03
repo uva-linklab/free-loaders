@@ -5,6 +5,7 @@ import config
 import executor
 import log
 import multiprocessing
+import multiprocessing.connection
 import os
 import service
 import signal
