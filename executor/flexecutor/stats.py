@@ -99,7 +99,6 @@ def _gpu_stats():
 
     # Look at the kernel build to tell if this is a Jetson SBC.
     if os.uname().release.endswith('-tegra'):
-        import jtop
         stats['has-gpu'] = 1
         stats['load'] = _get_gpu_load()
         # Note: SoC shares RAM between CPU and GPU.
