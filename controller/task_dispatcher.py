@@ -168,10 +168,10 @@ class TaskDispatcher:
 
         import struct
         mqtt_message = b''
-        if task.task_id < 50:
+        if task.task_id < 10:
             # Loop task. Place the value as the input data.
             mqtt_message = flserialize.pack(task_json, struct.pack('I', task.input_data))
-        elif task.task_id < 100:
+        elif task.task_id < 20:
             # Matrix multiplication.
             import numpy as np
             # Input data are lists of lists of integers.
@@ -181,7 +181,7 @@ class TaskDispatcher:
             # Serialize the numpy arrays, placing the length of the first matrix as the first piece of data.
             payload = struct.pack('I', len(m1_bytes)) + m1_bytes + m2_bytes
             mqtt_message = flserialize.pack(task_json, payload)
-        elif task.task_id < 150:
+        elif task.task_id < 30:
             # FFT.
             import numpy as np
             # Input data is a list of floats.
