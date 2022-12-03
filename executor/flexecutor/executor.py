@@ -13,8 +13,6 @@ import paho.mqtt.client
 import config
 import stats
 from tasker.loop import run_loop_task
-from tasker.mm import run_mm_task
-from tasker.mm_gpu import run_mm_task_gpu
 from tasker.fft import run_fft_task
 
 # MQTT server port; fixed to 1883.
@@ -239,10 +237,12 @@ def __process_task_entry(pipe, executor_id, power, task_request, additional_data
         # Recover the matrices, including their lost shape.
         if executor_id in cuda_executors:
             import cupy as np
-            mm_fn = run_mm_task
+            from tasker.mm_gpu import run_mm_task_gpu
+            mm_fn = run_mm_task_gpu
         else:
             import numpy as np
-            mm_fn = run_mm_task_gpu
+            from tasker.mm import run_mm_task
+            mm_fn = run_mm_task
 
         import math
         arr_a = np.frombuffer(matrix_a_bytes, int)
