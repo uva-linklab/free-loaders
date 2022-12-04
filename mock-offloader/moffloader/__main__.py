@@ -64,8 +64,8 @@ def offload_one(address, device_id, task_id):
         payload['deadline'] = 41 * (task_id - 9) + 259 + 5000
 
     elif task_id < 30:
-        # FFT task. 1s -> 10s of audio data
-        samples = np.random.rand(44100 * (task_id - 19))
+        # FFT task. 3s -> 30s of audio data
+        samples = np.random.rand(44100 * (task_id - 19) * 3)
 
         payload['input_data'] = samples
         payload['deadline'] = 200 * (task_id - 19) + 2000
