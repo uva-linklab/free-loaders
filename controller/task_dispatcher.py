@@ -17,6 +17,7 @@ offloader_controller_feedback_response_topic = "offl-ctrl-feedback-response"  # 
 controller_executer_task_execute_topic = "ctrl-exec-task-execute"  # pub
 executer_controller_task_response_topic = "exec-ctrl-task-response"  # sub
 
+Assignments = {}
 
 # TODO update
 def request_feedback(self, task_id, feedback):
@@ -143,7 +144,8 @@ class TaskDispatcher:
                 del self.execution_times[offload_id]
                 del self.deadlines[offload_id]
 
-                print(f"[td] pending task offload_ids: {self.execution_times.keys()}")
+                print('[td] pending (eid): {}'.format(['{} ({})'.format(k, Assignments.get(k, '?')) for k in self.execution_times.keys()]))
+                #print(f"[td] pending task offload_ids: {self.execution_times.keys()}")
 
 
     def on_disconnect(self, client, userdata, rc=0):
@@ -170,35 +172,8 @@ class TaskDispatcher:
             "task_id": task.task_id,
         })
 
-        import struct
-        import numpy as np
-        mqtt_message = b''
-        # Define a consistent byte order.
-        adt = np.dtype('<i4')
-
-        if task.task_id < 10:
-            # Loop task. Place the value as the input data.
-            mqtt_message = flserialize.pack(task_json, struct.pack('I', task.input_data))
-        elif task.task_id < 20:
-            # Matrix multiplication.
-            import numpy as np
-            # Input data are lists of lists of integers.
-            # Create the numpy array from that, turn it into bytes.
-            m1_bytes = np.array(task.input_data['a'], dtype=adt).tobytes()
-            m2_bytes = np.array(task.input_data['b'], dtype=adt).tobytes()
-            # Serialize the numpy arrays, placing the length of the first matrix as the first piece of data.
-            payload = struct.pack('I', len(m1_bytes)) + m1_bytes + m2_bytes
-            mqtt_message = flserialize.pack(task_json, payload)
-        elif task.task_id < 30:
-            # FFT.
-            import numpy as np
-            # Input data is a list of floats.
-            # Create the numpy array from that, turn it into bytes.
-            arr_bytes = np.array(task.input_data, dtype=adt).tobytes()
-            mqtt_message = flserialize.pack(task_json, arr_bytes)
-        else:
-            print('bad task ID: {}'.format(task.task_id))
-
+        # task.input_data is already in bytes
+        mqtt_message = flserialize.pack(task_json, task.input_data)
         executor_topic = f'{controller_executer_task_execute_topic}-{executer_id}'
 
         self.mqtt_client.publish(executor_topic,
@@ -221,11 +196,13 @@ class TaskDispatcher:
 
         # query all executers for their state
         state_of_executors = self.get_executer_state()
+        print('executor loads: {}'.format([state_of_executors[eid]['cpu-load'] for eid in sorted(list(state_of_executors.keys()))]))
 
         #print(f'[td] before_state = {state_of_executors}')
 
         # request rl scheduler to schedule this task
         executer_id = self.rl_scheduler.schedule(state_of_executors, task)
+        Assignments[task.offload_id] = executer_id
 
         print(f"[td] scheduled task(offload_id={task.offload_id}, task_id={task.task_id}) on executer_id={executer_id}")
 
