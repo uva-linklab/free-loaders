@@ -4,6 +4,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from socketserver import ThreadingMixIn
 from classes.task import Task
 import cgi
+import flomqtt.serialize as flserialize
 
 next_offload_id = 0
 PORT = 8001
@@ -30,18 +31,23 @@ class MyHTTPRequestHandler(BaseHTTPRequestHandler):
             # receive the task parameters
             ctype, pdict = cgi.parse_header(self.headers['content-type'])
 
-            # refuse to receive non-json content
-            if ctype != 'application/json':
+            # refuse to receive non octet-stream content
+            if ctype != 'application/octet-stream':
                 self.send_response(400)
                 self.end_headers()
                 return
 
             # read the message and convert it into a python dictionary
             length = int(self.headers['content-length'])
-            post_input_data = json.loads(self.rfile.read(length))
+            post_input_data = self.rfile.read(length)
+
+            (task_json, additional_data) = flserialize.unpack(post_input_data)
+            task_request = json.loads(task_json)
+            print(task_request)
+            task_request['input_data'] = additional_data
 
             # do some sanity checks
-            fields = post_input_data.keys()
+            fields = task_request.keys()
             if "device_id" not in fields or "task_id" not in fields or "input_data" not in fields:
                 self.send_response(400)
                 self.send_header('Content-type', 'text/plain')
@@ -61,15 +67,16 @@ class MyHTTPRequestHandler(BaseHTTPRequestHandler):
             self.wfile.write(json.dumps(response).encode('utf-8'))
 
             # send the task to the task dispatcher
-            device_id = post_input_data["device_id"]
-            task_id = post_input_data["task_id"]
-            input_data = post_input_data["input_data"]
-            deadline = post_input_data["deadline"] if "deadline" in fields else DEFAULT_DEADLINE
+            device_id = task_request["device_id"]
+            task_id = task_request["task_id"]
+            input_data = task_request["input_data"]
+            deadline = task_request["deadline"] if "deadline" in fields else DEFAULT_DEADLINE
 
             self.task_dispatcher.submit_task(Task(next_offload_id, task_id, device_id, input_data, deadline))
 
             # generate a unique task id for the next task
             next_offload_id += 1
+            del post_input_data
         else:
             self.send_response(404)
 

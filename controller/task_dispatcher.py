@@ -4,6 +4,7 @@ import json
 import asyncio
 from aiohttp import ClientSession
 import time
+import flomqtt.serialize as flserialize
 
 executer_server_port = 8088
 
@@ -16,6 +17,7 @@ offloader_controller_feedback_response_topic = "offl-ctrl-feedback-response"  # 
 controller_executer_task_execute_topic = "ctrl-exec-task-execute"  # pub
 executer_controller_task_response_topic = "exec-ctrl-task-response"  # sub
 
+Assignments = {}
 
 # TODO update
 def request_feedback(self, task_id, feedback):
@@ -76,12 +78,16 @@ class TaskDispatcher:
         payload = mqtt_message.payload
 
         try:
-            message_json = json.loads(payload)
+            # We are not actually using _data here.
+            (message_json, _data) = flserialize.unpack(payload)
+            message_json = json.loads(message_json)
             print(f'[td] new mqtt message! response for offload_id={message_json["offload_id"]}')
         except Exception as e:
+            import traceback
             print(f"[td] hit exception in mqtt json parse")
             print(e)
             print(payload)
+            traceback.print_exception(type(e), e, e.__traceback__)
         else:
             if topic == offloader_controller_feedback_response_topic:
                 pass
@@ -92,6 +98,7 @@ class TaskDispatcher:
                 executor_id = message_json["executor_id"]
                 task_id = message_json["task_id"]
                 status = message_json["status"]
+                energy = message_json["energy"]
 
                 if offload_id not in self.execution_times.keys():
                     # ignore a response if we're not expecting it
@@ -107,7 +114,9 @@ class TaskDispatcher:
                     print(f"[td] failed task(offload_id={offload_id}, task_id={task_id}) on executer_id={executor_id}, status={status}. deadline={deadline}, deadline_met={False}")
                     self.failed_tasks += 1
                 else:
-                    print(f"[td] finished task(offload_id={offload_id}, task_id={task_id}) on executer_id={executor_id}. time(ms)={exec_time_ms}, deadline={deadline}, deadline_met={exec_time_ms <= deadline}")
+                    print(f"[td] finished task(offload_id={offload_id}, task_id={task_id}) on executer_id={executor_id}."
+                          f" time(ms)={exec_time_ms}, deadline={deadline}, deadline_met={exec_time_ms <= deadline},"
+                          f" energy={energy}")
                     self.finished_tasks += 1
                     deadline_met = exec_time_ms <= deadline
                     self.deadlines_met += (1 if deadline_met else 0)
@@ -116,14 +125,13 @@ class TaskDispatcher:
                 print(f"[td] deadlines_met={self.deadlines_met}, finished_tasks={self.finished_tasks}, failed_tasks={self.failed_tasks}, pending_tasks={self.total_tasks-(self.finished_tasks+self.failed_tasks)}, dsr={dsr}")
 
                 # # give the feedback to the rl scheduler
-                # TODO update energy consumption
                 if self.scheduler.needs_feedback:
                     self.scheduler.feedback_q.put({
                         "offload_id": offload_id,
                         "exec_id": str(executor_id),
                         "status": status,
                         "exec_time": exec_time_ms,
-                        "energy": 1,
+                        "energy": energy,
                         "new_state_of_executor": state_of_executor
                     })
 
@@ -137,7 +145,8 @@ class TaskDispatcher:
                 del self.execution_times[offload_id]
                 del self.deadlines[offload_id]
 
-                print(f"[td] pending task offload_ids: {self.execution_times.keys()}")
+                print('[td] pending (eid): {}'.format(['{} ({})'.format(k, Assignments.get(k, '?')) for k in self.execution_times.keys()]))
+                #print(f"[td] pending task offload_ids: {self.execution_times.keys()}")
 
 
     def on_disconnect(self, client, userdata, rc=0):
@@ -158,17 +167,18 @@ class TaskDispatcher:
     def send_task_to_executer(self, executer_id, task):
         # publish on mqtt to executer
         # assumption: each executer knows its id
-        task_request_msg = {
+        task_json = json.dumps({
             "executer_id": executer_id,
             "offload_id": task.offload_id,
             "task_id": task.task_id,
-            "input_data": task.input_data
-        }
+        })
 
+        # task.input_data is already in bytes
+        mqtt_message = flserialize.pack(task_json, task.input_data)
         executor_topic = f'{controller_executer_task_execute_topic}-{executer_id}'
 
         self.mqtt_client.publish(executor_topic,
-                                 json.dumps(task_request_msg).encode('utf-8'),
+                                 mqtt_message,
                                  qos=2)
 
         print(f'published to {executor_topic}')
@@ -185,14 +195,17 @@ class TaskDispatcher:
         self.execution_times[task.offload_id] = time.time()
         self.deadlines[task.offload_id] = task.deadline
 
+        # query all executers for their state
         state_of_executors = None
         # only for the rl scheduler and the dynamic load based scheduler which need
         if self.scheduler.needs_before_state:
             # query all executers for their state
             state_of_executors = self.get_executer_state()
+            print('executor loads: {}'.format([state_of_executors[eid]['cpu-load'] for eid in sorted(list(state_of_executors.keys()))]))
 
         # request rl scheduler to schedule this task
         executer_id = self.scheduler.schedule(state_of_executors, task)
+        Assignments[task.offload_id] = executer_id
 
         print(f"[td] scheduled task(offload_id={task.offload_id}, task_id={task.task_id}) on executer_id={executer_id}")
 

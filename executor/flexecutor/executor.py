@@ -1,21 +1,19 @@
 import json
 import log
-import multiprocessing
-import os
 import signal
+import struct
 import sys
 import threading
 import time
 from multiprocessing import Process, Pipe
 
+import flomqtt.serialize as flserialize
 import paho.mqtt.client
 
 import config
 import stats
 from tasker.loop import run_loop_task
-from tasker.mm import run_mm_task
-from tasker.cnn_img_classification import run_img_classification_task
-
+from tasker.fft import run_fft_task
 
 # MQTT server port; fixed to 1883.
 MQTTServerPort = 1883
@@ -25,7 +23,7 @@ MQTTTopicExecuteTask = 'ctrl-exec-task-execute'
 # Topic the executor uses to send responses back to the controller.
 MQTTTopicTaskResponse = 'exec-ctrl-task-response'
 
-def start_executor(controller_addr, executor_id, log_level):
+def start_executor(controller_addr, executor_id, power, log_level):
     '''Launches the task executor process.
 
     Accepts the ID to use as its executor ID, which it uses to listen for work.
@@ -33,12 +31,12 @@ def start_executor(controller_addr, executor_id, log_level):
 
     p = Process(name='executor',
                 target=__executor_entry,
-                args=(controller_addr, executor_id, log_level))
+                args=(controller_addr, executor_id, power, log_level))
     p.start()
 
     return p
 
-def __executor_entry(controller_addr, executor_id, log_level):
+def __executor_entry(controller_addr, executor_id, power, log_level):
     '''Executor thread entry function.
 
     Listens for MQTT messages carrying tasks to run.
@@ -52,7 +50,7 @@ def __executor_entry(controller_addr, executor_id, log_level):
 
     mqtt_client = paho.mqtt.client.Client(client_id=f"flexecutor-{executor_id}",
                                           clean_session=False,
-                                          userdata={'executor_id': executor_id})
+                                          userdata={'executor_id': executor_id, 'power': power})
     mqtt_client.on_connect = __mqtt_on_connect
     mqtt_client.on_message = __mqtt_message_received
     mqtt_client.on_disconnect = __mqtt_on_disconnect
@@ -110,16 +108,17 @@ def __mqtt_message_received(client, data, msg):
     topic = f'{MQTTTopicExecuteTask}-{data["executor_id"]}'
 
     if msg.topic == topic:
-        task_request = json.loads(msg.payload)
+        (task_json, additional_data) = flserialize.unpack(msg.payload)
+        task_request = json.loads(task_json)
         # Check fields.
-        for k in ['task_id', 'executer_id', 'input_data', 'offload_id']:
+        for k in ['task_id', 'executer_id', 'offload_id']:
             if k not in task_request:
                 log.w('Task request is malformed.')
 
         log.i(f'offload_id={task_request["offload_id"]}. request to execute task_id={task_request["task_id"]} ')
-        __execute_task(client, task_request)
+        __execute_task(client, data["executor_id"], data['power'], task_request, additional_data)
 
-def __execute_task(client, task_request):
+def __execute_task(client, executor_id, power, task_request, additional_data):
     '''Begin executing a task in a new thread.
 
     Sends a response to the controller after completion.
@@ -127,16 +126,19 @@ def __execute_task(client, task_request):
     # log.i(f'offload_id={task_request["offload_id"]}. in __execute_task')
     thread = threading.Thread(target=__executor_task_entry,
                               # Hm. Is the MQTT client thread-safe?
-                              args=(client, task_request))
+                              args=(client, executor_id, power, task_request, additional_data))
     thread.start()
     # log.i(f'offload_id={task_request["offload_id"]}. thread created.')
 
     return thread
 
-def __executor_task_entry(mqtt_client, task_request):
+# Task execution timeout.
+ExecutionTimeout = 2 * 60
+
+def __executor_task_entry(mqtt_client, executor_id, power, task_request, additional_data):
     # log.i(f'offload_id={task_request["offload_id"]}. in __executor_task_entry')
     (p_recv, p_send) = Pipe([False])
-    process = Process(target=__process_task_entry, args=(p_send, task_request))
+    process = Process(target=__process_task_entry, args=(p_send, executor_id, power, task_request, additional_data))
     # log.i(f'offload_id={task_request["offload_id"]}. created process object')
     try:
         # log.i(f'offload_id={task_request["offload_id"]}. before process.start()')
@@ -151,13 +153,13 @@ def __executor_task_entry(mqtt_client, task_request):
 
         # log.i(f'offload_id={task_request["offload_id"]}. finished result = p_recv.recv()')
 
-        process.join(2 * 60)  # wait for process to finish up
+        process.join(ExecutionTimeout)  # wait for process to finish up
         log.i(f'offload_id={task_request["offload_id"]}. after process.join()')
         # check if the process exited
         if process.exitcode is not None:
             log.i(f'offload_id={task_request["offload_id"]}. process finished gracefully.')
             mqtt_client.publish(MQTTTopicTaskResponse,
-                                result.encode('utf-8'),
+                                result,
                                 qos=2)
         else:
             process.terminate()
@@ -168,10 +170,11 @@ def __executor_task_entry(mqtt_client, task_request):
                 'task_id': task_request['task_id'],
                 'offload_id': task_request['offload_id'],
                 'state': current_state,
+                'energy': power * ExecutionTimeout,
                 'status': process.exitcode  # inform the controller that we failed
             }
             mqtt_client.publish(MQTTTopicTaskResponse,
-                                json.dumps(response).encode('utf-8'),
+                                flserialize.pack(json.dumps(response), b''),
                                 qos=2)
             log.i(f'offload_id={task_request["offload_id"]}. finished mqtt_client.publish')
 
@@ -184,10 +187,11 @@ def __executor_task_entry(mqtt_client, task_request):
             'task_id': task_request['task_id'],
             'offload_id': task_request['offload_id'],
             'state': current_state,
+            'energy': 0,
             'status': process.exitcode  # inform the controller that we failed
         }
         mqtt_client.publish(MQTTTopicTaskResponse,
-                            json.dumps(response).encode('utf-8'),
+                            flserialize.pack(json.dumps(response), b''),
                             qos=2)
         log.i(f'offload_id={task_request["offload_id"]}. finished mqtt_client.publish')
     except Exception as error:
@@ -198,13 +202,12 @@ def __executor_task_entry(mqtt_client, task_request):
         p_recv.close()
         # log.i(f'offload_id={task_request["offload_id"]}. finished finally block')
 
-
-
-def __process_task_entry(pipe, task_request):
+def __process_task_entry(pipe, executor_id, power, task_request, additional_data):
     '''Task execution process entry.
 
     Executes the task and sends the result and state to the controller.
     '''
+
     # log.e(f'offload_id={task_request["offload_id"]}. in __process_task_entry')
     config.configure_process()
 
@@ -215,28 +218,66 @@ def __process_task_entry(pipe, task_request):
     start_time = time.time()
     # log.i(f'offload_id={task_request["offload_id"]}. executing task')
     # Execute task here.
+    # TODO: update tasks that need to use data from files.
     task_id = task_request['task_id']
-    res = ""
-    if task_id < 50:
-        res = run_loop_task(task_request['task_id'], task_request['input_data'])
-    elif 50 <= task_id < 100:
-        res = run_mm_task(task_request['input_data'])
-    elif 100 <= task_id < 150:
-        res = run_img_classification_task(task_request['task_id'], task_request['input_data'])
+
+    res_data = b''
+    # TODO: remove hardcoding
+    cuda_executors = [0, 8, 9]
+
+    if task_id < 10:
+        # Additional data is the value to start loop iterations with.
+        loop_iter_count = struct.unpack('I', additional_data[:4])[0]
+        res = run_loop_task(loop_iter_count)
+        res_data = struct.pack('I', res)
+    elif task_id < 20:
+        # Additional data is the length of the first matrix, the first matrix, and the second matrix.
+        first_matrix_data_len = struct.unpack('I', additional_data[:4])[0]
+        matrix_a_bytes = additional_data[4:(4+first_matrix_data_len)]
+        matrix_b_bytes = additional_data[(4+first_matrix_data_len):]
+
+        # Recover the matrices, including their lost shape.
+        if executor_id in cuda_executors:
+            import cupy as np
+            from tasker.mm_gpu import run_mm_task_gpu
+            mm_fn = run_mm_task_gpu
+        else:
+            import numpy as np
+            from tasker.mm import run_mm_task
+            mm_fn = run_mm_task
+
+        import math
+        adt = np.dtype('<i4')
+        arr_a = np.frombuffer(matrix_a_bytes, adt)
+        arr_b = np.frombuffer(matrix_b_bytes, adt)
+        # We are guaranteed to have square matrices for this evaluation.
+        dim = int(math.sqrt(len(arr_a)))
+        log.d('Matrices are {}x{}'.format(dim, dim))
+        res_data = mm_fn(arr_a.reshape((dim, dim)),
+                         arr_b.reshape((dim, dim))).tobytes()
+    elif task_id < 30:
+        # Additional data is the signal samples.
+        import numpy as np
+        adt = np.dtype('<i4')
+        samples = np.frombuffer(additional_data, adt)
+        res_data = run_fft_task(samples).tobytes()
     else:
         print(f'ERROR: task_id {task_id} is undefined')
+    end_time = time.time()
 
     log.i(f'offload_id={task_request["offload_id"]}. completed executing task. time={(time.time() - start_time)*1000}')
 
     # Collect current state and send it, along with the result.
     current_state = stats.fetch()
-    response = {
+    response_json = json.dumps({
         'executor_id': task_request['executer_id'],
         'task_id': task_request['task_id'],
         'offload_id': task_request['offload_id'],
-        'result': res,
         'state': current_state,
+        'energy': power * (end_time - start_time),
         'status': 0
-    }
-    pipe.send(json.dumps(response))
+    })
+    response_data = flserialize.pack(response_json, res_data)
+
+    pipe.send(response_data)
     pipe.close()

@@ -5,6 +5,8 @@ import time
 import numpy as np
 
 import requests
+import struct
+import flomqtt.serialize as flserialize
 
 ControllerHTTPPort = 8001
 
@@ -34,54 +36,57 @@ def offload_many(address, device_id, count, rate):
 
     for i in range(0, count):
         # Send the task.
-        task_id = random.randint(0, 149)  # Random selection.
+        task_id = random.randint(0, 29)  # Random selection.
         offload_one(address, device_id, task_id)
         time.sleep(intertask_delay)
 
 
 def offload_one(address, device_id, task_id):
-    payload = {
+    task_data = {
         'device_id': device_id,
-        'task_id': task_id,
-        'input_data': '',
+        'task_id': task_id
     }
 
-    if task_id < 50:
+    http_post_data = b''
+    # Define a consistent byte order.
+    adt = np.dtype('<i4')
+
+    if task_id < 10:
         # For loop task.
-        payload['input_data'] = 0
-        payload['deadline'] = 202 * (task_id + 1) + 854
+        task_data['deadline'] = task_id * ((4350-925)/9) + 925
 
-    elif task_id < 100:
+        input_data = (task_id + 1) * 1000000  # 1,000,000 -> 10,000,000 loops
+        input_data_bytes = struct.pack('I', input_data)
+
+    elif task_id < 20:
         # Matrix multiplication task.
+        task_data['deadline'] = (task_id - 10) * ((20000-8250)/9)+8250
+
         # Generate a matrix and send it as the input data.
-        size = (task_id - 49) * 4  # 4x4 -> 200x200
-        a = np.random.rand(size, size)
-        b = np.random.rand(size, size)
-        payload['input_data'] = {
-            'a': a,
-            'b': b,
-        }
-        payload['deadline'] = 41 * (task_id - 49) + 259 + 5000
+        size = 750 + (83 * (task_id - 10))  # 750x750 -> ~1500x1500
+        m1_bytes = np.random.randint(low=1, high=256, size=(size,size), dtype=adt).tobytes()
+        m2_bytes = np.random.randint(low=1, high=256, size=(size,size), dtype=adt).tobytes()
+        # Serialize the numpy arrays, placing the length of the first matrix as the first piece of data.
+        input_data_bytes = struct.pack('I', len(m1_bytes)) + m1_bytes + m2_bytes
 
-    elif task_id < 150:
-        # Image classification task.
-        channels = 1
-        image_dim = 28
-        batch_size = (task_id - 99) * 30  # task_id: [100, 149], batch size: [30, 1500]
-        images = np.random.randint(256, size=(batch_size, channels, image_dim, image_dim))
+    elif task_id < 30:
+        # FFT task. 3s -> 30s of audio data
+        task_data['deadline'] = (task_id - 20) * ((5300-2600)/9)+2600
+        samples = np.random.rand(44100 * (task_id - 19) * 3)
+        input_data_bytes = np.array(samples, dtype=adt).tobytes()
 
-        payload['input_data'] = {
-            'batch_size': batch_size,
-            'images': images
-        }
-        payload['deadline'] = 200 * (task_id - 99) + 2000
+    else:
+        print('bad task ID: {}'.format(task_id))
+        return
+
+    task_json = json.dumps(task_data)
+    http_post_data = flserialize.pack(task_json, input_data_bytes)
 
     # Send the task to the controller.
     url = 'http://{}:{}/submit-task'.format(address, ControllerHTTPPort)
-    body_json = json.dumps(payload, cls=NumpyEncoder)
-    # print('Sending task data {}'.format(body_json))
+
     try:
-        response = requests.post(url, data=body_json, headers={'Content-Type': 'application/json'})
+        response = requests.post(url, data=http_post_data, headers={'Content-Type': 'application/octet-stream'})
         print('Server says {}:', end='')
         for line in response.iter_lines():
             print('{}'.format(line))
