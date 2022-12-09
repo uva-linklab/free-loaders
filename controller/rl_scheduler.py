@@ -12,6 +12,7 @@ import chainer.links as L
 import numpy as np
 from chainer import serializers
 import queue
+import threading
 
 rewards_csv_file='reward_loss.csv'
 
@@ -21,6 +22,7 @@ class RLScheduler:
         self.executers = executers
         self.alpha = 0.8
         self.threshold = 200
+        self.q_lock = threading.Lock()
 
         class Q_Network(chainer.Chain):
 
@@ -133,6 +135,8 @@ class RLScheduler:
 
     def schedule(self, before_state, task):
 
+        self.q_lock.acquire()
+
         pobs = self.process_state(before_state, task)
 
         # select act
@@ -147,11 +151,15 @@ class RLScheduler:
 
         self.save_state(task, before_state, pact)
 
+        self.q_lock.release()
+
         return pact
 
 
     def task_finished(self, offload_id, exec_id, status, exec_time, energy, new_state_of_executor):
         # status = 0 => successful task, status != 0 => failed task
+
+        self.q_lock.acquire()
 
         task, before_state, pact, deadline = self.get_saved_state(offload_id)
         new_state = self.generate_new_state(before_state, new_state_of_executor, exec_id)
@@ -229,6 +237,8 @@ class RLScheduler:
                 # f.close()
 
             serializers.save_npz('Q.model', self.Q)
+
+        self.q_lock.release()
 
     def feedback_consumer(self):
         print("[rls] starting feedback consumer")
