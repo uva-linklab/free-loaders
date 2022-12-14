@@ -20,7 +20,7 @@ class RLScheduler:
 
     def __init__(self, executers):
         self.executers = executers
-        self.alpha = 0.8
+        self.alpha = 1.0
         self.threshold = 200
         self.q_lock = threading.Lock()
 
@@ -135,31 +135,30 @@ class RLScheduler:
 
     def schedule(self, before_state, task):
 
-        self.q_lock.acquire()
-
         pobs = self.process_state(before_state, task)
 
         # select act
         pact = np.random.randint(self.total_executor)
-
+        explore = True
 
         if np.random.rand() > self.epsilon:
+            self.q_lock.acquire()
 
             pact = self.Q(np.array(pobs, dtype=np.float32).reshape(1, -1))
             pact = np.argmax(pact.data).item()
+            explore = False
+
+            self.q_lock.release()
 
 
+        print(f'[rls] scheduled task(offload_id={task.offload_id}, task_id={task.task_id}) on executer_id={pact}. (epsilon={self.epsilon}, total_step={self.total_step}, mode={"exploration" if explore else "exploitation"})')
         self.save_state(task, before_state, pact)
-
-        self.q_lock.release()
 
         return pact
 
 
     def task_finished(self, offload_id, exec_id, status, exec_time, energy, new_state_of_executor):
         # status = 0 => successful task, status != 0 => failed task
-
-        self.q_lock.acquire()
 
         task, before_state, pact, deadline = self.get_saved_state(offload_id)
         new_state = self.generate_new_state(before_state, new_state_of_executor, exec_id)
@@ -170,6 +169,8 @@ class RLScheduler:
         reward = self.generate_reward(deadline, exec_time, status, energy)
         done = self.done_with_learning(reward)
 
+        print(f"[rls] reward={reward} for task(offload_id={offload_id}, task_id={task.task_id}) on executer_id={exec_id}. exec_time={exec_time}, deadline={deadline}, status={status}, energy={energy}")
+
         # add memory
         self.memory.append((pobs, pact, reward, obs, done))
         if len(self.memory) > self.memory_size:
@@ -177,6 +178,8 @@ class RLScheduler:
 
         # train or update q
         if len(self.memory) == self.memory_size:
+
+            self.q_lock.acquire()
 
             # f = open('result/reward_loss.csv', 'a', newline='')
             with open(rewards_csv_file, 'a', newline='') as f:
@@ -238,7 +241,7 @@ class RLScheduler:
 
             serializers.save_npz('Q.model', self.Q)
 
-        self.q_lock.release()
+            self.q_lock.release()
 
     def feedback_consumer(self):
         print("[rls] starting feedback consumer")
