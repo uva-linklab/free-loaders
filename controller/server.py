@@ -43,7 +43,6 @@ class MyHTTPRequestHandler(BaseHTTPRequestHandler):
 
             (task_json, additional_data) = flserialize.unpack(post_input_data)
             task_request = json.loads(task_json)
-            print(task_request)
             task_request['input_data'] = additional_data
 
             # do some sanity checks
