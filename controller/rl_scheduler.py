@@ -13,6 +13,8 @@ import numpy as np
 from chainer import serializers
 import queue
 import threading
+from sklearn.preprocessing import StandardScaler
+from joblib import load
 
 rewards_csv_file='reward_loss.csv'
 
@@ -95,7 +97,9 @@ class RLScheduler:
         for key in before_state:
             state.extend(list(before_state[key].values()))
 
-        return state
+        scaler=load('std_scaler.bin')
+        scaled_data = scaler.transform(np.array(state).reshape(1, -1))
+        return scaled_data
 
     def generate_new_state(self, before_state, new_state_of_executor, exec_id):
 
