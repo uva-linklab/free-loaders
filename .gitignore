@@ -2,3 +2,6 @@
 __pycache__/
 *.iml
 test-code/
+Q.model
+reward_loss.csv
+runs/
