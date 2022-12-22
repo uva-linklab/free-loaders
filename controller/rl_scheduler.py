@@ -185,11 +185,9 @@ class RLScheduler:
                     for i in memory_idx[::self.batch_size]:
                         batch = np.array(shuffled_memory[i:i + self.batch_size])
 
-                        #b_pobs = np.array(batch[:, 0].tolist(), dtype=np.float32).reshape(self.batch_size, -1)
                         b_pobs = np.array(batch[:, 0].tolist(), dtype=np.float32)
                         b_pact = np.array(batch[:, 1].tolist(), dtype=np.int32)
-                        b_reward = np.array(batch[:, 2].tolist(), dtype=np.int32)
-                        #b_obs = np.array(batch[:, 3].tolist(), dtype=np.float32).reshape(self.batch_size, -1)
+                        b_reward = np.array(batch[:, 2].tolist(), dtype=np.float32)
                         b_obs = np.array(batch[:, 3].tolist(), dtype=np.float32)
                         b_done = np.array(batch[:, 4].tolist(), dtype=np.bool)
 
