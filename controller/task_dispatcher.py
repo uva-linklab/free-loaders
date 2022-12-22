@@ -180,8 +180,6 @@ class TaskDispatcher:
                                  mqtt_message,
                                  qos=2)
 
-        print(f'published to {executor_topic}')
-
     def get_executer_state(self):
         # create a list of all executer ips with a specific http endpoint
         executer_items = list(self.executers.items())
@@ -198,8 +196,6 @@ class TaskDispatcher:
         state_of_executors = self.get_executer_state()
         print('executor loads: {}'.format([state_of_executors[eid]['cpu-load'] for eid in sorted(list(state_of_executors.keys()))]))
 
-        #print(f'[td] before_state = {state_of_executors}')
-
         # request rl scheduler to schedule this task
         executer_id = self.rl_scheduler.schedule(state_of_executors, task)
         Assignments[task.offload_id] = executer_id
@@ -207,5 +203,4 @@ class TaskDispatcher:
         print(f"[td] scheduled task(offload_id={task.offload_id}, task_id={task.task_id}) on executer_id={executer_id}")
 
         self.send_task_to_executer(executer_id, task)
-
         self.total_tasks += 1
