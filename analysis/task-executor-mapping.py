@@ -37,12 +37,15 @@ with open(args.log_file, 'r') as f:
 
 sorted_mapping = dict(sorted(task_to_executor_mapping.items()))
 # print(sorted_mapping)
-
+devices = ["nano", "rpi3", "rpi3", "rpi4", "rpi4", "rpi4", "rpi4", "rpi4", "tx2", "desktop"]
+devices_with_index = [f'{device}({index})' for (index,device) in enumerate(devices)]
 res = []
 for key, val in sorted_mapping.items():
-    res.append([key] + val + [sum(val)])
+    highest_offloaded = max(val)
+    highest_offloaded_index = val.index(highest_offloaded)
+    res.append([key] + val + [devices[highest_offloaded_index] + f"({highest_offloaded_index})"])
 
 # headers = ["TaskId"] + ["Executor" + str(i) for i in range(args.num_executors)]
-headers = ["TaskId"] + ["nano", "rpi3", "rpi3", "rpi4", "rpi4", "rpi4", "rpi4", "rpi4", "tx2", "desktop", "total"]
+headers = ["TaskId"] + devices_with_index + ["MaxOffloaded"]
 
 print(tabulate(res, headers=headers))
