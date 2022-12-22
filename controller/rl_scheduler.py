@@ -146,7 +146,6 @@ class RLScheduler:
 
             self.q_lock.release()
 
-
         print(f'[rls] scheduled task(offload_id={task.offload_id}, task_id={task.task_id}) on executer_id={pact}. (epsilon={self.epsilon}, total_step={self.total_step}, mode={"exploration" if explore else "exploitation"})')
         self.save_state(task, before_state, pact)
 

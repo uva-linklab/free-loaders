@@ -200,7 +200,5 @@ class TaskDispatcher:
         executer_id = self.rl_scheduler.schedule(state_of_executors, task)
         Assignments[task.offload_id] = executer_id
 
-        print(f"[td] scheduled task(offload_id={task.offload_id}, task_id={task.task_id}) on executer_id={executer_id}")
-
         self.send_task_to_executer(executer_id, task)
         self.total_tasks += 1
