@@ -97,7 +97,8 @@ class RLScheduler:
         for key in before_state:
             state.extend(list(before_state[key].values()))
 
-        scaler=load('std_scaler.bin')
+        path_to_scaler = os.path.join(os.getcwd(), 'controller', 'rl', 'std_scaler.bin')
+        scaler=load(path_to_scaler)
         scaled_data = scaler.transform(np.array(state).reshape(1, -1))
         return scaled_data
 
