@@ -71,7 +71,7 @@ def offload_one(address, device_id, task_id):
 
     elif task_id < 30:
         # FFT task. 3s -> 30s of audio data
-        task_data['deadline'] = (task_id - 20) * ((5300-2600)/9)+2600
+        task_data['deadline'] = (task_id - 20) * ((6000-2600)/9)+2600
         samples = np.random.rand(44100 * (task_id - 19) * 3)
         input_data_bytes = np.array(samples, dtype=adt).tobytes()
 
