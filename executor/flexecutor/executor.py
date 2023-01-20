@@ -309,7 +309,7 @@ def __process_task_entry(pipe, executor_id, power, task_request, additional_data
         res2 = mm_fn(arr_a.reshape((dim, dim)),
                      arr_b.reshape((dim, dim))).tobytes()
 
-        res_data = res1 + res2
+        res_data = struct.pack('I', res1) + res2
     else:
         print(f'ERROR: task_id {task_id} is undefined')
     end_time = time.time()
