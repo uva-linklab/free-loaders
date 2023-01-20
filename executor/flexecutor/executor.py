@@ -129,9 +129,9 @@ def __mqtt_message_received(client, data, msg):
                 'energy': 0,
                 'status': -5  # inform the controller that we failed
             }
-            mqtt_client.publish(MQTTTopicTaskResponse,
-                                flserialize.pack(json.dumps(response), b''),
-                                qos=2)
+            client.publish(MQTTTopicTaskResponse,
+                           flserialize.pack(json.dumps(response), b''),
+                           qos=2)
             log.i('Reject publish finished.')
         else:
             log.i(f'offload_id={task_request["offload_id"]}. request to execute task_id={task_request["task_id"]} ')
