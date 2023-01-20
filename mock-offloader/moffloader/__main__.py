@@ -82,8 +82,8 @@ def offload_one(address, device_id, task_id):
 
     elif task_id < 40:
         # For loop + matrix multiplication
-        task_data['deadline'] = (task_id - 40) * ((4350 - 925) / 9) + 925
-        task_data['deadline'] += (task_id - 40) * ((20000 - 8250) / 9) + 8250
+        task_data['deadline'] = (task_id - 30) * ((4350 - 925) / 9) + 925
+        task_data['deadline'] += (task_id - 30) * ((20000 - 8250) / 9) + 8250
 
         iters = (task_id - 39) * 1000000
 
