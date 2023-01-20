@@ -43,7 +43,7 @@ def main(args):
         if not __Children['executor'].is_alive():
             log.w('executor died')
             __Children['executor'] = __start_executor(
-                args.controller, args.id, args.power, args.log_level, unavailable)
+                args.controller, args.id, args.power, args.log_level, args.unavailable)
 
 def __start_executor(controller_addr, executor_id, power, log_level, unavailable):
     log.i('starting executor')
