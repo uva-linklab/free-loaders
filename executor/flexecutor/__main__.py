@@ -45,9 +45,9 @@ def main(args):
             __Children['executor'] = __start_executor(
                 args.controller, args.id, args.power, args.log_level)
 
-def __start_executor(controller_addr, executor_id, power, log_level):
+def __start_executor(controller_addr, executor_id, power, log_level, unavailable):
     log.i('starting executor')
-    proc = executor.start_executor(controller_addr, executor_id, power, log_level)
+    proc = executor.start_executor(controller_addr, executor_id, power, log_level, unavailable)
     log.i('started executor (PID {})'.format(proc.pid))
 
     return proc
