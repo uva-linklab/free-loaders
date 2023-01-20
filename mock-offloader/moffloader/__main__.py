@@ -23,20 +23,25 @@ def main(args):
         offload_many(args.address,
                      args.device_id,
                      args.task_count,
-                     args.rate)
+                     args.rate,
+                     args.extended)
     else:
         offload_one(args.address,
                     args.device_id,
                     args.task_id)
 
 
-def offload_many(address, device_id, count, rate):
+def offload_many(address, device_id, count, rate, extended):
     intertask_delay = 1 / (rate / 60)
     print('Sending tasks every {} sec.'.format(intertask_delay))
 
     for i in range(0, count):
         # Send the task.
-        task_id = random.randint(0, 29)  # Random selection.
+        if extended == True:
+            task_id = random.randint(0, 39)  # Random selection.
+        else:
+            task_id = random.randint(0, 29)
+
         offload_one(address, device_id, task_id)
         time.sleep(intertask_delay)
 
@@ -75,6 +80,19 @@ def offload_one(address, device_id, task_id):
         samples = np.random.rand(44100 * (task_id - 19) * 3)
         input_data_bytes = np.array(samples, dtype=adt).tobytes()
 
+    elif task_id < 40:
+        # For loop + matrix multiplication
+        task_data['deadline'] = (task_id - 40) * ((4350 - 925) / 9) + 925
+        task_data['deadline'] += (task_id - 40) * ((20000 - 8250) / 9) + 8250
+
+        iters = (task_id - 39) * 1000000
+
+        size = 750 + (83 * (task_id - 40))
+        m1_bytes = np.random.randint(low=1, high=256, size=(size,size), dtype=adt).tobytes()
+        m2_bytes = np.random.randint(low=1, high=256, size=(size,size), dtype=adt).tobytes()
+
+        input_data_bytes = struct.pack('II', iters, len(m1_bytes)) + m1_bytes + m2_bytes
+
     else:
         print('bad task ID: {}'.format(task_id))
         return
@@ -104,6 +122,8 @@ if __name__ == '__main__':
                     metavar='COUNT', type=int, default=1000, dest='task_count')
     ap.add_argument('-r', '--rate', help='Rate to send tasks at (per min.).',
                     metavar='RATE', type=int, default=1000, dest='rate')
+    ap.add_argument('-e', '--extended', help='Enable task IDs > 29',
+                    action='store_true', default=False)
 
     ap.add_argument('address', help='Controller address')
 
