@@ -23,7 +23,7 @@ MQTTTopicExecuteTask = 'ctrl-exec-task-execute'
 # Topic the executor uses to send responses back to the controller.
 MQTTTopicTaskResponse = 'exec-ctrl-task-response'
 
-def start_executor(controller_addr, executor_id, power, log_level):
+def start_executor(controller_addr, executor_id, power, log_level, unavailable):
     '''Launches the task executor process.
 
     Accepts the ID to use as its executor ID, which it uses to listen for work.
@@ -31,12 +31,12 @@ def start_executor(controller_addr, executor_id, power, log_level):
 
     p = Process(name='executor',
                 target=__executor_entry,
-                args=(controller_addr, executor_id, power, log_level))
+                args=(controller_addr, executor_id, power, log_level, unavailable))
     p.start()
 
     return p
 
-def __executor_entry(controller_addr, executor_id, power, log_level):
+def __executor_entry(controller_addr, executor_id, power, log_level, unavailable):
     '''Executor thread entry function.
 
     Listens for MQTT messages carrying tasks to run.
@@ -48,9 +48,12 @@ def __executor_entry(controller_addr, executor_id, power, log_level):
 
     log.i('started')
 
+    add_data = { 'executor_id': executor_id,
+                 'power': power,
+                 'unavailable': unavailable }
     mqtt_client = paho.mqtt.client.Client(client_id=f"flexecutor-{executor_id}",
                                           clean_session=False,
-                                          userdata={'executor_id': executor_id, 'power': power})
+                                          userdata=add_data)
     mqtt_client.on_connect = __mqtt_on_connect
     mqtt_client.on_message = __mqtt_message_received
     mqtt_client.on_disconnect = __mqtt_on_disconnect
@@ -115,8 +118,24 @@ def __mqtt_message_received(client, data, msg):
             if k not in task_request:
                 log.w('Task request is malformed.')
 
-        log.i(f'offload_id={task_request["offload_id"]}. request to execute task_id={task_request["task_id"]} ')
-        __execute_task(client, data["executor_id"], data['power'], task_request, additional_data)
+        if data['unavailable']:
+            log.i('Rejecting request to execute task {}'.format(task_request['offload_id']))
+            current_state = stats.fetch()
+            response = {
+                'executor_id': task_request['executer_id'],
+                'task_id': task_request['task_id'],
+                'offload_id': task_request['offload_id'],
+                'state': current_state,
+                'energy': 0,
+                'status': -5  # inform the controller that we failed
+            }
+            mqtt_client.publish(MQTTTopicTaskResponse,
+                                flserialize.pack(json.dumps(response), b''),
+                                qos=2)
+            log.i('Reject publish finished.')
+        else:
+            log.i(f'offload_id={task_request["offload_id"]}. request to execute task_id={task_request["task_id"]} ')
+            __execute_task(client, data["executor_id"], data['power'], task_request, additional_data)
 
 def __execute_task(client, executor_id, power, task_request, additional_data):
     '''Begin executing a task in a new thread.

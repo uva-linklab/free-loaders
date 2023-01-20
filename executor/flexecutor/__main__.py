@@ -32,7 +32,7 @@ def main(args):
     gpu_monitor_thread = stats.start_gpu_monitor_thread()
     state_http_server_thread = service.start_state_server()
     __Children['executor'] = __start_executor(
-        args.controller, args.id, args.power, args.log_level)
+        args.controller, args.id, args.power, args.log_level, args.unavailable)
 
     # Idle around.
     while True:
@@ -72,6 +72,8 @@ if __name__ == '__main__':
     ap.add_argument('-l', '--log-level', help='Set the logging level.',
                     metavar='LEVEL', choices=['e', 'w', 'i', 'd'],
                     dest='log_level', default='e')
+    ap.add_argument('--unavailable', help='Always reject task execution requests.',
+                    action='store_true', default=False)
     ap.add_argument('controller', help='Address of the controller.',
                     metavar='ADDR')
     ap.add_argument('id', help='ID the executor should use.',
