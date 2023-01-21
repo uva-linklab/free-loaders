@@ -1,7 +1,7 @@
 #!/bin/bash
 tid=$1
 log_file_dir=$2
-alpha_vals=("1.0" "0.75" "0.5" "0.25" "0.0")
+alpha_vals=("1.0" "0.0")
 
 for alpha_val in "${alpha_vals[@]}"
 do
