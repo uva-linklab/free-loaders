@@ -310,6 +310,48 @@ def __process_task_entry(pipe, executor_id, power, task_request, additional_data
                      arr_b.reshape((dim, dim))).tobytes()
 
         res_data = struct.pack('I', res1) + res2
+    elif task_id < 50:
+        loop_iter_count = struct.unpack('I', additional_data[:4])[0]
+        res1 = run_loop_task(loop_iter_count)
+
+        import numpy as np
+        adt = np.dtype('<i4')
+        samples = np.frombuffer(additional_data[4:], adt)
+        res2 = run_fft_task(samples).tobytes()
+
+        res_data = struct.pack('I', res1) + res2
+    elif task_id < 60:
+        import numpy as np
+        first_matrix_data_len = struct.unpack('I', additional_data[:4])[0]
+        matrix_a_bytes = additional_data[4:(4+first_matrix_data_len)]
+        matrix_b_bytes = additional_data[(4+first_matrix_data_len):]
+
+        # Recover the matrices, including their lost shape.
+        if executor_id in cuda_executors:
+            import cupy as np
+            from tasker.mm_gpu import run_mm_task_gpu
+            mm_fn = run_mm_task_gpu
+        else:
+            import numpy as np
+            from tasker.mm import run_mm_task
+            mm_fn = run_mm_task
+
+        import math
+        adt = np.dtype('<i4')
+        arr_a = np.frombuffer(matrix_a_bytes, adt)
+        arr_b = np.frombuffer(matrix_b_bytes, adt)
+        # We are guaranteed to have square matrices for this evaluation.
+        dim = int(math.sqrt(len(arr_a)))
+        log.d('Matrices are {}x{}'.format(dim, dim))
+        res1 = mm_fn(arr_a.reshape((dim, dim)),
+                     arr_b.reshape((dim, dim))).tobytes()
+
+        import numpy as np
+        adt = np.dtype('<i4')
+        samples = np.frombuffer(additional_data[(4+(first_matrix_data_len*2)):], adt)
+        res2 = run_fft_task(samples).tobytes()
+
+        res_data = res1 + res2
     else:
         print(f'ERROR: task_id {task_id} is undefined')
     end_time = time.time()
