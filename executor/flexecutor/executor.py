@@ -324,7 +324,7 @@ def __process_task_entry(pipe, executor_id, power, task_request, additional_data
         import numpy as np
         first_matrix_data_len = struct.unpack('I', additional_data[:4])[0]
         matrix_a_bytes = additional_data[4:(4+first_matrix_data_len)]
-        matrix_b_bytes = additional_data[(4+first_matrix_data_len):]
+        matrix_b_bytes = additional_data[(4+first_matrix_data_len):(4+first_matrix_data_len+first_matrix_data_len)]
 
         # Recover the matrices, including their lost shape.
         if executor_id in cuda_executors:
@@ -346,7 +346,6 @@ def __process_task_entry(pipe, executor_id, power, task_request, additional_data
         res1 = mm_fn(arr_a.reshape((dim, dim)),
                      arr_b.reshape((dim, dim))).tobytes()
 
-        import numpy as np
         adt = np.dtype('<i4')
         samples = np.frombuffer(additional_data[(4+(first_matrix_data_len*2)):], adt)
         res2 = run_fft_task(samples).tobytes()

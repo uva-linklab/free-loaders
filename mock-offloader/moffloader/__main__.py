@@ -96,7 +96,7 @@ def offload_one(address, device_id, task_id):
     elif task_id < 50:
         # For loop + FFT
         task_data['deadline'] = (task_id - 40) * ((4350 - 925) / 9) + 925
-        task_data['deadline'] = (task_id - 40) * ((6000 - 2600) / 9) + 2600
+        task_data['deadline'] += (task_id - 40) * ((6000 - 2600) / 9) + 2600
 
         iters = (task_id - 29) * 1000000
         samples = np.random.rand(44100 * (task_id - 39) * 3)
@@ -105,7 +105,7 @@ def offload_one(address, device_id, task_id):
     elif task_id < 60:
         # Matrix multiplication + FFT
         task_data['deadline'] = (task_id - 50) * ((20000 - 8250) / 9) + 8250
-        task_data['deadline'] = (task_id - 50) * ((6000 - 2600) / 9) + 2600
+        task_data['deadline'] += (task_id - 50) * ((6000 - 2600) / 9) + 2600
 
         size = 750 + (83 * (task_id - 50))
         m1_bytes = np.random.randint(low=1, high=256, size=(size,size), dtype=adt).tobytes()
