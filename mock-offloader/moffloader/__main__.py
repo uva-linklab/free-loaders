@@ -38,7 +38,7 @@ def offload_many(address, device_id, count, rate, extended):
     for i in range(0, count):
         # Send the task.
         if extended == True:
-            task_id = random.randint(0, 39)  # Random selection.
+            task_id = random.randint(30, 59)  # Random selection.
         else:
             task_id = random.randint(0, 29)
 
@@ -145,7 +145,7 @@ if __name__ == '__main__':
                     metavar='COUNT', type=int, default=1000, dest='task_count')
     ap.add_argument('-r', '--rate', help='Rate to send tasks at (per min.).',
                     metavar='RATE', type=int, default=1000, dest='rate')
-    ap.add_argument('-e', '--extended', help='Enable task IDs > 29',
+    ap.add_argument('-e', '--extended', help='Use task IDs > 29',
                     action='store_true', default=False)
 
     ap.add_argument('address', help='Controller address')
