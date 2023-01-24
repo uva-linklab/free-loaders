@@ -30,7 +30,7 @@ def main(args):
     threading.current_thread().name = 'top'
 
     gpu_monitor_thread = stats.start_gpu_monitor_thread()
-    state_http_server_thread = service.start_state_server()
+    state_http_server_thread = service.start_state_server(args.unavailable)
     __Children['executor'] = __start_executor(
         args.controller, args.id, args.power, args.log_level, args.unavailable)
 
