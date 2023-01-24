@@ -50,7 +50,7 @@ def start_state_server(unavailable):
     log.i('Launching executor HTTP server.')
     t = threading.Thread(name='state-http-server',
                          target=__state_server_entry,
-                         args=(unavailable))
+                         args=(unavailable,))
     t.daemon = True
     t.start()
 
