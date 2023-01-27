@@ -44,9 +44,10 @@ def fetch():
         gpu_stats['free-vram'] = mem.available
         gpu_stats['total-vram'] = mem.total
 
+    hybrid_load = ((os.cpu_count() * (psutil.cpu_percent(interval=0.25) / 100.0)) * .75) + (psutil.getloadavg()[0] * .25)
     state = {
         'cpu-count': os.cpu_count(),
-        'cpu-load': ((os.cpu_count() * (psutil.cpu_percent(interval=0.25) / 100.0)) * .75) + (psutil.getloadavg()[0] * .25),
+        'cpu-load': round(hybrid_load, 2),
         'free-ram': mem.available,
         'total-ram': mem.total,
         'has-gpu': gpu_stats['has-gpu'],
