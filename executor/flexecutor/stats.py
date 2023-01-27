@@ -46,7 +46,7 @@ def fetch():
 
     state = {
         'cpu-count': os.cpu_count(),
-        'cpu-load': psutil.getloadavg()[0],
+        'cpu-load': ((os.cpu_count() * (psutil.cpu_percent(interval=0.25) / 100.0)) * .75) + (psutil.getloadavg()[0] * .25),
         'free-ram': mem.available,
         'total-ram': mem.total,
         'has-gpu': gpu_stats['has-gpu'],
