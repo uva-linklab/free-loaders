@@ -1,7 +1,10 @@
 import networkx as nx
 import random
 
-# print(nx.dijkstra_path(G, source="s0", target="t"))
+def get_edge_weight(g, edge):
+    for u, v, w in g.edges.data('weight'):
+        if u == edge[0] and v == edge[1]:
+            return w
 
 # TODO change
 def path_lists_equal(path_list_1, path_list_2):
@@ -13,17 +16,18 @@ def decompose(supply_chain_graph):
 
 # TODO return a weight proportional to the size of the raw sensing data
 def get_job_weight(job_id):
-    return 10
+    return 1
 
 # each edge is defined as a tuple of two vertices
 # d(l), where l is an edge
 # output: [job-ids]
 def get_jobs_with_edge(supply_chain_paths, edge):
-    jobs_with_edge = []
-    for job_id, supply_chain_path in supply_chain_paths:
-        if edge in supply_chain_path:
-            jobs_with_edge.append(job_id)
-    return jobs_with_edge
+    jobs_with_edge = set()
+    for job_id, supply_chain_path in enumerate(supply_chain_paths):
+        edges = [(supply_chain_path[i], supply_chain_path[i+1]) for i in range(len(supply_chain_path)-1)]
+        if edge in edges:
+            jobs_with_edge.add(job_id)
+    return list(sorted(jobs_with_edge))
 
 # N(l), where l is an edge
 def get_weighted_congestion_rate(supply_chain_paths, edge):
@@ -38,10 +42,11 @@ def get_weighted_congestion_rate(supply_chain_paths, edge):
 
 def utility(supply_chain_path, supply_chain_paths):
     utility = 0
-    for edge in supply_chain_path:
+    edges = [(supply_chain_path[i], supply_chain_path[i+1]) for i in range(len(supply_chain_path)-1)]
+    for edge in edges:
         for job_id in get_jobs_with_edge(supply_chain_paths, edge):
             l_cap = 1
-            utility += (get_job_weight(job_id) - l_cap + 1) * (edge.weight)
+            utility += (get_job_weight(job_id) - l_cap + 1) * get_edge_weight(graph, edge)
     return utility
 
 def scsr(supply_chain_graph, epsilon, job_list):
@@ -51,34 +56,27 @@ def scsr(supply_chain_graph, epsilon, job_list):
     decomposed_graph = decompose(supply_chain_graph)
     converge = False
 
-    all_paths = []
-    for i, job in enumerate(job_list):
-        curr_job_paths = list(nx.all_simple_paths(decomposed_graph, source=f's{i}', target='t'))
-        if len(all_paths) == 0:
-            all_paths = curr_job_paths
-        else:
-            all_paths.append(curr_job_paths)
-
-    print(all_paths)
-
-    supply_chain_paths = [] * len(job_list) # this is P
-    supply_chain_paths_dash = [] * len(job_list) # this is P'
+    supply_chain_paths = [] # this is P
+    supply_chain_paths_dash = [] # this is P'
 
     for i, job in enumerate(job_list):
         # assign a random path (strategy)
-        supply_chain_paths[i] = random.choice(all_paths)
-        supply_chain_paths_dash[i] = supply_chain_paths[i]
+        all_paths_from_si = list(nx.all_simple_paths(decomposed_graph, source=f's{i}', target='t'))
+
+        supply_chain_paths.append(random.choice(all_paths_from_si))
+        supply_chain_paths_dash.append(supply_chain_paths[i])
 
     while not converge:
         for i, job in enumerate(job_list):
             shortest_path = nx.dijkstra_path(decomposed_graph, source=f"s{i}", target="t")
-            if utility(shortest_path) - utility(supply_chain_paths[i]) > epsilon:
+            if utility(supply_chain_paths[i], supply_chain_paths) - utility(shortest_path, supply_chain_paths) > epsilon:
                 supply_chain_paths_dash[i] = shortest_path
 
-        if path_lists_equal(supply_chain_paths, supply_chain_paths_dash):
+        if supply_chain_paths == supply_chain_paths_dash:
             return supply_chain_paths
 
         supply_chain_paths = supply_chain_paths_dash
+
 
 graph = nx.DiGraph()
 # TODO set lambda param
@@ -103,11 +101,13 @@ edge_list = [('s0', 't9-e0', 0 + lambda_param * 0),
              ('t9-e1', 't19-e1', 4.19 + lambda_param * 4211.45),
 
              ('t19-e0', 't', 4.20 + lambda_param * 18106.84),
-             ('t19-e0', 't', 4.20 + lambda_param * 18106.84),
-
-             ('t19-e1', 't', 112.43 + lambda_param * 114523.86),
              ('t19-e1', 't', 112.43 + lambda_param * 114523.86)]
 graph.add_weighted_edges_from(edge_list)
 # result -> [s0, ]
-scsr(graph, 0, [0,1])
+print(scsr(graph, 0, [0,1]))
 
+# print(list(graph.edges.data('weight')))
+
+
+
+# print(get_edge_weight(graph, ('t9-e0', 't19-e1')))
