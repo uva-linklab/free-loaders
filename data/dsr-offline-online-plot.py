@@ -64,6 +64,7 @@ y = []
 # Colors to use for each one.
 c = []
 success_color = [126 / 255, 229 / 255, 134 / 255] # Green
+timeout_color = [252 / 255, 175 / 255, 93 / 255]  # Orange
 failure_color = [229 / 255, 126 / 255, 127 / 255] # Red
 # Process the offloads in order so the moving average DSR calculation is correct.
 oids = list(offloads.keys())
@@ -73,29 +74,46 @@ for oid in oids:
     x.append(oid) # Offload ID is X.
 
     # Continue the DSR calculation.
-    dsr_window.append(1 if task.success else 0)
+    # Success means the task was completed successfully and the deadline was met.
+    success = task.success and task.execution_time <= task.deadline
+    dsr_window.append(1 if success else 0)
     if len(dsr_window) >= args.window:
         dsr_window = dsr_window[1:]
     dsr = sum(dsr_window) / len(dsr_window)
     y.append(dsr) # Average DSR is Y.
-    c.append(success_color if task.success else failure_color) # Color.
+
+    # Color depends on success/failure and deadline met/miss.
+    if task.success:
+        if task.execution_time <= task.deadline:
+            c.append(success_color)
+        else:
+            c.append(timeout_color)
+    else:
+        c.append(failure_color)
 
 # Separate the successful offloads and the failed offloads.
 # Having the failed offloads drawn second makes them easier to see.
 fail_x = []
 fail_y = []
+time_x = []
+time_y = []
 succ_x = []
 succ_y = []
 for (x, y) in zip(x, y):
-    if offloads[x].success == False:
+    if offloads[x].success:
+        if offloads[x].execution_time <= offloads[x].deadline:
+            succ_x.append(x)
+            succ_y.append(y)
+        else:
+            time_x.append(x)
+            time_y.append(y)
+    else:
         fail_x.append(x)
         fail_y.append(y)
-    else:
-        succ_x.append(x)
-        succ_y.append(y)
 
-plt.scatter(succ_x, succ_y, s=1.0, c='#7ee58b', marker='.')
-plt.scatter(fail_x, fail_y, s=1.0, c='#e57e85', marker='.')
+plt.scatter(succ_x, succ_y, s=1.0, color=success_color, marker='.')
+plt.scatter(time_x, time_y, s=1.0, color=timeout_color, marker='.')
+plt.scatter(fail_x, fail_y, s=1.0, color=failure_color, marker='.')
 
 # plt.legend(fancybox=True)
 plt.xlabel('Number of offloads')
