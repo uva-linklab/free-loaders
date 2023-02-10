@@ -30,10 +30,11 @@ ap.add_argument('path', help='path to log file',
 
 args = ap.parse_args()
 
-omit_range = None
+omit_range = []
 if args.omit_range != None:
-    spl = args.omit_range.split('-')
-    omit_range = (int(spl[0]), int(spl[1]))
+    for r in args.omit_range.split(','):
+        spl = args.omit_range.split('-')
+        omit_range.append((int(spl[0]), int(spl[1])))
 
 log_lines = ''
 with open(args.path, 'r') as fh:
@@ -46,6 +47,8 @@ rgx_finished_task = 'finished task\(offload_id=(?P<oid>\d+).*on executer_id=(?P<
 offloads = {}
 for line in log_lines:
     task = None
+    skip = False
+
     m = re.search(rgx_finished_task, line)
     if m != None:
         oid = int(m['oid'])
@@ -53,12 +56,22 @@ for line in log_lines:
         execution_time = float(m['time'])
         deadline = float(m['dl'])
 
-        if omit_range != None and oid >= omit_range[0] and oid <= omit_range[1]:
+        offset = 0
+        for r in omit_range:
+            if oid >= r[0] and oid <= r[1]:
+                skip = True
+                continue
+
+            if oid > r[1]:
+                offset -= (r[1] - r[0])
+
+        if skip == True:
             continue
-        elif omit_range != None and oid > omit_range[1]:
-            oid = oid - (omit_range[1] - omit_range[0])
+
+        oid += offset
 
         offloads[oid] = Task(oid, eid, execution_time, deadline, True)
+
     else:
         m = re.search(rgx_failed_task, line)
         if m != None:
@@ -66,10 +79,19 @@ for line in log_lines:
             eid = int(m['eid'])
             deadline = float(m['dl'])
 
-            if omit_range != None and oid >= omit_range[0] and oid <= omit_range[1]:
+            offset = 0
+            for r in omit_range:
+                if oid >= r[0] and oid <= r[1]:
+                    skip = True
+                    continue
+
+                if oid > r[1]:
+                    offset -= r[1] - r[0]
+
+            if skip == True:
                 continue
-            elif omit_range != None and oid > omit_range[1]:
-                oid = oid - (omit_range[1] - omit_range[0])
+
+            oid += offset
 
             offloads[oid] = Task(oid, eid, 0, deadline, False)
 
