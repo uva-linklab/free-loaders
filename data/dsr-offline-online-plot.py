@@ -21,12 +21,19 @@ ap.add_argument('-s', '--starting-offload', help='ID of the first offload to cou
                 type=int, dest='start', default=0)
 ap.add_argument('-e', '--ending-offload', help='ID of the last offload to count',
                 type=int, dest='end', default=None)
+ap.add_argument('--omit-range', help='Range of offloads to leave out',
+                type=str, dest='omit_range', default=None)
 ap.add_argument('-f', '--initial-window', help='Assume a perfect initial DSR window',
                 dest='initial_window', action='store_true', default=False)
 ap.add_argument('path', help='path to log file',
                 type=str)
 
 args = ap.parse_args()
+
+omit_range = None
+if args.omit_range != None:
+    spl = args.omit_range.split('-')
+    omit_range = (int(spl[0]), int(spl[1]))
 
 log_lines = ''
 with open(args.path, 'r') as fh:
@@ -46,6 +53,11 @@ for line in log_lines:
         execution_time = float(m['time'])
         deadline = float(m['dl'])
 
+        if omit_range != None and oid >= omit_range[0] and oid <= omit_range[1]:
+            continue
+        elif omit_range != None and oid > omit_range[1]:
+            oid = oid - (omit_range[1] - omit_range[0])
+
         offloads[oid] = Task(oid, eid, execution_time, deadline, True)
     else:
         m = re.search(rgx_failed_task, line)
@@ -53,6 +65,11 @@ for line in log_lines:
             oid = int(m['oid'])
             eid = int(m['eid'])
             deadline = float(m['dl'])
+
+            if omit_range != None and oid >= omit_range[0] and oid <= omit_range[1]:
+                continue
+            elif omit_range != None and oid > omit_range[1]:
+                oid = oid - (omit_range[1] - omit_range[0])
 
             offloads[oid] = Task(oid, eid, 0, deadline, False)
 
@@ -70,6 +87,11 @@ failure_color = [229 / 255, 126 / 255, 127 / 255] # Red
 oids = list(offloads.keys())
 oids.sort()
 for oid in oids:
+    if oid < args.start:
+        continue
+    elif args.end != None and oid > args.end:
+        break
+
     task = offloads[oid]
     x.append(oid) # Offload ID is X.
 
@@ -111,14 +133,14 @@ for (x, y) in zip(x, y):
         fail_x.append(x)
         fail_y.append(y)
 
-plt.scatter(succ_x, succ_y, s=1.0, color=success_color, marker='.')
-plt.scatter(time_x, time_y, s=1.0, color=timeout_color, marker='.')
-plt.scatter(fail_x, fail_y, s=1.0, color=failure_color, marker='.')
+plt.scatter(succ_x, succ_y, s=1.0, color=success_color, marker='.', label='success')
+plt.scatter(time_x, time_y, s=1.0, color=timeout_color, marker='.', label='deadline miss')
+plt.scatter(fail_x, fail_y, s=1.0, color=failure_color, marker='.', label='execution failure')
 
-# plt.legend(fancybox=True)
+plt.legend(fancybox=True)
 plt.xlabel('Number of offloads')
 plt.ylabel('Deadline satisfaction ratio')
-plt.xlim(0, max(offloads.keys()))
+plt.xlim(0, args.end if args.end != None else max(offloads.keys()))
 plt.ylim(0, 1)
 plt.grid()
 plt.savefig(args.output, format='pdf', dpi='figure', pad_inches=0.1)
