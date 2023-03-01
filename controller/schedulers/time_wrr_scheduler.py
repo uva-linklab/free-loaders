@@ -16,7 +16,7 @@ class TimeWRRScheduler:
             # RPi 3
             166, 166,
             # RPi 4
-            513, 513, 513, 513,
+            513, 513, 513, 513, 513,
             # Jetson TX2
             1093,
             # Server
@@ -36,7 +36,7 @@ class TimeWRRScheduler:
         self.__weight_bucket[current] += self.__increment
         if self.__weight_bucket[current] >= self.__geekbench_scores[current]:
             self.__weight_bucket[current] -= self.__geekbench_scores[current]
-            self.__current_bucket_idx += 1
+            self.__current_bucket_idx = (self.__current_bucket_idx + 1) % self.total_executor
 
         print('[time-wrr] scheduled task(offload_id={}, task_id={}) on executer_id={}'.format(
             task.offload_id, task.task_id, current))
