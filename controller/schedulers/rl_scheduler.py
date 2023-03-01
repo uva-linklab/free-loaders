@@ -25,6 +25,8 @@ class RLScheduler:
         self.alpha = 1.0
         self.threshold = 200
         self.q_lock = threading.Lock()
+        self.needs_before_state = True
+        self.needs_feedback = True
 
         class Q_Network(chainer.Chain):
 
@@ -234,4 +236,3 @@ class RLScheduler:
                                item["new_state_of_executor"])
 
             self.feedback_q.task_done()
-
