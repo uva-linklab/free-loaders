@@ -5,6 +5,7 @@ from http.server import BaseHTTPRequestHandler
 from classes.task import Task
 import cgi
 import flomqtt.serialize as flserialize
+import time
 
 next_offload_id = 0
 PORT = 8001
@@ -88,6 +89,13 @@ class ControllerServer:
         # ref: https://stackoverflow.com/a/52046062
         handler = partial(MyHTTPRequestHandler, self.task_dispatcher)
 
-        with socketserver.TCPServer(("", PORT), handler) as httpd:
-            print("[server] started serving at port", PORT)
-            httpd.serve_forever()
+        while True:
+            try:
+                print('[server] starting with HTTP server on port {}'.format(PORT))
+                with socketserver.TCPServer(("", PORT), handler) as httpd:
+                    print("[server] started serving at port", PORT)
+                    httpd.serve_forever()
+
+            except OSError as e:
+                print('[server] binding failed; waiting 3 secs.')
+                time.sleep(2)
