@@ -7,10 +7,10 @@ class LoadBalancingScheduler:
         self.needs_feedback = False
 
     def schedule(self, before_state, task):
-        cpu_counts = [before_state[i]['cpu-count'] for i in range(0, self.total_executor)]
-        cpu_loads = [before_state[i]['cpu-load'] for i in range(0, self.total_executor)]
+        cpu_counts = [before_state[str(i)]['cpu-count'] for i in range(0, self.total_executor)]
+        cpu_loads = [before_state[str(i)]['cpu-load'] for i in range(0, self.total_executor)]
         normalized_loads = [(i, (cpu_loads[i] / cpu_counts[i]),) for i in range(0, self.total_executor)]
-        print('normalized loads: {}'.format([normalized_loads[eid] for eid in range(0, self.total_executor)]))
+        print('[load-bal] normalized loads: {}'.format([normalized_loads[eid] for eid in range(0, self.total_executor)]))
 
         best_eid = 0
         best_load = 999
@@ -20,7 +20,7 @@ class LoadBalancingScheduler:
                 best_load = load
 
         print('[load-bal] scheduled task(offload_id={}, task_id={}) on executer_id={}'.format(
-            task.offload_id, task.task_id, current))
+            task.offload_id, task.task_id, best_eid))
 
         return best_eid
 
