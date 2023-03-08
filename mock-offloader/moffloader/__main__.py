@@ -10,7 +10,6 @@ import flomqtt.serialize as flserialize
 
 ControllerHTTPPort = 8001
 
-
 class NumpyEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, np.ndarray):
@@ -147,8 +146,14 @@ if __name__ == '__main__':
                     metavar='RATE', type=int, default=1000, dest='rate')
     ap.add_argument('-e', '--extended', help='Use task IDs > 29',
                     action='store_true', default=False)
+    ap.add_argument('--seed', help='Specify a random seed',
+                    metavar='SEED', type=int, default=time.gmtime(), dest='seed')
 
     ap.add_argument('address', help='Controller address')
 
+
     args = ap.parse_args()
+
+    random.seed(args.seed)
+
     main(args)
