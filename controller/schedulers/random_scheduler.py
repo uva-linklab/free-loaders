@@ -7,6 +7,10 @@ class RandomScheduler:
         self.needs_before_state = False
         self.needs_feedback = False
 
+        # to ensure reproducibility
+        SEED = 1677831403
+        random.seed(a=SEED)
+
     def schedule(self, before_state, task):
         return random.choice(list(self.executors.keys()))
 
