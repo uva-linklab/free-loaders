@@ -188,7 +188,7 @@ class TaskDispatcher:
         return dict(asyncio.run(make_requests(url_tuples=url_tuples)))
 
     def submit_task(self, task):
-        print(f"[td] new task(offload_id={task.offload_id}, task_id={task.task_id}, deadline={task.deadline})")
+        print(f"[td] new task(offload_id={task.offload_id}, task_id={task.task_id}, job_id={task.job_id}, deadline={task.deadline})")
 
         self.execution_times[task.offload_id] = time.time()
         self.deadlines[task.offload_id] = task.deadline

@@ -71,8 +71,10 @@ class MyHTTPRequestHandler(BaseHTTPRequestHandler):
             task_id = task_request["task_id"]
             input_data = task_request["input_data"]
             deadline = task_request["deadline"] if "deadline" in fields else DEFAULT_DEADLINE
+            job_id = task_request["job_id"] if "job_id" in task_request else None
+            schedule_on_executor = task_request["schedule_on_executor"] if "schedule_on_executor" in task_request else None
 
-            self.task_dispatcher.submit_task(Task(next_offload_id, task_id, device_id, input_data, deadline))
+            self.task_dispatcher.submit_task(Task(next_offload_id, task_id, device_id, input_data, deadline, job_id, schedule_on_executor))
 
             # generate a unique task id for the next task
             next_offload_id += 1

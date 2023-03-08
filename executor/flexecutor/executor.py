@@ -362,6 +362,7 @@ def __process_task_entry(pipe, executor_id, power, task_request, additional_data
     response_json = json.dumps({
         'executor_id': task_request['executer_id'],
         'task_id': task_request['task_id'],
+        'job_id': task_request['job_id'],
         'offload_id': task_request['offload_id'],
         'state': current_state,
         'energy': power * (end_time - start_time),

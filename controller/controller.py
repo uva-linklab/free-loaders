@@ -8,6 +8,7 @@ from schedulers.energy_greedy_scheduler import EnergyGreedyScheduler
 from schedulers.time_wrr_scheduler import TimeWRRScheduler
 from schedulers.energy_wrr_scheduler import EnergyWRRScheduler
 from schedulers.load_balancing_scheduler import LoadBalancingScheduler
+from schedulers.heteroedge_online import HeteroedgeScheduler
 from classes.executer import Executer
 
 ap = argparse.ArgumentParser(description='fReeLoaders controller.')
@@ -49,6 +50,8 @@ elif args.scheduler == "energy-wrr":
     scheduler = EnergyWRRScheduler(executers)
 elif args.scheduler == "load-bal":
     scheduler = LoadBalancingScheduler(executers)
+elif args.scheduler == "heteroedge":
+    scheduler = HeteroedgeScheduler(executers)
 
 print(f'[controller] using {args.scheduler} scheduler')
 
