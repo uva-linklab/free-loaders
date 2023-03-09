@@ -14,7 +14,7 @@ from classes.executer import Executer
 ap = argparse.ArgumentParser(description='fReeLoaders controller.')
 ap.add_argument('-s', '--scheduler', help='Set the scheduler.',
                 metavar='SCHEDULER',
-                choices=['rl', 'random', 'time-greedy', 'energy-greedy', 'time-wrr', 'energy-wrr', 'load-bal'],
+                choices=['rl', 'random', 'time-greedy', 'energy-greedy', 'time-wrr', 'energy-wrr', 'load-bal', 'heteroedge'],
                 dest='scheduler', default='rl')
 args = ap.parse_args()
 
