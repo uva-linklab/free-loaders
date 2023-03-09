@@ -196,12 +196,10 @@ def offload_one(address, device_id, task_id, job_id=0, executor_id=None):
     url = 'http://{}:{}/submit-task'.format(address, ControllerHTTPPort)
 
     try:
-        print(f'submitting to {url}')
-        print(http_post_data)
-        # response = requests.post(url, data=http_post_data, headers={'Content-Type': 'application/octet-stream'})
-        # print('Server says {}:', end='')
-        # for line in response.iter_lines():
-        #     print('{}'.format(line))
+        response = requests.post(url, data=http_post_data, headers={'Content-Type': 'application/octet-stream'})
+        print('Server says {}:', end='')
+        for line in response.iter_lines():
+            print('{}'.format(line))
     except requests.exceptions.ConnectionError:
         print('...cannot connect to server.')
 
@@ -218,7 +216,7 @@ if __name__ == '__main__':
                     metavar='RATE', type=int, default=1000, dest='rate')
     ap.add_argument('-e', '--extended', help='Use task IDs > 29',
                     action='store_true', default=False)
-    ap.add_argument('-h', '--heteroedge', help='Submit heteroedge tasks',
+    ap.add_argument('--heteroedge', help='Submit heteroedge tasks',
                     action='store_true', default=False)
     ap.add_argument('--seed', help='Specify a random seed',
                     metavar='SEED', type=int, default=time.gmtime(), dest='seed')
