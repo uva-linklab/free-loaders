@@ -3,6 +3,8 @@ import paho.mqtt.client as mqtt
 import json
 import asyncio
 from aiohttp import ClientSession
+from aiohttp import ClientTimeout
+from aiohttp import ServerTimeoutError
 import time
 import flomqtt.serialize as flserialize
 
@@ -31,7 +33,8 @@ async def fetch_json(executer_id: int, url: str, session: ClientSession, **kwarg
 
 
 async def make_requests(url_tuples: list, **kwargs) -> None:
-    async with ClientSession() as session:
+    to = ClientTimeout(total=None, sock_connect=1)
+    async with ClientSession(timeout=to) as session:
         tasks = []
         for url_tuple in url_tuples:
             tasks.append(
@@ -198,8 +201,16 @@ class TaskDispatcher:
         state_of_executors = None
         # only for the rl scheduler and the dynamic load based scheduler which need
         if self.scheduler.needs_before_state:
-            # query all executers for their state
-            state_of_executors = self.get_executer_state()
+            while True:
+                try:
+                    # query all executers for their state
+                    state_of_executors = self.get_executer_state()
+                    break
+                except ServerTimeoutError:
+                    wait_time = 1
+                    print('[td] timeout fetching state; retrying in {} second(s)'.format(wait_time))
+                    time.sleep(wait_time)
+
             print('executor loads: {}'.format([state_of_executors[eid]['cpu-load'] for eid in sorted(list(state_of_executors.keys()))]))
 
         # request rl scheduler to schedule this task
