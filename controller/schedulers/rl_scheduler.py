@@ -53,6 +53,9 @@ class RLScheduler:
         self.total_executor = len(executers.keys())
 
         self.Q = Q_Network(input_size=102, hidden_size=400, output_size=self.total_executor)
+        if os.path.exists('Q.model'):
+            serializers.load_npz('Q.model', self.Q)
+            print('[rl] loaded Q.model')
 
         self.Q_ast = copy.deepcopy(self.Q)
         self.optimizer = chainer.optimizers.Adam()
