@@ -22,39 +22,77 @@ ap.add_argument('paths', help='label,path to log file',
 
 args = ap.parse_args()
 
-colors = [
-    [97 / 255, 188 / 255, 249 / 255], # blue
-    [199 / 255, 105 / 255, 239 / 255], # purple
-    [244 / 255, 234 / 255, 31 / 255], # yellow
-    [242 / 255, 101 / 255, 82 / 255], # red
-]
+colors = {
+    'fReeLoaders': [26 / 255, 121 / 255, 172 / 255],
+    'fReeLoaders (-100 reward)': [0, 0, 0],
+    'fReeLoaders (more training)': [199 / 255, 105 / 255, 239 / 255],
+    'load balancing': [28 / 255, 160 / 255, 63 / 255],
+    'performance-WRR': [255 / 255, 124 / 255, 45 / 255],
+    'random': [217 / 255, 28 / 255, 44 / 255],
+}
 
 r = 'deadlines_met=(?P<met>\d+).*finished_tasks=(?P<finished>\d+).*failed_tasks=(?P<failed>\d+)'
-for (label_path, color) in zip(args.paths, colors):
+r2 = 'finished task.*offload_id=(?P<oid>\d+), task_id=(?P<tid>\d+).*time\(ms\)=(?P<t>\d+\.\d+)'
+for (label_path, color) in zip(args.paths, range(0,10)):
     [label, path] = label_path.split(',')
     log_lines = ''
     with open(path, 'r') as fh:
         log_lines = fh.readlines()
 
+    RL_MEMORY_SKIP_TOTAL = 0
+    if label == 'fReeLoaders':
+        RL_MEMORY_SKIP_TOTAL= 93
+    elif label == 'fReeLoaders (more training)':
+        RL_MEMORY_SKIP_TOTAL = 375
+    elif label == 'fReeLoaders (-100 reward)':
+        RL_MEMORY_SKIP_TOTAL = 300
+
     x = []
     y = []
+    offset = 0
     last_met = 0
+    rl_memory_skip = 0
+    rl_memory_met = 0
+    rl_memory_finished = 0
+    rl_memory_failed = 0
     for line in log_lines:
         m = re.search(r, line)
         if m == None:
+            m = re.search(r2, line)
+
+            if m == None:
+                continue
+
+            # See if this one failed due to network conditions.
+            t = float(m['t'])
+            oid = int(m['oid'])
+            if oid > 3000 and t > 80000:
+                offset += 1
+                print('not counting long time {} for task ID {}'.format(t, m['tid']))
             continue
 
-        met = int(m['met'])
-        finished = int(m['finished'])
-        failed = int(m['failed'])
-        processed = finished + failed
+
+        # Skip over the offloads where the memory was filling for the RL scheduler.
+        if 'fReeLoaders' in label and rl_memory_skip < RL_MEMORY_SKIP_TOTAL:
+            rl_memory_skip += 1
+            if rl_memory_skip == RL_MEMORY_SKIP_TOTAL:
+                # Set the offset nos.
+                rl_memory_met = int(m['met'])
+                rl_memory_finished = int(m['finished'])
+                rl_memory_failed = int(m['failed'])
+            continue
+
+        met = int(m['met']) - rl_memory_met
+        finished = int(m['finished']) - rl_memory_finished - offset
+        failed = int(m['failed']) - rl_memory_failed
+        processed = finished + failed - offset
 
         x.append(processed)
         y.append(met / processed)
 
         last_met = met
 
-    plt.plot(x, y, label=label)
+    plt.plot(x, y, label=label, color=colors[label])
 
 plt.legend(fancybox=True)
 plt.xlabel('Number of offloads')

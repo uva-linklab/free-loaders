@@ -9,6 +9,7 @@ import struct
 import flomqtt.serialize as flserialize
 
 ControllerHTTPPort = 8001
+DeadlineMod = 1.0
 SkipTasks = 0
 
 class NumpyEncoder(json.JSONEncoder):
@@ -126,6 +127,8 @@ def offload_one(address, device_id, task_id):
         print('bad task ID: {}'.format(task_id))
         return
 
+    task_data['deadline'] *= DeadlineMod
+
     task_json = json.dumps(task_data)
     http_post_data = flserialize.pack(task_json, input_data_bytes)
 
@@ -153,6 +156,8 @@ if __name__ == '__main__':
                     metavar='RATE', type=int, default=1000, dest='rate')
     ap.add_argument('-e', '--extended', help='Use task IDs > 29',
                     action='store_true', default=False)
+    ap.add_argument('--modulate-deadlines', help='Adjust deadlines by a factor.',
+                    metavar='FACTOR', type=float, default=1.0, dest='deadline_mod')
     ap.add_argument('--seed', help='Specify a random seed',
                     metavar='SEED', type=int, default=time.gmtime(), dest='seed')
     ap.add_argument('--skip', help='Skip the first N offload tasks',
@@ -164,6 +169,7 @@ if __name__ == '__main__':
     args = ap.parse_args()
 
     SkipTasks = args.skip
+    DeadlineMod = args.deadline_mod
 
     random.seed(args.seed)
 

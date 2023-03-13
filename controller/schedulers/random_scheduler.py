@@ -2,6 +2,10 @@ import random
 class RandomScheduler:
 
     def __init__(self, executors):
+        # remove executors 8 and 9 for adaptability
+        #executors.pop(8)
+        #executors.pop(9)
+
         self.executors = executors
         self.total_executor = len(executors.keys())
         self.needs_before_state = False

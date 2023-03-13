@@ -20,7 +20,7 @@ x = []
 # Total energy consumed.
 y = []
 
-r = 'energy=(?P<energy>\d+\.\d+)'
+r = 'finished task.*energy=(?P<energy>\d+\.\d+)'
 labels_paths = map(lambda x: x.split(','), args.paths)
 for [label, path] in labels_paths:
     log_lines = ''

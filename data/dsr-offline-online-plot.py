@@ -14,7 +14,7 @@ class Task:
 
 ap = argparse.ArgumentParser()
 ap.add_argument('-o', '--output', help='Output file path.',
-                type=str, dest='output', default='dsr-offloads.pdf')
+                type=str, dest='output', default='dsr-offline-online-offloads.pdf')
 ap.add_argument('--window-size', help='Number of samples in a window',
                 type=int, dest='window', default=300)
 ap.add_argument('-s', '--starting-offload', help='ID of the first offload to count',
