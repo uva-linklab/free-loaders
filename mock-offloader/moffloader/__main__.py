@@ -9,6 +9,7 @@ import struct
 import flomqtt.serialize as flserialize
 
 ControllerHTTPPort = 8001
+SkipTasks = 0
 
 class NumpyEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -33,6 +34,12 @@ def main(args):
 def offload_many(address, device_id, count, rate, extended):
     intertask_delay = 1 / (rate / 60)
     print('Sending tasks every {} sec.'.format(intertask_delay))
+
+    # Skip N tasks, if specified.
+    if SkipTasks > 0:
+        print('Skipping the first {} tasks.'.format(SkipTasks))
+        for i in range(0, SkipTasks):
+            _x = random.randint(0, 29)
 
     for i in range(0, count):
         # Send the task.
@@ -148,11 +155,15 @@ if __name__ == '__main__':
                     action='store_true', default=False)
     ap.add_argument('--seed', help='Specify a random seed',
                     metavar='SEED', type=int, default=time.gmtime(), dest='seed')
+    ap.add_argument('--skip', help='Skip the first N offload tasks',
+                    metavar='N', type=int, default=0, dest='skip')
 
     ap.add_argument('address', help='Controller address')
 
 
     args = ap.parse_args()
+
+    SkipTasks = args.skip
 
     random.seed(args.seed)
 
