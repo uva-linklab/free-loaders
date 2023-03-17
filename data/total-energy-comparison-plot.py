@@ -59,7 +59,7 @@ plt.gca().spines['top'].set_visible(False)
 
 _fig, ax1 = plt.subplots()
 # instead of text labels, map the x-axis to integers 0..
-ax1.bar(list(map(lambda x: x-0.15, range(0,len(args.paths)))), y, zorder=0, color=energy_color, width=0.3)
+ax1.bar(list(map(lambda x: x-0.15, range(0,len(args.paths)))), y, zorder=100, color=energy_color, width=0.3)
 # xticks are integers mapped to labels provided in the second argument...
 ax1.set_xticks(list(map(lambda x: x, range(0, len(args.paths)))),
                labels=list(map(lambda s: s.split(',')[0], args.paths)),
@@ -67,12 +67,13 @@ ax1.set_xticks(list(map(lambda x: x, range(0, len(args.paths)))),
 ax1.set_ylabel('energy (J)', fontsize='large', color=dark_energy_color)
 ax1.set_ylim(0, 100)
 
+plt.grid(axis='y', zorder=-100)
+
 if args.dsrs != None:
     dsrs = list(map(lambda s: float(s), args.dsrs.split(',')))
     ax2 = ax1.twinx()
-    ax2.bar(list(map(lambda x: x+0.15, range(0,len(dsrs)))), dsrs, zorder=0, color=dsr_color, width=0.3)
+    ax2.bar(list(map(lambda x: x+0.15, range(0,len(dsrs)))), dsrs, zorder=100, color=dsr_color, width=0.3)
     ax2.set_ylabel('DSR', fontsize='large', color=dsr_color)
     ax2.set_ylim(0, 1)
 
-plt.grid(axis='y', zorder=-3)
 plt.savefig(args.output, format='pdf', dpi='figure', bbox_inches='tight')
