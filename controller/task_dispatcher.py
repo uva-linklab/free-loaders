@@ -33,7 +33,7 @@ async def fetch_json(executer_id: int, url: str, session: ClientSession, **kwarg
 
 
 async def make_requests(url_tuples: list, **kwargs) -> None:
-    to = ClientTimeout(total=None, sock_connect=1)
+    to = ClientTimeout(total=None, sock_connect=2)
     async with ClientSession(timeout=to) as session:
         tasks = []
         for url_tuple in url_tuples:
@@ -200,8 +200,12 @@ class TaskDispatcher:
         state_of_executors = None
         # only for the rl scheduler and the dynamic load based scheduler which need
         if self.scheduler.needs_before_state:
+            #state_of_executors = self.get_executer_state()
+
             while True:
                 try:
+                    # Reassign start time to compensate fo the timeout and the wait.
+                    self.execution_times[task.offload_id] = time.time()
                     # query all executers for their state
                     state_of_executors = self.get_executer_state()
                     break
@@ -209,7 +213,7 @@ class TaskDispatcher:
                     wait_time = 1
                     print('[td] timeout fetching state; retrying in {} second(s)'.format(wait_time))
                     time.sleep(wait_time)
-
+                    
             print('executor loads: {}'.format([state_of_executors[eid]['cpu-load'] for eid in sorted(list(state_of_executors.keys()))]))
 
         # request rl scheduler to schedule this task
