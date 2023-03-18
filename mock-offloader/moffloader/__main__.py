@@ -12,6 +12,8 @@ from threading import Thread
 import paho.mqtt.client as mqtt
 
 ControllerHTTPPort = 8001
+DeadlineMod = 1.0
+SkipTasks = 0
 
 class NumpyEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -102,6 +104,12 @@ def offload_many(address, device_id, count, rate, extended):
     intertask_delay = 1 / (rate / 60)
     print('Sending tasks every {} sec.'.format(intertask_delay))
 
+    # Skip N tasks, if specified.
+    if SkipTasks > 0:
+        print('Skipping the first {} tasks.'.format(SkipTasks))
+        for i in range(0, SkipTasks):
+            _x = random.randint(0, 29)
+
     for i in range(0, count):
         # Send the task.
         if extended == True:
@@ -189,6 +197,8 @@ def offload_one(address, device_id, task_id, job_id=0, executor_id=None):
         print('bad task ID: {}'.format(task_id))
         return
 
+    task_data['deadline'] *= DeadlineMod
+
     task_json = json.dumps(task_data)
     http_post_data = flserialize.pack(task_json, input_data_bytes)
 
@@ -218,13 +228,20 @@ if __name__ == '__main__':
                     action='store_true', default=False)
     ap.add_argument('--heteroedge', help='Submit heteroedge tasks',
                     action='store_true', default=False)
+    ap.add_argument('--modulate-deadlines', help='Adjust deadlines by a factor.',
+                    metavar='FACTOR', type=float, default=1.0, dest='deadline_mod')
     ap.add_argument('--seed', help='Specify a random seed',
                     metavar='SEED', type=int, default=time.gmtime(), dest='seed')
+    ap.add_argument('--skip', help='Skip the first N offload tasks',
+                    metavar='N', type=int, default=0, dest='skip')
 
     ap.add_argument('address', help='Controller address')
 
 
     args = ap.parse_args()
+
+    SkipTasks = args.skip
+    DeadlineMod = args.deadline_mod
 
     random.seed(args.seed)
 

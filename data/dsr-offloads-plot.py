@@ -22,59 +22,84 @@ ap.add_argument('paths', help='label,path to log file',
 
 args = ap.parse_args()
 
-colors = [
-    [242 / 255, 101 / 255, 82 / 255], # red
-    [247 / 255, 172 / 255, 42 / 255], # orange
-    [97 / 255, 188 / 255, 249 / 255], # blue
-    [244 / 255, 234 / 255, 31 / 255], # yellow
-]
+colors = {
+    'fReeLoaders': [26 / 255, 121 / 255, 172 / 255],
+    'fReeLoaders (-100 reward)': [0, 0, 0],
+    'fReeLoaders (more training)': [199 / 255, 105 / 255, 239 / 255],
+    'load balancing': [28 / 255, 160 / 255, 63 / 255],
+    'performance-WRR': [255 / 255, 124 / 255, 45 / 255],
+    'random': [217 / 255, 28 / 255, 44 / 255],
+}
 
 r = 'deadlines_met=(?P<met>\d+).*finished_tasks=(?P<finished>\d+).*failed_tasks=(?P<failed>\d+)'
-for (label_path, color) in zip(args.paths, colors):
+r2 = 'finished task.*offload_id=(?P<oid>\d+), task_id=(?P<tid>\d+).*time\(ms\)=(?P<t>\d+\.\d+)'
+for (label_path, color) in zip(args.paths, range(0,10)):
     [label, path] = label_path.split(',')
     log_lines = ''
     with open(path, 'r') as fh:
         log_lines = fh.readlines()
 
-    x = [0]
-    y = [1]
+    RL_MEMORY_SKIP_TOTAL = 0
+    if label == 'fReeLoaders':
+        RL_MEMORY_SKIP_TOTAL= 93
+    elif label == 'fReeLoaders (more training)':
+        RL_MEMORY_SKIP_TOTAL = 375
+    elif label == 'fReeLoaders (-100 reward)':
+        RL_MEMORY_SKIP_TOTAL = 300
+
+    x = []
+    y = []
+    offset = 0
     last_met = 0
-    dsr_window = [1 for _i in range(0,args.window)] if args.initial_window else []
+    rl_memory_skip = 0
+    rl_memory_met = 0
+    rl_memory_finished = 0
+    rl_memory_failed = 0
     for line in log_lines:
         m = re.search(r, line)
         if m == None:
+            m = re.search(r2, line)
+
+            if m == None:
+                continue
+
+            # See if this one failed due to network conditions.
+            t = float(m['t'])
+            oid = int(m['oid'])
+            if oid > 3000 and t > 80000:
+                offset += 1
+                print('not counting long time {} for task ID {}'.format(t, m['tid']))
             continue
 
-        met = int(m['met'])
-        finished = int(m['finished'])
-        failed = int(m['failed'])
-        processed = finished + failed
 
-        if processed < args.start:
+        # Skip over the offloads where the memory was filling for the RL scheduler.
+        if 'fReeLoaders' in label and rl_memory_skip < RL_MEMORY_SKIP_TOTAL:
+            rl_memory_skip += 1
+            if rl_memory_skip == RL_MEMORY_SKIP_TOTAL:
+                # Set the offset nos.
+                rl_memory_met = int(m['met'])
+                rl_memory_finished = int(m['finished'])
+                rl_memory_failed = int(m['failed'])
             continue
-        elif args.end != None and processed > args.end:
-            break
 
-        if met > last_met:
-            dsr_window.append(1)
-        else:
-            dsr_window.append(0)
+        met = int(m['met']) - rl_memory_met
+        finished = int(m['finished']) - rl_memory_finished - offset
+        failed = int(m['failed']) - rl_memory_failed
+        processed = finished + failed - offset
 
         x.append(processed)
-        if len(dsr_window) >= args.window:
-            dsr_window = dsr_window[1:]
-
-        dsr = sum(dsr_window) / len(dsr_window)
-        y.append(dsr)
+        y.append(met / processed)
 
         last_met = met
 
-    plt.plot(x, y, label=label, linewidth=1.0, color=color)
+    plt.plot(x, y, label=label, color=colors[label])
 
 plt.legend(fancybox=True)
 plt.xlabel('Number of offloads')
 plt.ylabel('Deadline satisfaction ratio')
 plt.xlim(0, x[-1] if args.x_limit == None else args.x_limit)
 plt.ylim(0, 1)
+plt.gca().spines['right'].set_visible(False)
+plt.gca().spines['top'].set_visible(False)
 plt.grid()
 plt.savefig(args.output, format='pdf', dpi='figure', pad_inches=0.1)

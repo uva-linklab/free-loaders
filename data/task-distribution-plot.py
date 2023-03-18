@@ -14,6 +14,8 @@ ap.add_argument('-e', '--ending-offload',
 ap.add_argument('-o', '--output-path',
                 help='Path to save the figure to',
                 type=str, dest='output', default='task-distribution.pdf')
+ap.add_argument('--y-limit', help='Maximum y-axis value',
+                type=int, dest='y_lim', default=None)
 ap.add_argument('path', help='path to log file',
                 type=str)
 
@@ -55,10 +57,16 @@ for line in log_lines:
 
     y[eid] += 1
 
+print(y)
+
 
 plt.bar(x, y, zorder=3)
 plt.xticks(rotation=45, ha='right', fontsize='xx-large')
 plt.xlabel('executor')
 plt.ylabel('No. of offloads')
+
+if args.y_lim != None:
+    plt.ylim(0, args.y_lim)
+
 plt.grid(axis='y', zorder=0)
 plt.savefig(args.output, format='pdf', dpi='figure', bbox_inches='tight')
