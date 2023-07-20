@@ -33,7 +33,7 @@ args = ap.parse_args()
 omit_range = []
 if args.omit_range != None:
     for r in args.omit_range.split(','):
-        spl = args.omit_range.split('-')
+        spl = r.split('-')
         omit_range.append((int(spl[0]), int(spl[1])))
 
 log_lines = ''
@@ -155,9 +155,9 @@ for (x, y) in zip(x, y):
         fail_x.append(x)
         fail_y.append(y)
 
-plt.scatter(succ_x, succ_y, s=1.0, color=success_color, marker='.', label='success')
-plt.scatter(time_x, time_y, s=1.0, color=timeout_color, marker='.', label='deadline miss')
-plt.scatter(fail_x, fail_y, s=1.0, color=failure_color, marker='.', label='execution failure')
+plt.scatter(succ_x, succ_y, s=0.2, color=success_color, marker='.', label='success')
+plt.scatter(time_x, time_y, s=0.2, color=timeout_color, marker='.', label='deadline miss')
+plt.scatter(fail_x, fail_y, s=0.2, color=failure_color, marker='.', label='execution failure')
 
 plt.legend(fancybox=True)
 plt.xlabel('Number of offloads')
