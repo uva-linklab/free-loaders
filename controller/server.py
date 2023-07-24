@@ -99,5 +99,5 @@ class ControllerServer:
                     httpd.serve_forever()
 
             except OSError as e:
-                print('[server] binding failed; waiting 3 secs.')
-                time.sleep(2)
+                print('[server] binding failed; waiting 10 secs.')
+                time.sleep(10)
