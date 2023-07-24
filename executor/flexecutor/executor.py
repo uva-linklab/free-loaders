@@ -152,7 +152,7 @@ def __execute_task(client, executor_id, power, task_request, additional_data):
     return thread
 
 # Task execution timeout.
-ExecutionTimeout = 2 * 60
+# ExecutionTimeout = 2 * 60
 
 def __executor_task_entry(mqtt_client, executor_id, power, task_request, additional_data):
     # log.i(f'offload_id={task_request["offload_id"]}. in __executor_task_entry')
@@ -172,7 +172,7 @@ def __executor_task_entry(mqtt_client, executor_id, power, task_request, additio
 
         # log.i(f'offload_id={task_request["offload_id"]}. finished result = p_recv.recv()')
 
-        process.join(ExecutionTimeout)  # wait for process to finish up
+        process.join(task_request["deadline"])  # wait for process to finish up
         log.i(f'offload_id={task_request["offload_id"]}. after process.join()')
         # check if the process exited
         if process.exitcode is not None:
