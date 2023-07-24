@@ -213,7 +213,7 @@ def our_scsr(supply_chain_graph, epsilon, job_list):
 # the objective is to find P = P0, P1, ..., which are the supply chain paths (optimal paths)
 # P0 -> optimal path for J0 that optimizes both delay and energy
 random.seed(993123129)
-jobs = 10
+jobs = 5
 executors = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 tasks = ["t9","t19","t29"]
 task_executor_energy = {

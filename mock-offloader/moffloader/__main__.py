@@ -24,7 +24,11 @@ class NumpyEncoder(json.JSONEncoder):
 
 controller_offloader_task_response_topic = "ctrl-offl-task-response"
 current_submitted_task = {}
-schedule_plan = [['s0', 't9-e9', 't19-e8', 't29-e8', 't'], ['s1', 't9-e9', 't19-e8', 't29-e8', 't']]
+schedule_plan = [['s0', 't9-e0-base', 't9-e0-thread', 't9-e0-end', 't19-e8-base', 't19-e8-thread', 't19-e8-end', 't29-e8-base', 't29-e8-thread', 't29-e8-end', 't'],
+                 ['s1', 't9-e0-base', 't9-e0-thread', 't9-e0-end', 't19-e8-base', 't19-e8-thread', 't19-e8-end', 't29-e8-base', 't29-e8-thread', 't29-e8-end', 't'],
+                 ['s2', 't9-e0-base', 't9-e0-thread', 't9-e0-end', 't19-e8-base', 't19-e8-thread', 't19-e8-end', 't29-e8-base', 't29-e8-thread', 't29-e8-end', 't'],
+                 ['s3', 't9-e0-base', 't9-e0-thread', 't9-e0-end', 't19-e8-base', 't19-e8-thread', 't19-e8-end', 't29-e8-base', 't29-e8-thread', 't29-e8-end', 't'],
+                 ['s4', 't9-e3-base', 't9-e3-thread', 't9-e3-end', 't19-e8-base', 't19-e8-thread', 't19-e8-end', 't29-e8-base', 't29-e8-thread', 't29-e8-end', 't']]
 
 def on_connect(client, userdata, flags, rc):
     print("[td] connected to mqtt with result code " + str(rc))
@@ -42,7 +46,7 @@ def on_message(client, userdata, mqtt_message):
     job_id =  message_json['job_id']
 
     # offload the next task for the job
-    next_task_index = current_submitted_task[job_id] + 1
+    next_task_index = current_submitted_task[job_id] + 3 # jump from "-base" to next "-base"
     next_task = schedule_plan[job_id][next_task_index]
     if next_task == 't':
         print("done!")
