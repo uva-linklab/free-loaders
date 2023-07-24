@@ -61,15 +61,15 @@ class RLScheduler:
         self.optimizer = chainer.optimizers.Adam()
         self.optimizer.setup(self.Q)
 
-        self.epoch_num = 20
-        self.memory_size = 1000
-        self.batch_size = 15
-        self.epsilon = 0.9
+        self.epoch_num = 5
+        self.memory_size = 100
+        self.batch_size = 10
+        self.epsilon = 0.0
         self.epsilon_decrease = 1e-3
-        self.epsilon_min = 0.1
-        self.start_reduce_epsilon = 3000
-        self.train_freq = 1
-        self.gamma = 0.97
+        self.epsilon_min = 0.0
+        self.start_reduce_epsilon = 500
+        self.train_freq = 5
+        self.gamma = 0.1
         self.show_log_freq = 1
 
         self.memory = []
