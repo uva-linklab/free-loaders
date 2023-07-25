@@ -172,7 +172,7 @@ def __executor_task_entry(mqtt_client, executor_id, power, task_request, additio
 
         # log.i(f'offload_id={task_request["offload_id"]}. finished result = p_recv.recv()')
 
-        process.join(task_request["deadline"])  # wait for process to finish up
+        process.join(task_request["deadline"] / 1000)  # wait for process to finish up
         log.i(f'offload_id={task_request["offload_id"]}. after process.join()')
         # check if the process exited
         if process.exitcode is not None:
@@ -189,7 +189,7 @@ def __executor_task_entry(mqtt_client, executor_id, power, task_request, additio
                 'task_id': task_request['task_id'],
                 'offload_id': task_request['offload_id'],
                 'state': current_state,
-                'energy': power * ExecutionTimeout,
+                'energy': power * task_request["deadline"] / 1000,
                 'status': process.exitcode  # inform the controller that we failed
             }
             mqtt_client.publish(MQTTTopicTaskResponse,
