@@ -174,7 +174,8 @@ class TaskDispatcher:
             "executer_id": executer_id,
             "offload_id": task.offload_id,
             "task_id": task.task_id,
-            "job_id": task.job_id
+            "job_id": task.job_id,
+            "deadline": task.deadline
         })
 
         # task.input_data is already in bytes
