@@ -55,6 +55,7 @@ def fetch():
         'total-vram': gpu_stats['total-vram'],
         'process-count': proc_count,
         'thread-count': thread_count,
+        'h': _selection_value(psutil.getloadavg()[0]),
     }
 
     return state
@@ -219,3 +220,71 @@ def _get_gpu_load():
     __GPULoadLock.release()
 
     return l
+
+DeviceNameEnvVar = 'FLEXECUTOR_DEVICE'
+MIPSEnvVar = 'FLEXECUTOR_MAX_MIPS'
+
+def _selection_value(load):
+    '''Return the selection value for the given load.
+    '''
+
+    cpu_count = os.cpu_count()
+    unitary_load = min(load / cpu_count, 1)
+
+    max_mips = os.getenv(MIPSEnvVar, default=2422.04)
+    # Recommended parameters.
+    g = 1.2
+    a = 110
+    b = 0.9
+
+    import math
+
+    current_power = __selection_power_value(load)
+    h = ((max_mips * unitary_load) / current_power) * (1 - (g / (1 + pow(math.e, -a * (unitary_load - b)))))
+
+    return h
+
+PowerTables = {
+    'rpi4': [(0, 2.9),
+             (1, 3.66),
+             (1.25, 3.77),
+             (1.5, 3.94),
+             (1.75, 4.17),
+             (2.0, 4.32),
+             (2.5, 4.56),
+             (3.0, 4.68),
+             (3.5, 4.84),
+             (4.0, 5.14)],
+}
+
+def __selection_power_value(current_load):
+    dev_name = os.getenv(DeviceNameEnvVar)
+    ptab = PowerTables[dev_name]
+
+    # If the load is greater than the number of cores, then we assume max load and power values.
+    if current_load > os.cpu_count():
+        return ptab[-1][1]
+    else:
+        # Find the closest power value not exceeding the load value.
+        lower_power_bound = ptab[0][1]
+        lower_load_bound = ptab[0][0]
+        upper_power_bound = None
+        upper_load_bound = None
+        for ((lower_load, lower_power), (upper_load, upper_power)) in zip(ptab, ptab[1:]):
+            if current_load >= lower_load:
+                lower_power_bound = lower_power
+                lower_load_bound = lower_load
+                upper_power_bound = upper_power
+                upper_load_bound = upper_load
+
+        # Interpolate the current power value.
+        load_range = upper_load_bound - lower_load_bound
+        load_interpolation_x = current_load - lower_load_bound
+        # What to multiply the range by to estimate current power.
+        factor = load_interpolation_x / load_range
+        # Add to the lower load a fraction of the range between the lower load bound
+        # and the upper load bound to estimate where the current power draw is currently.
+        power_range = upper_power_bound - lower_power_bound
+        est_power = lower_power_bound + (power_range * factor)
+
+        return est_power
