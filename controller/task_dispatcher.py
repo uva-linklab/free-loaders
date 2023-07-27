@@ -243,11 +243,12 @@ class TaskDispatcher:
 
         self.send_task_to_executer(executer_id, task)
 
-        # set timer to cancel execution of the task if deadline has elapsed
-        self.timers[task.offload_id] = Timer(task.deadline / 1000,
+        # timer to report failure if deadline elapses and executor is non-responsive
+        # set to 10s after deadline (prefer failed response from executor, so wait for msg)
+        self.timers[task.offload_id] = Timer(task.deadline / 1000 + 10,
                                              self.handle_task_response,
                                              args=[task.offload_id,
-                                                   state_of_executors[executer_id],
+                                                   state_of_executors[str(executer_id)],
                                                    executer_id,
                                                    task.task_id,
                                                    -1000,  # indicate failure
