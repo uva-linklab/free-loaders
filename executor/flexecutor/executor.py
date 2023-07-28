@@ -167,6 +167,7 @@ def __executor_task_entry(mqtt_client, executor_id, power, task_request, additio
         response = {
             'executor_id': task_request['executer_id'],
             'task_id': task_request['task_id'],
+            'job_id': task_request['job_id'],
             'offload_id': task_request['offload_id'],
             'state': current_state,
             'energy': power * deadline_sec,
