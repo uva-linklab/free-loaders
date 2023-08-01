@@ -221,17 +221,41 @@ def _get_gpu_load():
 
     return l
 
-DeviceNameEnvVar = 'FLEXECUTOR_DEVICE'
-MIPSEnvVar = 'FLEXECUTOR_MAX_MIPS'
+def __device_name():
+    '''
+    Return the device's name based on its executor ID.
+    '''
+
+    eid = int(os.getenv('EXEC_ID'))
+    if eid == 0:
+        return 'nano'
+    elif eid >= 1 and eid <= 2:
+        return 'rpi3'
+    elif eid >= 3 and eid <= 7:
+        return 'rpi4'
+    elif eid == 8:
+        return 'tx2'
+    elif eid == 9:
+        return 'desktop'
+    else:
+        return ''
+
+MIPSTable = {
+    'rpi3':    1137.11,
+    'rpi4':    2422.04,
+    'nano':    3085.06,
+    'tx2':     4140.84,
+    'desktop': 15274.47,
+}
 
 def _selection_value(load):
     '''Return the selection value for the given load.
     '''
 
-    cpu_count = os.cpu_count()
+    cpu_count = psutil.cpu_count(logical=False)
     unitary_load = min(load / cpu_count, 1)
 
-    max_mips = os.getenv(MIPSEnvVar, default=2422.04)
+    max_mips = MIPSTable[__device_name()]
     # Recommended parameters.
     g = 1.2
     a = 110
@@ -245,21 +269,75 @@ def _selection_value(load):
     return h
 
 PowerTables = {
-    'rpi4': [(0, 2.9),
-             (1, 3.66),
-             (1.25, 3.77),
-             (1.5, 3.94),
-             (1.75, 4.17),
-             (2.0, 4.32),
-             (2.5, 4.56),
-             (3.0, 4.68),
-             (3.5, 4.84),
-             (4.0, 5.14)],
+    'rpi3': [
+        (0, 1.43),
+        (1, 2.66),
+        (1.25, 3.19),
+        (1.5, 3.33),
+        (1.75, 2.53),
+        (2.0, 3.55),
+        (2.5, 3.66),
+        (3.0, 4.22),
+        (4.0, 4.69)
+    ],
+
+    'rpi4': [
+        (0, 2.9),
+        (1, 3.66),
+        (1.25, 3.77),
+        (1.5, 3.94),
+        (1.75, 4.17),
+        (2.0, 4.32),
+        (2.5, 4.56),
+        (3.0, 4.68),
+        (3.5, 4.84),
+        (4.0, 5.14)
+    ],
+
+    'nano': [
+        (0, 2.56),
+        (1, 3.98),
+        (1.25, 4.51),
+        (1.5, 4.79),
+        (1.75, 5.24),
+        (2.0, 5.54),
+        (2.5, 6.24),
+        (3.0, 7.02),
+        (3.5, 7.59),
+        (4.0, 7.67)
+    ],
+
+    'tx2': [
+        (0, 1.72),
+        (1, 4.94),
+        (1.25, 5.42),
+        (1.5, 5.66),
+        (1.75, 5.87),
+        (2.0, 5.98),
+        (2.5, 6.24),
+        (3.0, 6.82),
+        (3.5, 7.07),
+        (4.0, 7.57),
+        (5.0, 7.61),
+        (6.0, 7.63),
+    ],
+
+    'desktop': [
+        (0, 38.7),
+        (1, 61.64),
+        (1.25, 71.27),
+        (1.50, 76.4),
+        (1.75, 78.44),
+        (2.0, 79.55),
+        (2.5, 87.5),
+        (3.0, 94.28),
+        (3.5, 101.67),
+        (4.0, 112.98),
+    ]
 }
 
 def __selection_power_value(current_load):
-    dev_name = os.getenv(DeviceNameEnvVar)
-    ptab = PowerTables[dev_name]
+    ptab = PowerTables[__device_name()]
 
     # If the load is greater than the number of cores, then we assume max load and power values.
     if current_load > os.cpu_count():
