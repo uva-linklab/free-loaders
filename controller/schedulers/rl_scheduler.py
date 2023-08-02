@@ -1,7 +1,5 @@
 import pandas as pd
 import os
-from sklearn.utils import shuffle
-from sklearn.model_selection import train_test_split
 
 import csv
 import time
@@ -13,7 +11,6 @@ import numpy as np
 from chainer import serializers
 import queue
 import threading
-from sklearn.preprocessing import StandardScaler
 from joblib import load
 
 rewards_csv_file='reward_loss.csv'
