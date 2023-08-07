@@ -74,7 +74,7 @@ class HerosScheduler:
         best_eid = 0
 
         print('[heros] selection scores: {}'.format(
-            [(eid, s['h'],) for (eid, s) in before_state.items()]))
+            [(eid, '{:.2}'.format(s['h']),) for (eid, s) in before_state.items()]))
 
         # Use the executor with the greatest H.
         for (eid, state) in before_state.items():
