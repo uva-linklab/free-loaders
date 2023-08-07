@@ -103,6 +103,7 @@ def executor_is_eligible(eid, state, task):
     cpu_good = est_req_time <= task.deadline
 
     # Memory usage
-    memory_good = state['free-ram'] > __TaskData[task.task_id].memory
+    free_ram_kb = state['free-ram'] / 1024
+    memory_good = free_ram_kb > __TaskData[task.task_id].memory
 
     return cpu_good and memory_good
