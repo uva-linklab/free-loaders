@@ -10,10 +10,36 @@ import struct
 import flomqtt.serialize as flserialize
 from threading import Thread
 import paho.mqtt.client as mqtt
+import queue
 
 ControllerHTTPPort = 8001
 DeadlineMod = 1.0
 SkipTasks = 0
+
+msg_queue = queue.Queue()
+
+def message_queue_processor():
+    while True:
+        message_json = msg_queue.get()
+
+        task_id = message_json['task_id']
+        job_id =  message_json['job_id']
+
+        # offload the next task for the job
+        next_task_index = current_submitted_task[job_id] + 3 # jump from "-base" to next "-base"
+        next_task = schedule_plan[job_id][next_task_index]
+
+        if next_task == 't':
+            print(f'done with job_id={job_id}. current_submitted_task={current_submitted_task}')
+        else:
+            print(f'job_id={job_id}: task_id={task_id} finished. next task = {next_task}. current_submitted_task={current_submitted_task}')
+            result = re.search(r"t(\d+)\-e(\d+)", next_task)
+            task_id = int(result.group(1))
+            executor_id = int(result.group(2))
+            offload_one("localhost", 0, task_id, job_id=job_id, executor_id=executor_id)
+            current_submitted_task[job_id] = next_task_index
+
+        msg_queue.task_done()
 
 class NumpyEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -24,11 +50,21 @@ class NumpyEncoder(json.JSONEncoder):
 
 controller_offloader_task_response_topic = "ctrl-offl-task-response"
 current_submitted_task = {}
+# schedule_plan = [['s0', 't9-e0-base', 't9-e0-thread', 't9-e0-end', 't19-e8-base', 't19-e8-thread', 't19-e8-end', 't29-e8-base', 't29-e8-thread', 't29-e8-end', 't'],
+#                  ['s1', 't9-e0-base', 't9-e0-thread', 't9-e0-end', 't19-e8-base', 't19-e8-thread', 't19-e8-end', 't29-e8-base', 't29-e8-thread', 't29-e8-end', 't'],
+#                  ['s2', 't9-e0-base', 't9-e0-thread', 't9-e0-end', 't19-e8-base', 't19-e8-thread', 't19-e8-end', 't29-e8-base', 't29-e8-thread', 't29-e8-end', 't'],
+#                  ['s3', 't9-e0-base', 't9-e0-thread', 't9-e0-end', 't19-e8-base', 't19-e8-thread', 't19-e8-end', 't29-e8-base', 't29-e8-thread', 't29-e8-end', 't'],
+#                  ['s4', 't9-e3-base', 't9-e3-thread', 't9-e3-end', 't19-e8-base', 't19-e8-thread', 't19-e8-end', 't29-e8-base', 't29-e8-thread', 't29-e8-end', 't']]
 schedule_plan = [['s0', 't9-e0-base', 't9-e0-thread', 't9-e0-end', 't19-e8-base', 't19-e8-thread', 't19-e8-end', 't29-e8-base', 't29-e8-thread', 't29-e8-end', 't'],
                  ['s1', 't9-e0-base', 't9-e0-thread', 't9-e0-end', 't19-e8-base', 't19-e8-thread', 't19-e8-end', 't29-e8-base', 't29-e8-thread', 't29-e8-end', 't'],
                  ['s2', 't9-e0-base', 't9-e0-thread', 't9-e0-end', 't19-e8-base', 't19-e8-thread', 't19-e8-end', 't29-e8-base', 't29-e8-thread', 't29-e8-end', 't'],
                  ['s3', 't9-e0-base', 't9-e0-thread', 't9-e0-end', 't19-e8-base', 't19-e8-thread', 't19-e8-end', 't29-e8-base', 't29-e8-thread', 't29-e8-end', 't'],
-                 ['s4', 't9-e3-base', 't9-e3-thread', 't9-e3-end', 't19-e8-base', 't19-e8-thread', 't19-e8-end', 't29-e8-base', 't29-e8-thread', 't29-e8-end', 't']]
+                 ['s4', 't9-e3-base', 't9-e3-thread', 't9-e3-end', 't19-e8-base', 't19-e8-thread', 't19-e8-end', 't29-e8-base', 't29-e8-thread', 't29-e8-end', 't'],
+                 ['s5', 't9-e3-base', 't9-e3-thread', 't9-e3-end', 't19-e8-base', 't19-e8-thread', 't19-e8-end', 't29-e8-base', 't29-e8-thread', 't29-e8-end', 't'],
+                 ['s6', 't9-e3-base', 't9-e3-thread', 't9-e3-end', 't19-e0-base', 't19-e0-thread', 't19-e0-end', 't29-e8-base', 't29-e8-thread', 't29-e8-end', 't'],
+                 ['s7', 't9-e3-base', 't9-e3-thread', 't9-e3-end', 't19-e0-base', 't19-e0-thread', 't19-e0-end', 't29-e8-base', 't29-e8-thread', 't29-e8-end', 't'],
+                 ['s8', 't9-e4-base', 't9-e4-thread', 't9-e4-end', 't19-e0-base', 't19-e0-thread', 't19-e0-end', 't29-e8-base', 't29-e8-thread', 't29-e8-end', 't'],
+                 ['s9', 't9-e4-base', 't9-e4-thread', 't9-e4-end', 't19-e0-base', 't19-e0-thread', 't19-e0-end', 't29-e8-base', 't29-e8-thread', 't29-e8-end', 't']]
 
 def on_connect(client, userdata, flags, rc):
     print("[td] connected to mqtt with result code " + str(rc))
@@ -37,27 +73,12 @@ def on_connect(client, userdata, flags, rc):
     # reconnect then subscriptions will be renewed.
     client.subscribe(controller_offloader_task_response_topic, qos=2)
 
+def on_subscribe(client, userdata, mid, granted_qos):
     offload_heteroedge(userdata["address"])
 
 def on_message(client, userdata, mqtt_message):
     message_json = json.loads(mqtt_message.payload)
-    print(message_json)
-    task_id = message_json['task_id']
-    job_id =  message_json['job_id']
-
-    # offload the next task for the job
-    next_task_index = current_submitted_task[job_id] + 3 # jump from "-base" to next "-base"
-    next_task = schedule_plan[job_id][next_task_index]
-    if next_task == 't':
-        print("done!")
-    else:
-        result = re.search(r"t(\d+)\-e(\d+)", next_task)
-        task_id = int(result.group(1))
-        executor_id = int(result.group(2))
-        offload_one(userdata["address"], 0, task_id, job_id=job_id, executor_id=executor_id)
-        current_submitted_task[job_id] = next_task_index
-
-
+    msg_queue.put(message_json)
 
 def on_disconnect(client, userdata, rc=0):
     print("DisConnected result code " + str(rc))
@@ -67,12 +88,15 @@ def connect(mqtt_client):
     mqtt_client.on_connect = on_connect
     mqtt_client.on_message = on_message
     mqtt_client.on_disconnect = on_disconnect
+    mqtt_client.on_subscribe = on_subscribe
 
     mqtt_client.connect("localhost", 1883, 60)
     mqtt_client.loop_forever()
 
 def main(args):
     if args.heteroedge:
+        Thread(target=message_queue_processor).start()
+
         mqtt_client = mqtt.Client(client_id="moffloader", clean_session=True)
         mqtt_client.user_data_set({
             "address": args.address
@@ -125,7 +149,7 @@ def offload_many(address, device_id, count, rate, extended):
         time.sleep(intertask_delay)
 
 def offload_one(address, device_id, task_id, job_id=0, executor_id=None):
-    print(f'address={address}, device_id={device_id}, task_id={task_id}, job_id={job_id}, exec_id={executor_id}')
+    # print(f'address={address}, device_id={device_id}, task_id={task_id}, job_id={job_id}, exec_id={executor_id}')
     task_data = {
         'device_id': device_id,
         'task_id': task_id,
@@ -211,7 +235,7 @@ def offload_one(address, device_id, task_id, job_id=0, executor_id=None):
 
     try:
         response = requests.post(url, data=http_post_data, headers={'Content-Type': 'application/octet-stream'})
-        print('Server says {}:', end='')
+        print('Server says:', end='')
         for line in response.iter_lines():
             print('{}'.format(line))
     except requests.exceptions.ConnectionError:
