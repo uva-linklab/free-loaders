@@ -254,12 +254,15 @@ def _selection_value(load):
 
     cpu_count = psutil.cpu_count(logical=False)
     unitary_load = min(load / cpu_count, 1)
+    # Load balancing optimization.
+    unitary_load = max(unitary_load, 0.15)
 
     max_mips = MIPSTable[__device_name()]
     # Recommended parameters.
     g = 1.2
     a = 110
-    b = 0.9
+    # b = 0.9
+    b = 0.8
 
     import math
 
