@@ -87,7 +87,7 @@ class HerosScheduler:
                 best_eid = eid
                 best_h = state['h']
 
-        print('[heros] selecting executor_id={} (h={})'.format(
+        print('[heros] selecting executor_id={} (h={:.3})'.format(
             best_eid, best_h))
 
         return best_eid
@@ -99,6 +99,7 @@ class HerosScheduler:
 def executor_is_eligible(eid, state, task):
     task_m_ins = __TaskData[task.task_id].ins / 1000000
     est_req_time = task_m_ins / _ExecutorData[eid].max_mips
+    print('[heros] est. completion time: {:.2} s'.format(est_req_time))
     cpu_good = est_req_time <= task.deadline
 
     # Memory usage
