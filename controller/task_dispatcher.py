@@ -100,6 +100,7 @@ class TaskDispatcher:
                                           message_json["state"],
                                           message_json["executor_id"],
                                           message_json["task_id"],
+                                          message_json["job_id"],
                                           message_json["status"],
                                           message_json["energy"])
 
@@ -124,6 +125,7 @@ class TaskDispatcher:
                              state_of_executor,
                              executor_id,
                              task_id,
+                             job_id,
                              status,
                              energy):
         if offload_id not in self.execution_times.keys():
@@ -169,14 +171,15 @@ class TaskDispatcher:
             "offload_id": offload_id,
             "executor_id": executor_id,
             "task_id": task_id,
+            "job_id": job_id,
             "status": status,
             "energy": energy
         }
 
         # publish this to the offloader
         self.mqtt_client.publish(controller_offloader_task_response_topic,
-                       json.dumps(response).encode('utf-8'),
-                       qos=2)
+                                 json.dumps(response).encode('utf-8'),
+                                 qos=2)
 
         # remove the offload_id's execution time, deadline, and timer from memory
         del self.execution_times[offload_id]
@@ -234,7 +237,7 @@ class TaskDispatcher:
                     wait_time = 1
                     print('[td] timeout fetching state; retrying in {} second(s)'.format(wait_time))
                     time.sleep(wait_time)
-                    
+
             print('executor loads: {}'.format([state_of_executors[eid]['cpu-load'] for eid in sorted(list(state_of_executors.keys()))]))
 
         # request rl scheduler to schedule this task
@@ -243,14 +246,16 @@ class TaskDispatcher:
 
         self.send_task_to_executer(executer_id, task)
 
+        state_of_executor = None if state_of_executors == None else state_of_executors[str(executer_id)]
         # timer to report failure if deadline elapses and executor is non-responsive
         # set to 10s after deadline (prefer failed response from executor, so wait for msg)
-        self.timers[task.offload_id] = Timer(task.deadline / 1000 + 10,
+        self.timers[task.offload_id] = Timer((2 * task.deadline) / 1000 + 10,
                                              self.handle_task_response,
                                              args=[task.offload_id,
-                                                   state_of_executors[str(executer_id)],
+                                                   state_of_executor,
                                                    executer_id,
                                                    task.task_id,
+                                                   task.job_id,
                                                    -1000,  # indicate failure
                                                    0.0])
         self.timers[task.offload_id].start()
