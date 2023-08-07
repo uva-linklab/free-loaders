@@ -6,6 +6,7 @@ import sys
 import threading
 import time
 from multiprocessing import Process, Pipe
+from threading import Timer
 
 import flomqtt.serialize as flserialize
 import paho.mqtt.client
@@ -152,70 +153,70 @@ def __execute_task(client, executor_id, power, task_request, additional_data):
     return thread
 
 # Task execution timeout.
-ExecutionTimeout = 2 * 60
+# ExecutionTimeout = 2 * 60
 
 def __executor_task_entry(mqtt_client, executor_id, power, task_request, additional_data):
     # log.i(f'offload_id={task_request["offload_id"]}. in __executor_task_entry')
     (p_recv, p_send) = Pipe([False])
-    process = Process(target=__process_task_entry, args=(p_send, executor_id, power, task_request, additional_data))
-    # log.i(f'offload_id={task_request["offload_id"]}. created process object')
-    try:
-        # log.i(f'offload_id={task_request["offload_id"]}. before process.start()')
-        process.start()
-        # log.i(f'offload_id={task_request["offload_id"]}. finished process.start(). PID={process.pid}. process.is_alive()={process.is_alive()}')
+    process = Process(target=__process_task_entry, args=(p_send, executor_id, power, task_request, additional_data), daemon=True)
 
-        p_send.close()
-
-        # log.i(f'offload_id={task_request["offload_id"]}. finished p_send.close()')
-
-        result = p_recv.recv()  # block and waits for data from the process
-
-        # log.i(f'offload_id={task_request["offload_id"]}. finished result = p_recv.recv()')
-
-        process.join(ExecutionTimeout)  # wait for process to finish up
-        log.i(f'offload_id={task_request["offload_id"]}. after process.join()')
-        # check if the process exited
-        if process.exitcode is not None:
-            log.i(f'offload_id={task_request["offload_id"]}. process finished gracefully.')
-            mqtt_client.publish(MQTTTopicTaskResponse,
-                                result,
-                                qos=2)
-        else:
-            process.terminate()
-            log.i(f'offload_id={task_request["offload_id"]}. process failed to join. timed out. terminated.')
-            current_state = stats.fetch()
-            response = {
-                'executor_id': task_request['executer_id'],
-                'task_id': task_request['task_id'],
-                'offload_id': task_request['offload_id'],
-                'state': current_state,
-                'energy': power * ExecutionTimeout,
-                'status': process.exitcode  # inform the controller that we failed
-            }
-            mqtt_client.publish(MQTTTopicTaskResponse,
-                                flserialize.pack(json.dumps(response), b''),
-                                qos=2)
-            log.i(f'offload_id={task_request["offload_id"]}. finished mqtt_client.publish')
-
-    except (EOFError, OSError):
-        log.e(f'offload_id={task_request["offload_id"]}. process failed with exit code = {process.exitcode}')
-        # Collect current state and send it, along with the result.
+    def timeout_func():
+        process.terminate()
+        log.i(f'offload_id={task_request["offload_id"]}. process timed out. terminated.')
         current_state = stats.fetch()
         response = {
             'executor_id': task_request['executer_id'],
             'task_id': task_request['task_id'],
+            'job_id': task_request['job_id'],
             'offload_id': task_request['offload_id'],
             'state': current_state,
-            'energy': 0,
+            'energy': power * deadline_sec,
             'status': process.exitcode  # inform the controller that we failed
         }
         mqtt_client.publish(MQTTTopicTaskResponse,
                             flserialize.pack(json.dumps(response), b''),
                             qos=2)
         log.i(f'offload_id={task_request["offload_id"]}. finished mqtt_client.publish')
-    except Exception as error:
-        log.i(f'offload_id={task_request["offload_id"]}. hit exception!')
-        log.e(error)
+
+    # set a timer thread to ensure we kill this process when deadline has elapsed
+    deadline_sec = task_request["deadline"] / 1000
+    timer = Timer(2 * deadline_sec, timeout_func)
+    timer.start()
+
+    try:
+        process.start()
+        p_send.close()
+        result = p_recv.recv()  # block and waits for data from the process
+
+        process.join()  # wait for process to finish up
+        log.i(f'offload_id={task_request["offload_id"]}. after process.join()')
+        # check if the process exited
+        if process.exitcode is not None:
+            timer.cancel()
+            log.i(f'offload_id={task_request["offload_id"]}. process finished gracefully.')
+            mqtt_client.publish(MQTTTopicTaskResponse,
+                                result,
+                                qos=2)
+
+    except (EOFError, OSError):
+        log.e(f'offload_id={task_request["offload_id"]}. process failed.')
+        # Collect current state and send it, along with the result.
+        # current_state = stats.fetch()
+        # response = {
+        #     'executor_id': task_request['executer_id'],
+        #     'task_id': task_request['task_id'],
+        #     'offload_id': task_request['offload_id'],
+        #     'state': current_state,
+        #     'energy': 0,
+        #     'status': process.exitcode  # inform the controller that we failed
+        # }
+        # mqtt_client.publish(MQTTTopicTaskResponse,
+        #                     flserialize.pack(json.dumps(response), b''),
+        #                     qos=2)
+        # log.i(f'offload_id={task_request["offload_id"]}. finished mqtt_client.publish')
+    # except Exception as error:
+    #     log.i(f'offload_id={task_request["offload_id"]}. hit exception!')
+    #     log.e(error)
     finally:
         # log.i(f'offload_id={task_request["offload_id"]}. in finally block')
         p_recv.close()
@@ -362,6 +363,7 @@ def __process_task_entry(pipe, executor_id, power, task_request, additional_data
     response_json = json.dumps({
         'executor_id': task_request['executer_id'],
         'task_id': task_request['task_id'],
+        'job_id': task_request['job_id'],
         'offload_id': task_request['offload_id'],
         'state': current_state,
         'energy': power * (end_time - start_time),

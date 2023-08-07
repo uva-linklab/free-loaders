@@ -7,6 +7,7 @@ from aiohttp import ClientTimeout
 from aiohttp import ServerTimeoutError
 import time
 import flomqtt.serialize as flserialize
+from threading import Timer
 
 executer_server_port = 8088
 
@@ -52,6 +53,7 @@ class TaskDispatcher:
         self.mqtt_client = mqtt.Client(client_id="fl-controller", clean_session=False)
         self.execution_times = {}  # offload_id -> start_time
         self.deadlines = {}  # offload_id -> deadline
+        self.timers = {}  # offload_id -> Timer
         self.deadlines_met = 0
         self.finished_tasks = 0
         self.failed_tasks = 0
@@ -64,8 +66,6 @@ class TaskDispatcher:
         # initialize the scheduler's feedback consumer thread
         if self.scheduler.needs_feedback:
             Thread(target=scheduler.feedback_consumer).start()
-
-
 
     def on_connect(self, client, userdata, flags, rc):
         print("[td] connected to mqtt with result code " + str(rc))
@@ -95,61 +95,14 @@ class TaskDispatcher:
             if topic == offloader_controller_feedback_response_topic:
                 pass
             elif topic == executer_controller_task_response_topic:
-                # get the response
-                offload_id = message_json["offload_id"]
-                state_of_executor = message_json["state"]
-                executor_id = message_json["executor_id"]
-                task_id = message_json["task_id"]
-                status = message_json["status"]
-                energy = message_json["energy"]
-
-                if offload_id not in self.execution_times.keys():
-                    # ignore a response if we're not expecting it
-                    print(f"[td] ignored response for task (offload_id={offload_id}, task_id={task_id}) from executer_id={executor_id}")
-                    return
-
-                # compute execution time
-                exec_time_ms = (time.time() - self.execution_times[offload_id]) * 1000
-                deadline = self.deadlines[offload_id]
-
-                if status != 0:
-                    # execution failed to finish
-                    print(f"[td] failed task(offload_id={offload_id}, task_id={task_id}) on executer_id={executor_id}, status={status}. deadline={deadline}, deadline_met={False}")
-                    self.failed_tasks += 1
-                else:
-                    print(f"[td] finished task(offload_id={offload_id}, task_id={task_id}) on executer_id={executor_id}."
-                          f" time(ms)={exec_time_ms}, deadline={deadline}, deadline_met={exec_time_ms <= deadline},"
-                          f" energy={energy}")
-                    self.finished_tasks += 1
-                    deadline_met = exec_time_ms <= deadline
-                    self.deadlines_met += (1 if deadline_met else 0)
-
-                dsr = self.deadlines_met/(self.finished_tasks+self.failed_tasks)
-                print(f"[td] deadlines_met={self.deadlines_met}, finished_tasks={self.finished_tasks}, failed_tasks={self.failed_tasks}, pending_tasks={self.total_tasks-(self.finished_tasks+self.failed_tasks)}, dsr={dsr}")
-
-                # # give the feedback to the rl scheduler
-                if self.scheduler.needs_feedback:
-                    self.scheduler.feedback_q.put({
-                        "offload_id": offload_id,
-                        "exec_id": str(executor_id),
-                        "status": status,
-                        "exec_time": exec_time_ms,
-                        "energy": energy,
-                        "new_state_of_executor": state_of_executor
-                    })
-
-                del message_json["state"] # exclude state from being sent to the offloader
-                # publish this to the offloader
-                client.publish(controller_offloader_task_response_topic,
-                               json.dumps(message_json).encode('utf-8'),
-                               qos=2)
-
-                # remove the offload_id's execution time and deadline from memory
-                del self.execution_times[offload_id]
-                del self.deadlines[offload_id]
-
-                print('[td] pending (eid): {}'.format(['{} ({})'.format(k, Assignments.get(k, '?')) for k in self.execution_times.keys()]))
-                #print(f"[td] pending task offload_ids: {self.execution_times.keys()}")
+                # cancel timer for task offload_id
+                self.handle_task_response(message_json["offload_id"],
+                                          message_json["state"],
+                                          message_json["executor_id"],
+                                          message_json["task_id"],
+                                          message_json["job_id"],
+                                          message_json["status"],
+                                          message_json["energy"])
 
 
     def on_disconnect(self, client, userdata, rc=0):
@@ -167,6 +120,75 @@ class TaskDispatcher:
     def on_publish(self, client,userdata,result):
         print("data published \n")
 
+    def handle_task_response(self,
+                             offload_id,
+                             state_of_executor,
+                             executor_id,
+                             task_id,
+                             job_id,
+                             status,
+                             energy):
+        if offload_id not in self.execution_times.keys():
+            # ignore a response if we're not expecting it
+            print(f"[td] ignored response for task (offload_id={offload_id}, task_id={task_id}) from executer_id={executor_id}")
+            return
+
+        # cancel timer
+        self.timers[offload_id].cancel()
+        print(f"[td] canceled timer for task (offload_id={offload_id}, task_id={task_id}) from executer_id={executor_id}")
+
+        # compute execution time
+        exec_time_ms = (time.time() - self.execution_times[offload_id]) * 1000
+        deadline = self.deadlines[offload_id]
+
+        if status != 0:
+            # execution failed to finish
+            print(f"[td] failed task(offload_id={offload_id}, task_id={task_id}) on executer_id={executor_id}, status={status}. deadline={deadline}, deadline_met={False}")
+            self.failed_tasks += 1
+        else:
+            print(f"[td] finished task(offload_id={offload_id}, task_id={task_id}) on executer_id={executor_id}."
+                  f" time(ms)={exec_time_ms}, deadline={deadline}, deadline_met={exec_time_ms <= deadline},"
+                  f" energy={energy}")
+            self.finished_tasks += 1
+            deadline_met = exec_time_ms <= deadline
+            self.deadlines_met += (1 if deadline_met else 0)
+
+        dsr = self.deadlines_met/(self.finished_tasks+self.failed_tasks)
+        print(f"[td] deadlines_met={self.deadlines_met}, finished_tasks={self.finished_tasks}, failed_tasks={self.failed_tasks}, pending_tasks={self.total_tasks-(self.finished_tasks+self.failed_tasks)}, dsr={dsr}")
+
+        # # give the feedback to the rl scheduler
+        if self.scheduler.needs_feedback:
+            self.scheduler.feedback_q.put({
+                "offload_id": offload_id,
+                "exec_id": str(executor_id),
+                "status": status,
+                "exec_time": exec_time_ms,
+                "energy": energy,
+                "new_state_of_executor": state_of_executor
+            })
+
+        response = {
+            "offload_id": offload_id,
+            "executor_id": executor_id,
+            "task_id": task_id,
+            "job_id": job_id,
+            "status": status,
+            "energy": energy
+        }
+
+        # publish this to the offloader
+        self.mqtt_client.publish(controller_offloader_task_response_topic,
+                                 json.dumps(response).encode('utf-8'),
+                                 qos=2)
+
+        # remove the offload_id's execution time, deadline, and timer from memory
+        del self.execution_times[offload_id]
+        del self.deadlines[offload_id]
+        del self.timers[offload_id]
+
+        print('[td] pending (eid): {}'.format(['{} ({})'.format(k, Assignments.get(k, '?')) for k in self.execution_times.keys()]))
+        #print(f"[td] pending task offload_ids: {self.execution_times.keys()}")
+
     def send_task_to_executer(self, executer_id, task):
         # publish on mqtt to executer
         # assumption: each executer knows its id
@@ -174,6 +196,8 @@ class TaskDispatcher:
             "executer_id": executer_id,
             "offload_id": task.offload_id,
             "task_id": task.task_id,
+            "job_id": task.job_id,
+            "deadline": task.deadline
         })
 
         # task.input_data is already in bytes
@@ -191,7 +215,7 @@ class TaskDispatcher:
         return dict(asyncio.run(make_requests(url_tuples=url_tuples)))
 
     def submit_task(self, task):
-        print(f"[td] new task(offload_id={task.offload_id}, task_id={task.task_id}, deadline={task.deadline})")
+        print(f"[td] new task(offload_id={task.offload_id}, task_id={task.task_id}, job_id={task.job_id}, deadline={task.deadline})")
 
         self.execution_times[task.offload_id] = time.time()
         self.deadlines[task.offload_id] = task.deadline
@@ -213,7 +237,7 @@ class TaskDispatcher:
                     wait_time = 1
                     print('[td] timeout fetching state; retrying in {} second(s)'.format(wait_time))
                     time.sleep(wait_time)
-                    
+
             print('executor loads: {}'.format([state_of_executors[eid]['cpu-load'] for eid in sorted(list(state_of_executors.keys()))]))
 
         # request rl scheduler to schedule this task
@@ -221,4 +245,18 @@ class TaskDispatcher:
         Assignments[task.offload_id] = executer_id
 
         self.send_task_to_executer(executer_id, task)
+
+        state_of_executor = None if state_of_executors == None else state_of_executors[str(executer_id)]
+        # timer to report failure if deadline elapses and executor is non-responsive
+        # set to 10s after deadline (prefer failed response from executor, so wait for msg)
+        self.timers[task.offload_id] = Timer((2 * task.deadline) / 1000 + 10,
+                                             self.handle_task_response,
+                                             args=[task.offload_id,
+                                                   state_of_executor,
+                                                   executer_id,
+                                                   task.task_id,
+                                                   task.job_id,
+                                                   -1000,  # indicate failure
+                                                   0.0])
+        self.timers[task.offload_id].start()
         self.total_tasks += 1

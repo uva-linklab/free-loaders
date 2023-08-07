@@ -81,6 +81,8 @@ class RLScheduler:
         if os.path.exists(rewards_csv_file):
             os.remove(rewards_csv_file)
 
+        print(f'[rls] started rl scheduler with alpha={self.alpha},threshold={self.threshold},epoch_num={self.epoch_num},memory_size={self.memory_size},batch_size={self.batch_size},epsilon={self.epsilon},epsilon_decrease={self.epsilon_decrease},epsilon_min={self.epsilon_min},start_reduce_epsilon={self.start_reduce_epsilon},train_freq={self.train_freq},gamma={self.gamma},show_log_freq={self.show_log_freq}')
+
     def save_state(self, task, state, act):
 
         self.state_table[task.offload_id] = [task, state, act, task.deadline]
@@ -115,7 +117,7 @@ class RLScheduler:
     def generate_reward(self, deadline, exec_time, status, energy):
 
         if status !=0:
-            return -10
+            return -1
 
         if exec_time > deadline:
             reward = self.alpha*(-np.tanh(exec_time/deadline)) + (1-self.alpha)*(-(energy/self.threshold))

@@ -9,12 +9,13 @@ from schedulers.time_wrr_scheduler import TimeWRRScheduler
 from schedulers.energy_wrr_scheduler import EnergyWRRScheduler
 from schedulers.load_balancing_scheduler import LoadBalancingScheduler
 from schedulers.heros import HerosScheduler
+from schedulers.heteroedge_online import HeteroedgeScheduler
 from classes.executer import Executer
 
 ap = argparse.ArgumentParser(description='fReeLoaders controller.')
 ap.add_argument('-s', '--scheduler', help='Set the scheduler.',
                 metavar='SCHEDULER',
-                choices=['rl', 'random', 'time-greedy', 'energy-greedy', 'time-wrr', 'energy-wrr', 'load-bal', 'heros'],
+                choices=['rl', 'random', 'time-greedy', 'energy-greedy', 'time-wrr', 'energy-wrr', 'load-bal', 'heteroedge', 'heros'],
                 dest='scheduler', default='rl')
 args = ap.parse_args()
 
@@ -24,14 +25,14 @@ executers = {
     1: Executer(1, "172.27.150.233"),  # rpi3
     2: Executer(2, "172.27.134.111"),  # rpi3
 
-    3: Executer(3, "172.27.162.206"),  # rpi4
+    3: Executer(3, "172.27.190.174"),  # rpi4
     4: Executer(4, "172.27.139.169"),  # rpi4
-    5: Executer(5, "172.27.129.215"),  # rpi4
-    6: Executer(6, "172.27.184.237"),  # rpi4
+    5: Executer(5, "172.27.190.243"),  # rpi4
+    6: Executer(6, "172.27.136.74"),  # rpi4
     7: Executer(7, "172.27.175.173"),  # rpi4
 
     8: Executer(8, "172.27.130.255"),  # tx2
-    9: Executer(9, "172.27.133.131"),  # desktop
+    9: Executer(9, "172.27.156.67"),  # desktop
 }
 
 scheduler = None
@@ -52,6 +53,8 @@ elif args.scheduler == "load-bal":
     scheduler = LoadBalancingScheduler(executers)
 elif args.scheduler == "heros":
     scheduler = HerosScheduler(executers)
+elif args.scheduler == "heteroedge":
+    scheduler = HeteroedgeScheduler(executers)
 
 print(f'[controller] using {args.scheduler} scheduler')
 
