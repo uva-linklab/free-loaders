@@ -24,7 +24,7 @@ class AdaptiveScheduler:
             self.primary = self.get_primary(before_state)
 
         # check if primary is overloaded
-        if self.is_overloaded()
+        # if self.is_overloaded()
         return 0
 
     # status = 0 => successful task, status != 0 => failed task

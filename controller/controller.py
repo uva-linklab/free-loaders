@@ -10,6 +10,7 @@ from schedulers.energy_wrr_scheduler import EnergyWRRScheduler
 from schedulers.load_balancing_scheduler import LoadBalancingScheduler
 from schedulers.heros import HerosScheduler
 from schedulers.heteroedge_online import HeteroedgeScheduler
+from schedulers.adaptive_scheduler import AdaptiveScheduler
 from classes.executer import Executer
 
 ap = argparse.ArgumentParser(description='fReeLoaders controller.')
@@ -56,6 +57,8 @@ elif args.scheduler == "heros":
     scheduler = HerosScheduler(executers)
 elif args.scheduler == "heteroedge":
     scheduler = HeteroedgeScheduler(executers)
+elif args.scheduler == "adpt-lb":
+    scheduler = AdaptiveScheduler(executers)
 
 print(f'[controller] using {args.scheduler} scheduler')
 
