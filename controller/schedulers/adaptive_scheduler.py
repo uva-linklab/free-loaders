@@ -1,3 +1,4 @@
+import queue
 # algorithm which tries to outperform RL purely based on balancing the load
 #
 # - use most capable as the primary.
@@ -11,6 +12,7 @@ class AdaptiveScheduler:
         self.needs_before_state = True
         self.needs_feedback = True
         self.primary = None
+        self.feedback_q = queue.Queue()
 
     def get_primary(self, before_state):
         return 0
@@ -31,3 +33,16 @@ class AdaptiveScheduler:
     def task_finished(self, offload_id, exec_id, status, exec_time, energy, new_state_of_executor):
         pass
 
+    def feedback_consumer(self):
+        print("[adpt-lb] starting feedback consumer")
+        while True:
+            item = self.feedback_q.get()
+
+            self.task_finished(item["offload_id"],
+                               item["exec_id"],
+                               item["status"],
+                               item["exec_time"],
+                               item["energy"],
+                               item["new_state_of_executor"])
+
+            self.feedback_q.task_done()
