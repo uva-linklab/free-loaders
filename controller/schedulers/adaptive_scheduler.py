@@ -5,7 +5,6 @@ import queue
 # - If there are other executors available and not loaded, use them instead of primary.
 # - If they can’t do the task, then don’t pick them again.
 
-MAX_ACTIVE_TASKS = 5
 MAX_NORM_CPU_LOAD = 0.75
 
 class AdaptiveScheduler:
@@ -45,7 +44,9 @@ class AdaptiveScheduler:
 
             print(f'no. of active tasks on e{executor} = {self.no_of_active_tasks[executor]}')
 
-            if self.no_of_active_tasks[executor] < MAX_ACTIVE_TASKS and \
+            # 1. don't schedule more tasks than the no. of available cpus
+            # 2. don't schedule if 1min avg normalized cpu load is higher than 0.75
+            if self.no_of_active_tasks[executor] < cpu_counts[executor] and \
                     normalized_loads[executor][1] < MAX_NORM_CPU_LOAD:
                 return executor
 
@@ -59,6 +60,7 @@ class AdaptiveScheduler:
     def schedule(self, before_state, task):
         executor = self.get_executor_candidate(before_state)
         self.no_of_active_tasks[executor] += 1
+        print(f'[adpt-lb] scheduled task(offload_id={task.offload_id}, task_id={task.task_id}) on executer_id={executor}')
         return executor
 
     # status = 0 => successful task, status != 0 => failed task
