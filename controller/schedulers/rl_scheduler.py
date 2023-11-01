@@ -19,7 +19,7 @@ class RLScheduler:
 
     def __init__(self, executers):
         self.executers = executers
-        self.alpha = 1.0
+        self.alpha = 0.0
         self.threshold = 200
         self.q_lock = threading.Lock()
         self.needs_before_state = True
@@ -61,7 +61,7 @@ class RLScheduler:
         self.epoch_num = 5
         self.memory_size = 100
         self.batch_size = 10
-        self.epsilon = 0.0
+        self.epsilon = 0.9
         self.epsilon_decrease = 1e-3
         self.epsilon_min = 0.0
         self.start_reduce_epsilon = 500
@@ -156,7 +156,7 @@ class RLScheduler:
         return pact
 
 
-    def task_finished(self, offload_id, exec_id, status, exec_time, energy, new_state_of_executor):
+    def task_finished(self, offload_id, exec_id, task_id, status, exec_time, energy, new_state_of_executor):
         # status = 0 => successful task, status != 0 => failed task
 
         task, before_state, pact, deadline = self.get_saved_state(offload_id)
@@ -232,6 +232,7 @@ class RLScheduler:
 
             self.task_finished(item["offload_id"],
                                item["exec_id"],
+                               item["task_id"],
                                item["status"],
                                item["exec_time"],
                                item["energy"],

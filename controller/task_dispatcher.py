@@ -8,6 +8,7 @@ from aiohttp import ServerTimeoutError
 import time
 import flomqtt.serialize as flserialize
 from threading import Timer
+from schedulers.rl_scheduler import RLScheduler
 
 executer_server_port = 8088
 
@@ -158,9 +159,13 @@ class TaskDispatcher:
 
         # # give the feedback to the rl scheduler
         if self.scheduler.needs_feedback:
+            if isinstance(self.scheduler, RLScheduler):
+                del state_of_executor['h']
+
             self.scheduler.feedback_q.put({
                 "offload_id": offload_id,
                 "exec_id": str(executor_id),
+                "task_id": task_id,
                 "status": status,
                 "exec_time": exec_time_ms,
                 "energy": energy,
@@ -240,11 +245,15 @@ class TaskDispatcher:
 
             print('executor loads: {}'.format([state_of_executors[eid]['cpu-load'] for eid in sorted(list(state_of_executors.keys()))]))
 
+            if isinstance(self.scheduler, RLScheduler):
+                for value in state_of_executors.values():
+                    del value['h']
+
         # request rl scheduler to schedule this task
         executer_id = self.scheduler.schedule(state_of_executors, task)
         Assignments[task.offload_id] = executer_id
 
-        self.send_task_to_executer(executer_id, task)
+        Thread(target=self.send_task_to_executer, args=(executer_id, task,)).start()
 
         state_of_executor = None if state_of_executors == None else state_of_executors[str(executer_id)]
         # timer to report failure if deadline elapses and executor is non-responsive
