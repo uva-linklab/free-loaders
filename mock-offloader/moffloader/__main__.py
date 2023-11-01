@@ -11,6 +11,7 @@ import flomqtt.serialize as flserialize
 from threading import Thread
 import paho.mqtt.client as mqtt
 import queue
+from PIL import Image
 
 ControllerHTTPPort = 8001
 DeadlineMod = 1.0
@@ -185,41 +186,65 @@ def offload_one(address, device_id, task_id, job_id=0, executor_id=None):
         samples = np.random.rand(44100 * (task_id - 19) * 3)
         input_data_bytes = np.array(samples, dtype=adt).tobytes()
 
-    elif task_id < 40:
-        # For loop + matrix multiplication
-        task_data['deadline'] = (task_id - 30) * ((4350 - 925) / 9) + 925
-        task_data['deadline'] += (task_id - 30) * ((20000 - 8250) / 9) + 8250
+    elif task_id == 30:  # Object detection (AR headset)
+        task_data['deadline'] = 10000
+        # randomly select image from directory
+        input_img_index = random.randint(1, 3)
+        filename = f"./test{input_img_index}.jpg"
 
-        iters = (task_id - 29) * 1000000
+        image = Image.open(filename)
+        # convert image to numpy array
+        input_data_bytes = np.asarray(image)
 
-        size = 750 + (83 * (task_id - 30))
-        m1_bytes = np.random.randint(low=1, high=256, size=(size,size), dtype=adt).tobytes()
-        m2_bytes = np.random.randint(low=1, high=256, size=(size,size), dtype=adt).tobytes()
+    elif task_id == 31:  # Room classification (robot)
+        task_data['deadline'] = 5000
+        # randomly select image from directory
 
-        input_data_bytes = struct.pack('II', iters, len(m1_bytes)) + m1_bytes + m2_bytes
+        # convert to bytes
+        input_data_bytes = []
 
-    elif task_id < 50:
-        # For loop + FFT
-        task_data['deadline'] = (task_id - 40) * ((4350 - 925) / 9) + 925
-        task_data['deadline'] += (task_id - 40) * ((6000 - 2600) / 9) + 2600
+    elif task_id == 32:  # Human Activity Recognition (smart watch)
+        task_data['deadline'] = 7500
 
-        iters = (task_id - 29) * 1000000
-        samples = np.random.rand(44100 * (task_id - 39) * 3)
-        input_data_bytes = struct.pack('I', iters) + np.array(samples, dtype=adt).tobytes()
+        # randomly generate HAR sample
+        samples = np.random.rand(44100 * (task_id - 19) * 3)
+        input_data_bytes = np.array(samples, dtype=adt).tobytes()
 
-    elif task_id < 60:
-        # Matrix multiplication + FFT
-        task_data['deadline'] = (task_id - 50) * ((20000 - 8250) / 9) + 8250
-        task_data['deadline'] += (task_id - 50) * ((6000 - 2600) / 9) + 2600
-
-        size = 750 + (83 * (task_id - 50))
-        m1_bytes = np.random.randint(low=1, high=256, size=(size,size), dtype=adt).tobytes()
-        m2_bytes = np.random.randint(low=1, high=256, size=(size,size), dtype=adt).tobytes()
-
-        samples = np.random.rand(44100 * (task_id - 49) * 3)
-        sample_bytes = np.array(samples, dtype=adt).tobytes()
-
-        input_data_bytes = struct.pack('I', len(m1_bytes)) + m1_bytes + m2_bytes + sample_bytes
+    # elif task_id < 40:
+    #     # For loop + matrix multiplication
+    #     task_data['deadline'] = (task_id - 30) * ((4350 - 925) / 9) + 925
+    #     task_data['deadline'] += (task_id - 30) * ((20000 - 8250) / 9) + 8250
+    #
+    #     iters = (task_id - 29) * 1000000
+    #
+    #     size = 750 + (83 * (task_id - 30))
+    #     m1_bytes = np.random.randint(low=1, high=256, size=(size,size), dtype=adt).tobytes()
+    #     m2_bytes = np.random.randint(low=1, high=256, size=(size,size), dtype=adt).tobytes()
+    #
+    #     input_data_bytes = struct.pack('II', iters, len(m1_bytes)) + m1_bytes + m2_bytes
+    #
+    # elif task_id < 50:
+    #     # For loop + FFT
+    #     task_data['deadline'] = (task_id - 40) * ((4350 - 925) / 9) + 925
+    #     task_data['deadline'] += (task_id - 40) * ((6000 - 2600) / 9) + 2600
+    #
+    #     iters = (task_id - 29) * 1000000
+    #     samples = np.random.rand(44100 * (task_id - 39) * 3)
+    #     input_data_bytes = struct.pack('I', iters) + np.array(samples, dtype=adt).tobytes()
+    #
+    # elif task_id < 60:
+    #     # Matrix multiplication + FFT
+    #     task_data['deadline'] = (task_id - 50) * ((20000 - 8250) / 9) + 8250
+    #     task_data['deadline'] += (task_id - 50) * ((6000 - 2600) / 9) + 2600
+    #
+    #     size = 750 + (83 * (task_id - 50))
+    #     m1_bytes = np.random.randint(low=1, high=256, size=(size,size), dtype=adt).tobytes()
+    #     m2_bytes = np.random.randint(low=1, high=256, size=(size,size), dtype=adt).tobytes()
+    #
+    #     samples = np.random.rand(44100 * (task_id - 49) * 3)
+    #     sample_bytes = np.array(samples, dtype=adt).tobytes()
+    #
+    #     input_data_bytes = struct.pack('I', len(m1_bytes)) + m1_bytes + m2_bytes + sample_bytes
 
     else:
         print('bad task ID: {}'.format(task_id))
