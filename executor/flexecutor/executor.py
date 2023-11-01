@@ -15,6 +15,7 @@ import config
 import stats
 from tasker.loop import run_loop_task
 from tasker.fft import run_fft_task
+from tasker.obj_detection import run_obj_detection_task
 
 # MQTT server port; fixed to 1883.
 MQTTServerPort = 1883
@@ -238,12 +239,10 @@ def __process_task_entry(pipe, executor_id, power, task_request, additional_data
     start_time = time.time()
     # log.i(f'offload_id={task_request["offload_id"]}. executing task')
     # Execute task here.
-    # TODO: update tasks that need to use data from files.
     task_id = task_request['task_id']
 
     res_data = b''
-    # TODO: remove hardcoding
-    cuda_executors = [0, 8, 9]
+    cupy_executors = [9]
 
     if task_id < 10:
         # Additional data is the value to start loop iterations with.
@@ -257,7 +256,7 @@ def __process_task_entry(pipe, executor_id, power, task_request, additional_data
         matrix_b_bytes = additional_data[(4+first_matrix_data_len):]
 
         # Recover the matrices, including their lost shape.
-        if executor_id in cuda_executors:
+        if executor_id in cupy_executors:
             import cupy as np
             from tasker.mm_gpu import run_mm_task_gpu
             mm_fn = run_mm_task_gpu
@@ -281,77 +280,105 @@ def __process_task_entry(pipe, executor_id, power, task_request, additional_data
         adt = np.dtype('<i4')
         samples = np.frombuffer(additional_data, adt)
         res_data = run_fft_task(samples).tobytes()
-    elif task_id < 40:
-        import numpy as np
-        loop_iter_count = struct.unpack('I', additional_data[:4])[0]
-        res1 = run_loop_task(loop_iter_count)
 
-        first_matrix_data_len = struct.unpack('I', additional_data[4:8])[0]
-        matrix_a_bytes = additional_data[8:(8+first_matrix_data_len)]
-        matrix_b_bytes = additional_data[(8+first_matrix_data_len):]
-
-        # Recover the matrices, including their lost shape.
-        if executor_id in cuda_executors:
-            import cupy as np
-            from tasker.mm_gpu import run_mm_task_gpu
-            mm_fn = run_mm_task_gpu
-        else:
-            import numpy as np
-            from tasker.mm import run_mm_task
-            mm_fn = run_mm_task
-
-        import math
-        adt = np.dtype('<i4')
-        arr_a = np.frombuffer(matrix_a_bytes, adt)
-        arr_b = np.frombuffer(matrix_b_bytes, adt)
-        # We are guaranteed to have square matrices for this evaluation.
-        dim = int(math.sqrt(len(arr_a)))
-        log.d('Matrices are {}x{}'.format(dim, dim))
-        res2 = mm_fn(arr_a.reshape((dim, dim)),
-                     arr_b.reshape((dim, dim))).tobytes()
-
-        res_data = struct.pack('I', res1) + res2
-    elif task_id < 50:
-        loop_iter_count = struct.unpack('I', additional_data[:4])[0]
-        res1 = run_loop_task(loop_iter_count)
+    elif task_id == 30:  # object detection
+        # Additional data is the length of the first matrix, the first matrix, and the second matrix.
+        r = struct.unpack('I', additional_data[:4])[0]
+        g = struct.unpack('I', additional_data[4:8])[0]
+        b = struct.unpack('I', additional_data[8:12])[0]
+        image_bytes = additional_data[12:]
 
         import numpy as np
         adt = np.dtype('<i4')
-        samples = np.frombuffer(additional_data[4:], adt)
-        res2 = run_fft_task(samples).tobytes()
+        image_np = np.frombuffer(image_bytes, adt).reshape((r, g, b))
 
-        res_data = struct.pack('I', res1) + res2
-    elif task_id < 60:
+        res_data = run_obj_detection_task(image_np.astype('float32')).encode('utf-8')
+
+    elif task_id == 31:
+        # Additional data is the signal samples.
         import numpy as np
-        first_matrix_data_len = struct.unpack('I', additional_data[:4])[0]
-        matrix_a_bytes = additional_data[4:(4+first_matrix_data_len)]
-        matrix_b_bytes = additional_data[(4+first_matrix_data_len):(4+first_matrix_data_len+first_matrix_data_len)]
-
-        # Recover the matrices, including their lost shape.
-        if executor_id in cuda_executors:
-            import cupy as np
-            from tasker.mm_gpu import run_mm_task_gpu
-            mm_fn = run_mm_task_gpu
-        else:
-            import numpy as np
-            from tasker.mm import run_mm_task
-            mm_fn = run_mm_task
-
-        import math
         adt = np.dtype('<i4')
-        arr_a = np.frombuffer(matrix_a_bytes, adt)
-        arr_b = np.frombuffer(matrix_b_bytes, adt)
-        # We are guaranteed to have square matrices for this evaluation.
-        dim = int(math.sqrt(len(arr_a)))
-        log.d('Matrices are {}x{}'.format(dim, dim))
-        res1 = mm_fn(arr_a.reshape((dim, dim)),
-                     arr_b.reshape((dim, dim))).tobytes()
+        samples = np.frombuffer(additional_data, adt)
+        res_data = run_fft_task(samples).tobytes()
 
+    elif task_id == 32:
+        # Additional data is the signal samples.
+        import numpy as np
         adt = np.dtype('<i4')
-        samples = np.frombuffer(additional_data[(4+(first_matrix_data_len*2)):], adt)
-        res2 = run_fft_task(samples).tobytes()
+        samples = np.frombuffer(additional_data, adt)
+        res_data = run_fft_task(samples).tobytes()
 
-        res_data = res1 + res2
+    # elif task_id < 40:
+    #     import numpy as np
+    #     loop_iter_count = struct.unpack('I', additional_data[:4])[0]
+    #     res1 = run_loop_task(loop_iter_count)
+    #
+    #     first_matrix_data_len = struct.unpack('I', additional_data[4:8])[0]
+    #     matrix_a_bytes = additional_data[8:(8+first_matrix_data_len)]
+    #     matrix_b_bytes = additional_data[(8+first_matrix_data_len):]
+    #
+    #     # Recover the matrices, including their lost shape.
+    #     if executor_id in cuda_executors:
+    #         import cupy as np
+    #         from tasker.mm_gpu import run_mm_task_gpu
+    #         mm_fn = run_mm_task_gpu
+    #     else:
+    #         import numpy as np
+    #         from tasker.mm import run_mm_task
+    #         mm_fn = run_mm_task
+    #
+    #     import math
+    #     adt = np.dtype('<i4')
+    #     arr_a = np.frombuffer(matrix_a_bytes, adt)
+    #     arr_b = np.frombuffer(matrix_b_bytes, adt)
+    #     # We are guaranteed to have square matrices for this evaluation.
+    #     dim = int(math.sqrt(len(arr_a)))
+    #     log.d('Matrices are {}x{}'.format(dim, dim))
+    #     res2 = mm_fn(arr_a.reshape((dim, dim)),
+    #                  arr_b.reshape((dim, dim))).tobytes()
+    #
+    #     res_data = struct.pack('I', res1) + res2
+    # elif task_id < 50:
+    #     loop_iter_count = struct.unpack('I', additional_data[:4])[0]
+    #     res1 = run_loop_task(loop_iter_count)
+    #
+    #     import numpy as np
+    #     adt = np.dtype('<i4')
+    #     samples = np.frombuffer(additional_data[4:], adt)
+    #     res2 = run_fft_task(samples).tobytes()
+    #
+    #     res_data = struct.pack('I', res1) + res2
+    # elif task_id < 60:
+    #     import numpy as np
+    #     first_matrix_data_len = struct.unpack('I', additional_data[:4])[0]
+    #     matrix_a_bytes = additional_data[4:(4+first_matrix_data_len)]
+    #     matrix_b_bytes = additional_data[(4+first_matrix_data_len):(4+first_matrix_data_len+first_matrix_data_len)]
+    #
+    #     # Recover the matrices, including their lost shape.
+    #     if executor_id in cuda_executors:
+    #         import cupy as np
+    #         from tasker.mm_gpu import run_mm_task_gpu
+    #         mm_fn = run_mm_task_gpu
+    #     else:
+    #         import numpy as np
+    #         from tasker.mm import run_mm_task
+    #         mm_fn = run_mm_task
+    #
+    #     import math
+    #     adt = np.dtype('<i4')
+    #     arr_a = np.frombuffer(matrix_a_bytes, adt)
+    #     arr_b = np.frombuffer(matrix_b_bytes, adt)
+    #     # We are guaranteed to have square matrices for this evaluation.
+    #     dim = int(math.sqrt(len(arr_a)))
+    #     log.d('Matrices are {}x{}'.format(dim, dim))
+    #     res1 = mm_fn(arr_a.reshape((dim, dim)),
+    #                  arr_b.reshape((dim, dim))).tobytes()
+    #
+    #     adt = np.dtype('<i4')
+    #     samples = np.frombuffer(additional_data[(4+(first_matrix_data_len*2)):], adt)
+    #     res2 = run_fft_task(samples).tobytes()
+    #
+    #     res_data = res1 + res2
     else:
         print(f'ERROR: task_id {task_id} is undefined')
     end_time = time.time()

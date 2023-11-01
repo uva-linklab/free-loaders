@@ -4,7 +4,7 @@ import random
 import time
 import numpy as np
 import re
-
+import os
 import requests
 import struct
 import flomqtt.serialize as flserialize
@@ -187,14 +187,20 @@ def offload_one(address, device_id, task_id, job_id=0, executor_id=None):
         input_data_bytes = np.array(samples, dtype=adt).tobytes()
 
     elif task_id == 30:  # Object detection (AR headset)
+        # TODO change deadline
         task_data['deadline'] = 10000
         # randomly select image from directory
-        input_img_index = random.randint(1, 3)
-        filename = f"./test{input_img_index}.jpg"
+        input_img_index = random.randint(1, 1)
+        filepath = os.path.join('mock-offloader', 'moffloader', 'obj_det_input_files', f'test{input_img_index}.jpg')
+        image = Image.open(filepath)
 
-        image = Image.open(filename)
         # convert image to numpy array
-        input_data_bytes = np.asarray(image)
+        input_data_np = np.asarray(image, dtype=adt)
+        input_data_shape = input_data_np.shape
+        input_data_bytes = struct.pack('I', input_data_shape[0]) + \
+                           struct.pack('I', input_data_shape[1]) + \
+                           struct.pack('I', input_data_shape[2]) + \
+                           input_data_np.tobytes()
 
     elif task_id == 31:  # Room classification (robot)
         task_data['deadline'] = 5000
