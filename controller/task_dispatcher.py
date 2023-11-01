@@ -165,6 +165,7 @@ class TaskDispatcher:
             self.scheduler.feedback_q.put({
                 "offload_id": offload_id,
                 "exec_id": str(executor_id),
+                "task_id": task_id,
                 "status": status,
                 "exec_time": exec_time_ms,
                 "energy": energy,
