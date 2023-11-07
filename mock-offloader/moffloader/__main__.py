@@ -203,7 +203,8 @@ def offload_one(address, device_id, task_id, job_id=0, executor_id=None):
                            input_data_np.tobytes()
 
     elif task_id == 31:  # Room classification (robot)
-        task_data['deadline'] = 5000
+        # TODO change deadline
+        task_data['deadline'] = 10000
         # randomly select image from directory
         # input_img_index = random.randint(1, 1)
         filepath = os.path.join('mock-offloader', 'moffloader', 'room_classification_input_files', f'00000003.jpg')
@@ -216,9 +217,6 @@ def offload_one(address, device_id, task_id, job_id=0, executor_id=None):
                            struct.pack('I', input_data_shape[1]) + \
                            struct.pack('I', input_data_shape[2]) + \
                            input_data_np.tobytes()
-
-        print(input_data_shape)
-        print(input_data_np)
 
     elif task_id == 32:  # Human Activity Recognition (smart watch)
         task_data['deadline'] = 7500
