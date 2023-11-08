@@ -1,6 +1,8 @@
 import torch
-import torch.nn as nn
 from classifier import ClassifierMHEALTH
+from torch import nn
+from torch.nn import functional as F
+from pytorch_lightning.core.module import LightningModule
 
 # MHEALTH Headers
 chest_Sensors = ['chest_acc_x', 'chest_acc_y', 'chest_acc_z']
@@ -74,6 +76,18 @@ class JOINTRepresentation(nn.Module):
         common_latent = torch.cat(output_list, dim=-1)
         return self.whole_projector(common_latent)
 
+class ClassifierMHEALTH(LightningModule):
+    def __init__(self, latent_dim):
+        super().__init__()
+
+        self.layer_1 = nn.Linear(latent_dim, 16)
+        self.layer_2 = nn.Linear(16, 13)
+
+    def forward(self, x):
+        x = self.layer_1(x)
+        x = F.relu(x)
+        x = self.layer_2(x)
+        return x
 
 class MHEALTHClassification(nn.Module):
     def __init__(self, common_dim, numofdim):
