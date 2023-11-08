@@ -1,5 +1,4 @@
 import torch
-from classifier import ClassifierMHEALTH
 from torch import nn
 from torch.nn import functional as F
 from pytorch_lightning.core.module import LightningModule
