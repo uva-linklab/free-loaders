@@ -222,7 +222,7 @@ def offload_one(address, device_id, task_id, job_id=0, executor_id=None):
         task_data['deadline'] = 7500
 
         # randomly generate HAR sample
-        samples = np.random.rand(44100 * (task_id - 19) * 3)
+        samples = np.random.rand(1, 100, 23)
         input_data_bytes = np.array(samples, dtype=adt).tobytes()
 
     # elif task_id < 40:
