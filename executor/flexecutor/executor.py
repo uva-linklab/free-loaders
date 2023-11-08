@@ -17,6 +17,7 @@ from tasker.loop import run_loop_task
 from tasker.fft import run_fft_task
 from tasker.obj_detection import run_obj_detection_task
 from tasker.room_classification.room_classification import run_room_classification_task
+from tasker.har.human_act_rec import run_har_task
 
 # MQTT server port; fixed to 1883.
 MQTTServerPort = 1883
@@ -313,7 +314,8 @@ def __process_task_entry(pipe, executor_id, power, task_request, additional_data
         import numpy as np
         adt = np.dtype('<i4')
         samples = np.frombuffer(additional_data, adt)
-        res_data = run_fft_task(samples).tobytes()
+        input_data=samples.reshape(1, 100, 23)
+        res_data = run_har_task(input_data).encode('utf-8')
 
     # elif task_id < 40:
     #     import numpy as np
