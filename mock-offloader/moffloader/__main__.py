@@ -184,7 +184,7 @@ def offload_one(address, device_id, task_id, job_id=0, executor_id=None):
         # FFT task. 3s -> 30s of audio data
         task_data['deadline'] = (task_id - 20) * ((6000-2600)/9)+2600
         samples = np.random.rand(44100 * (task_id - 19) * 3)
-        input_data_bytes = np.array(samples, dtype=adt).tobytes()
+        input_data_bytes = np.array(samples, dtype='<f8').tobytes()
 
     elif task_id == 30:  # Object detection (AR headset)
         # TODO change deadline
@@ -223,7 +223,7 @@ def offload_one(address, device_id, task_id, job_id=0, executor_id=None):
 
         # randomly generate HAR sample
         samples = np.random.rand(1, 100, 23)
-        input_data_bytes = np.array(samples, dtype=adt).tobytes()
+        input_data_bytes = np.array(samples, dtype='<f8').tobytes()
 
     # elif task_id < 40:
     #     # For loop + matrix multiplication

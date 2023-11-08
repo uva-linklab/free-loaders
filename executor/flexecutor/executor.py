@@ -279,8 +279,7 @@ def __process_task_entry(pipe, executor_id, power, task_request, additional_data
     elif task_id < 30:
         # Additional data is the signal samples.
         import numpy as np
-        adt = np.dtype('<i4')
-        samples = np.frombuffer(additional_data, adt)
+        samples = np.frombuffer(additional_data, dtype='<f8')
         res_data = run_fft_task(samples).tobytes()
 
     elif task_id == 30:  # object detection
@@ -312,9 +311,8 @@ def __process_task_entry(pipe, executor_id, power, task_request, additional_data
     elif task_id == 32:
         # Additional data is the signal samples.
         import numpy as np
-        adt = np.dtype('<i4')
-        samples = np.frombuffer(additional_data, adt)
-        input_data=samples.reshape(1, 100, 23)
+        samples = np.frombuffer(additional_data, dtype='<f8')
+        input_data = samples.reshape(1, 100, 23)
         res_data = run_har_task(input_data).encode('utf-8')
 
     # elif task_id < 40:

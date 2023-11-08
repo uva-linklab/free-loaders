@@ -100,11 +100,13 @@ class MHEALTHClassification(nn.Module):
         return out
 
 def run_har_task(input_data):
+    input_data_tensor = torch.from_numpy(input_data).float()
     model = MHEALTHClassification(16, 23)
     model.eval()
-    outputs = model(input_data)
+    outputs = model(input_data_tensor)
     _, predicted = torch.max(outputs.data, 1)
-    return predicted
+    print(predicted)
+    return str(predicted)
 
 
 if __name__ == '__main__':
