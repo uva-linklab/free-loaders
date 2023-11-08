@@ -16,7 +16,9 @@ class RandomScheduler:
         random.seed(a=SEED)
 
     def schedule(self, before_state, task):
-        return random.choice(list(self.executors.keys()))
+        executor = random.choice(list(self.executors.keys()))
+        print(f'[adpt-lb] scheduled task(offload_id={task.offload_id}, task_id={task.task_id}) on executer_id={executor}.')
+        return executor
 
     # status = 0 => successful task, status != 0 => failed task
     def task_finished(self, offload_id, exec_id, status, exec_time, energy, new_state_of_executor):
