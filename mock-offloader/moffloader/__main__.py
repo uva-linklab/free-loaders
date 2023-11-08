@@ -222,7 +222,7 @@ def offload_one(address, device_id, task_id, job_id=0, executor_id=None):
         task_data['deadline'] = 7500
 
         # randomly generate HAR sample
-        batch_size = 30 * 50  # 30s at 50Hz
+        batch_size = 10 * 50  # 10s at 50Hz
         r = 100
         c = 23
         samples = np.random.rand(batch_size, r, c)

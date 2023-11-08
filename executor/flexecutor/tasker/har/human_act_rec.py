@@ -105,7 +105,6 @@ def run_har_task(input_data):
     model.eval()
     outputs = model(input_data_tensor)
     _, predicted = torch.max(outputs.data, 1)
-    print(predicted)
     return str(predicted)
 
 
