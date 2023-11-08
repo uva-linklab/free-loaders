@@ -222,8 +222,15 @@ def offload_one(address, device_id, task_id, job_id=0, executor_id=None):
         task_data['deadline'] = 7500
 
         # randomly generate HAR sample
-        samples = np.random.rand(1, 100, 23)
-        input_data_bytes = np.array(samples, dtype='<f8').tobytes()
+        batch_size = 30 * 50  # 30s at 50Hz
+        r = 100
+        c = 23
+        samples = np.random.rand(batch_size, r, c)
+        input_data_np = np.array(samples, dtype='<f8')
+        input_data_bytes = struct.pack('I', batch_size) + \
+                           struct.pack('I', r) + \
+                           struct.pack('I', c) + \
+                           input_data_np.tobytes()
 
     # elif task_id < 40:
     #     # For loop + matrix multiplication

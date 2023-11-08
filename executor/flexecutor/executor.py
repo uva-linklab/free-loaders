@@ -309,10 +309,15 @@ def __process_task_entry(pipe, executor_id, power, task_request, additional_data
         res_data = run_room_classification_task(image_np).encode('utf-8')
 
     elif task_id == 32:
-        # Additional data is the signal samples.
+        # Additional data has batch_size,r,c of data + array data bytes
+        batch_size = struct.unpack('I', additional_data[:4])[0]
+        r = struct.unpack('I', additional_data[4:8])[0]
+        c = struct.unpack('I', additional_data[8:12])[0]
+        array_bytes = additional_data[12:]
+
         import numpy as np
-        samples = np.frombuffer(additional_data, dtype='<f8')
-        input_data = samples.reshape(1, 100, 23)
+        samples = np.frombuffer(array_bytes, dtype='<f8')
+        input_data = samples.reshape(batch_size, r, c)
         res_data = run_har_task(input_data).encode('utf-8')
 
     # elif task_id < 40:
