@@ -136,14 +136,14 @@ def offload_many(address, device_id, count, rate):
     if SkipTasks > 0:
         print('Skipping the first {} tasks.'.format(SkipTasks))
         for i in range(0, SkipTasks):
-            _x = random.randint(0, 8)
+            _x = random.randint(0, 32)
 
     for i in range(0, count):
         # Send the task.
         # if extended == True:
         #     task_id = random.randint(30, 59)  # Random selection.
         # else:
-        task_id = random.randint(0, 8)
+        task_id = random.randint(0, 32)
 
         offload_one(address, device_id, task_id)
         time.sleep(intertask_delay)
@@ -160,56 +160,36 @@ def offload_one(address, device_id, task_id, job_id=0, executor_id=None):
     http_post_data = b''
     # Define a consistent byte order.
     adt = np.dtype('<i4')
-    if task_id == 0:
-        # For loop task.
-        task_data['deadline'] = 925
 
-        input_data = 1000000  # 1,000,000 loops
+    if task_id < 10:
+        # For loop task.
+        task_data['deadline'] = task_id * ((4350-925)/9) + 925
+
+        input_data = (task_id + 1) * 1000000  # 1,000,000 -> 10,000,000 loops
         input_data_bytes = struct.pack('I', input_data)
 
-    elif task_id == 1:
-        # For loop task.
-        task_data['deadline'] = 4350
-
-        input_data = 10000000  # 10,000,000 loops
-        input_data_bytes = struct.pack('I', input_data)
-
-    elif task_id == 2:
+    elif task_id < 20:
         # Matrix multiplication task.
-        task_data['deadline'] = 8250
+        task_data['deadline'] = (task_id - 10) * ((20000-8250)/9)+8250
 
         # Generate a matrix and send it as the input data.
-        size = 750  # 750x750
+        size = 750 + (83 * (task_id - 10))  # 750x750 -> ~1500x1500
         m1_bytes = np.random.randint(low=1, high=256, size=(size,size), dtype=adt).tobytes()
         m2_bytes = np.random.randint(low=1, high=256, size=(size,size), dtype=adt).tobytes()
         # Serialize the numpy arrays, placing the length of the first matrix as the first piece of data.
         input_data_bytes = struct.pack('I', len(m1_bytes)) + m1_bytes + m2_bytes
 
-    elif task_id == 3:
-        # Matrix multiplication task.
-        task_data['deadline'] = 20000
-
-        # Generate a matrix and send it as the input data.
-        size = 1500  # 1500x1500
-        m1_bytes = np.random.randint(low=1, high=256, size=(size,size), dtype=adt).tobytes()
-        m2_bytes = np.random.randint(low=1, high=256, size=(size,size), dtype=adt).tobytes()
-        # Serialize the numpy arrays, placing the length of the first matrix as the first piece of data.
-        input_data_bytes = struct.pack('I', len(m1_bytes)) + m1_bytes + m2_bytes
-
-    elif task_id == 4:
-        # FFT task. 3s of audio data at 44.1kHz
-        task_data['deadline'] = 2600
-        samples = np.random.rand(44100 * 3)
+    elif task_id < 30:
+        # FFT task. 3s -> 30s of audio data
+        task_data['deadline'] = (task_id - 20) * ((6000-2600)/9)+2600
+        samples = np.random.rand(44100 * (task_id - 19) * 3)
         input_data_bytes = np.array(samples, dtype='<f8').tobytes()
 
-    elif task_id == 5:
-        # FFT task. 30s of audio data at 44.1kHz
-        task_data['deadline'] = 6000
-        samples = np.random.rand(44100 * 30)
-        input_data_bytes = np.array(samples, dtype='<f8').tobytes()
-
-    elif task_id == 6:  # Object detection (AR headset)
+    elif task_id == 30:  # Object detection (AR headset)
+        # TODO change deadline
         task_data['deadline'] = 9500
+        # TODO randomly select image from directory?
+        # input_img_index = random.randint(1, 1)
         filepath = os.path.join('mock-offloader', 'moffloader', 'obj_det_input_files', 'test1.jpg')
         image = Image.open(filepath)
 
@@ -221,8 +201,11 @@ def offload_one(address, device_id, task_id, job_id=0, executor_id=None):
                            struct.pack('I', input_data_shape[2]) + \
                            input_data_np.tobytes()
 
-    elif task_id == 7:  # Room classification (robot)
+    elif task_id == 31:  # Room classification (robot)
+        # TODO change deadline
         task_data['deadline'] = 1750
+        # TODO randomly select image from directory?
+        # input_img_index = random.randint(1, 1)
         filepath = os.path.join('mock-offloader', 'moffloader', 'room_classification_input_files', '00000003.jpg')
         image = Image.open(filepath).convert('RGB')
 
@@ -234,7 +217,7 @@ def offload_one(address, device_id, task_id, job_id=0, executor_id=None):
                            struct.pack('I', input_data_shape[2]) + \
                            input_data_np.tobytes()
 
-    elif task_id == 8:  # Human Activity Recognition (smart watch)
+    elif task_id == 32:  # Human Activity Recognition (smart watch)
         task_data['deadline'] = 6500
 
         # randomly generate HAR sample
