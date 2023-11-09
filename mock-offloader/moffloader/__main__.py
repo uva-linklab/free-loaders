@@ -187,8 +187,6 @@ def offload_one(address, device_id, task_id, job_id=0, executor_id=None):
 
     elif task_id == 30:  # Object detection (AR headset)
         task_data['deadline'] = 9500
-        # TODO randomly select image from directory?
-        # input_img_index = random.randint(1, 1)
         filepath = os.path.join('mock-offloader', 'moffloader', 'obj_det_input_files', 'test1.jpg')
         image = Image.open(filepath)
 
@@ -202,8 +200,6 @@ def offload_one(address, device_id, task_id, job_id=0, executor_id=None):
 
     elif task_id == 31:  # Room classification (robot)
         task_data['deadline'] = 1750
-        # TODO randomly select image from directory?
-        # input_img_index = random.randint(1, 1)
         filepath = os.path.join('mock-offloader', 'moffloader', 'room_classification_input_files', '00000003.jpg')
         image = Image.open(filepath).convert('RGB')
 
