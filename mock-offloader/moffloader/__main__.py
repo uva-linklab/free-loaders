@@ -186,7 +186,6 @@ def offload_one(address, device_id, task_id, job_id=0, executor_id=None):
         input_data_bytes = np.array(samples, dtype='<f8').tobytes()
 
     elif task_id == 30:  # Object detection (AR headset)
-        # TODO change deadline
         task_data['deadline'] = 9500
         # TODO randomly select image from directory?
         # input_img_index = random.randint(1, 1)
@@ -202,7 +201,6 @@ def offload_one(address, device_id, task_id, job_id=0, executor_id=None):
                            input_data_np.tobytes()
 
     elif task_id == 31:  # Room classification (robot)
-        # TODO change deadline
         task_data['deadline'] = 1750
         # TODO randomly select image from directory?
         # input_img_index = random.randint(1, 1)
