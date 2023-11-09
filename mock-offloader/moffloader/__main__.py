@@ -188,7 +188,7 @@ def offload_one(address, device_id, task_id, job_id=0, executor_id=None):
 
     elif task_id == 30:  # Object detection (AR headset)
         # TODO change deadline
-        task_data['deadline'] = 15000
+        task_data['deadline'] = 9500
         # TODO randomly select image from directory?
         # input_img_index = random.randint(1, 1)
         filepath = os.path.join('mock-offloader', 'moffloader', 'obj_det_input_files', 'test1.jpg')
@@ -204,7 +204,7 @@ def offload_one(address, device_id, task_id, job_id=0, executor_id=None):
 
     elif task_id == 31:  # Room classification (robot)
         # TODO change deadline
-        task_data['deadline'] = 10000
+        task_data['deadline'] = 1750
         # TODO randomly select image from directory?
         # input_img_index = random.randint(1, 1)
         filepath = os.path.join('mock-offloader', 'moffloader', 'room_classification_input_files', '00000003.jpg')
@@ -219,7 +219,7 @@ def offload_one(address, device_id, task_id, job_id=0, executor_id=None):
                            input_data_np.tobytes()
 
     elif task_id == 32:  # Human Activity Recognition (smart watch)
-        task_data['deadline'] = 7500
+        task_data['deadline'] = 6500
 
         # randomly generate HAR sample
         batch_size = 10 * 50  # 10s at 50Hz
