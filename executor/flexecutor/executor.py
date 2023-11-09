@@ -246,12 +246,12 @@ def __process_task_entry(pipe, executor_id, power, task_request, additional_data
     res_data = b''
     cupy_executors = [9]
 
-    if task_id < 10:
+    if task_id == 0 or task_id == 1:
         # Additional data is the value to start loop iterations with.
         loop_iter_count = struct.unpack('I', additional_data[:4])[0]
         res = run_loop_task(loop_iter_count)
         res_data = struct.pack('I', res)
-    elif task_id < 20:
+    elif task_id == 2 or task_id == 3:
         # Additional data is the length of the first matrix, the first matrix, and the second matrix.
         first_matrix_data_len = struct.unpack('I', additional_data[:4])[0]
         matrix_a_bytes = additional_data[4:(4+first_matrix_data_len)]
@@ -276,13 +276,13 @@ def __process_task_entry(pipe, executor_id, power, task_request, additional_data
         log.d('Matrices are {}x{}'.format(dim, dim))
         res_data = mm_fn(arr_a.reshape((dim, dim)),
                          arr_b.reshape((dim, dim))).tobytes()
-    elif task_id < 30:
+    elif task_id == 4 or task_id == 5:
         # Additional data is the signal samples.
         import numpy as np
         samples = np.frombuffer(additional_data, dtype='<f8')
         res_data = run_fft_task(samples).tobytes()
 
-    elif task_id == 30:  # object detection
+    elif task_id == 6:  # object detection
         # Additional data has r,g,b of image + image bytes
         r = struct.unpack('I', additional_data[:4])[0]
         g = struct.unpack('I', additional_data[4:8])[0]
@@ -295,7 +295,7 @@ def __process_task_entry(pipe, executor_id, power, task_request, additional_data
 
         res_data = run_obj_detection_task(image_np.astype('float32')).encode('utf-8')
 
-    elif task_id == 31:
+    elif task_id == 7:
         # Additional data has r,g,b of image + image bytes
         r = struct.unpack('I', additional_data[:4])[0]
         g = struct.unpack('I', additional_data[4:8])[0]
@@ -308,7 +308,7 @@ def __process_task_entry(pipe, executor_id, power, task_request, additional_data
 
         res_data = run_room_classification_task(image_np).encode('utf-8')
 
-    elif task_id == 32:
+    elif task_id == 8:
         # Additional data has batch_size,r,c of data + array data bytes
         batch_size = struct.unpack('I', additional_data[:4])[0]
         r = struct.unpack('I', additional_data[4:8])[0]
