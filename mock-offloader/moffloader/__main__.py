@@ -109,8 +109,7 @@ def main(args):
             offload_many(args.address,
                          args.device_id,
                          args.task_count,
-                         args.rate,
-                         args.extended)
+                         args.rate)
         else:
             offload_one(args.address,
                         args.device_id,
@@ -129,7 +128,7 @@ def offload_heteroedge(address):
         current_submitted_task[job_id] = 1
 
 
-def offload_many(address, device_id, count, rate, extended):
+def offload_many(address, device_id, count, rate):
     intertask_delay = 1 / (rate / 60)
     print('Sending tasks every {} sec.'.format(intertask_delay))
 
@@ -137,14 +136,14 @@ def offload_many(address, device_id, count, rate, extended):
     if SkipTasks > 0:
         print('Skipping the first {} tasks.'.format(SkipTasks))
         for i in range(0, SkipTasks):
-            _x = random.randint(0, 29)
+            _x = random.randint(0, 32)
 
     for i in range(0, count):
         # Send the task.
-        if extended == True:
-            task_id = random.randint(30, 59)  # Random selection.
-        else:
-            task_id = random.randint(0, 29)
+        # if extended == True:
+        #     task_id = random.randint(30, 59)  # Random selection.
+        # else:
+        task_id = random.randint(0, 32)
 
         offload_one(address, device_id, task_id)
         time.sleep(intertask_delay)
@@ -299,8 +298,8 @@ if __name__ == '__main__':
                     metavar='COUNT', type=int, default=1000, dest='task_count')
     ap.add_argument('-r', '--rate', help='Rate to send tasks at (per min.).',
                     metavar='RATE', type=int, default=1000, dest='rate')
-    ap.add_argument('-e', '--extended', help='Use task IDs > 29',
-                    action='store_true', default=False)
+    # ap.add_argument('-e', '--extended', help='Use task IDs > 29',
+    #                 action='store_true', default=False)
     ap.add_argument('--heteroedge', help='Submit heteroedge tasks',
                     action='store_true', default=False)
     ap.add_argument('--modulate-deadlines', help='Adjust deadlines by a factor.',
