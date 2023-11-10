@@ -274,7 +274,19 @@ def __process_task_entry(pipe, executor_id, power, task_request, additional_data
         samples = np.frombuffer(additional_data, dtype='<f8')
         res_data = run_fft_task(samples).tobytes()
 
-    elif task_id == 30:  # object detection
+    elif task_id < 40:
+        # Additional data has batch_size,r,c of data + array data bytes
+        batch_size = struct.unpack('I', additional_data[:4])[0]
+        r = struct.unpack('I', additional_data[4:8])[0]
+        c = struct.unpack('I', additional_data[8:12])[0]
+        array_bytes = additional_data[12:]
+
+        import numpy as np
+        samples = np.frombuffer(array_bytes, dtype='<f8')
+        input_data = samples.reshape(batch_size, r, c)
+        res_data = run_har_task(input_data).encode('utf-8')
+
+    elif task_id == 40:  # object detection
         # Additional data has r,g,b of image + image bytes
         r = struct.unpack('I', additional_data[:4])[0]
         g = struct.unpack('I', additional_data[4:8])[0]
@@ -287,7 +299,7 @@ def __process_task_entry(pipe, executor_id, power, task_request, additional_data
 
         res_data = run_obj_detection_task(image_np.astype('float32')).encode('utf-8')
 
-    elif task_id == 31:
+    elif task_id == 41:
         # Additional data has r,g,b of image + image bytes
         r = struct.unpack('I', additional_data[:4])[0]
         g = struct.unpack('I', additional_data[4:8])[0]
@@ -299,18 +311,6 @@ def __process_task_entry(pipe, executor_id, power, task_request, additional_data
         image_np = np.frombuffer(image_bytes, adt).reshape((r, g, b))
 
         res_data = run_room_classification_task(image_np).encode('utf-8')
-
-    elif task_id == 32:
-        # Additional data has batch_size,r,c of data + array data bytes
-        batch_size = struct.unpack('I', additional_data[:4])[0]
-        r = struct.unpack('I', additional_data[4:8])[0]
-        c = struct.unpack('I', additional_data[8:12])[0]
-        array_bytes = additional_data[12:]
-
-        import numpy as np
-        samples = np.frombuffer(array_bytes, dtype='<f8')
-        input_data = samples.reshape(batch_size, r, c)
-        res_data = run_har_task(input_data).encode('utf-8')
 
     # elif task_id < 40:
     #     import numpy as np
