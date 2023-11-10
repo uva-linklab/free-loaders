@@ -14,6 +14,7 @@ import paho.mqtt.client
 import config
 import stats
 from tasker.loop import run_loop_task
+from tasker.mm import run_mm_task
 from tasker.fft import run_fft_task
 from tasker.obj_detection import run_obj_detection_task
 from tasker.room_classification.room_classification import run_room_classification_task
@@ -244,7 +245,6 @@ def __process_task_entry(pipe, executor_id, power, task_request, additional_data
     task_id = task_request['task_id']
 
     res_data = b''
-    cupy_executors = [9]
 
     if task_id < 10:
         # Additional data is the value to start loop iterations with.
@@ -258,23 +258,15 @@ def __process_task_entry(pipe, executor_id, power, task_request, additional_data
         matrix_b_bytes = additional_data[(4+first_matrix_data_len):]
 
         # Recover the matrices, including their lost shape.
-        if executor_id in cupy_executors:
-            import cupy as np
-            from tasker.mm_gpu import run_mm_task_gpu
-            mm_fn = run_mm_task_gpu
-        else:
-            import numpy as np
-            from tasker.mm import run_mm_task
-            mm_fn = run_mm_task
-
         import math
+        import numpy as np
         adt = np.dtype('<i4')
         arr_a = np.frombuffer(matrix_a_bytes, adt)
         arr_b = np.frombuffer(matrix_b_bytes, adt)
         # We are guaranteed to have square matrices for this evaluation.
         dim = int(math.sqrt(len(arr_a)))
         log.d('Matrices are {}x{}'.format(dim, dim))
-        res_data = mm_fn(arr_a.reshape((dim, dim)),
+        res_data = run_mm_task(arr_a.reshape((dim, dim)),
                          arr_b.reshape((dim, dim))).tobytes()
     elif task_id < 30:
         # Additional data is the signal samples.
