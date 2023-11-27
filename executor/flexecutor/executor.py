@@ -267,7 +267,7 @@ def __process_task_entry(pipe, executor_id, power, task_request, additional_data
         dim = int(math.sqrt(len(arr_a)))
         log.d('Matrices are {}x{}'.format(dim, dim))
         res_data = run_mm_task(arr_a.reshape((dim, dim)),
-                         arr_b.reshape((dim, dim))).tobytes()
+                               arr_b.reshape((dim, dim))).tobytes()
     elif task_id < 30:
         # Additional data is the signal samples.
         import numpy as np
@@ -286,7 +286,7 @@ def __process_task_entry(pipe, executor_id, power, task_request, additional_data
         input_data = samples.reshape(batch_size, r, c)
         res_data = run_har_task(input_data).encode('utf-8')
 
-    elif task_id == 40:  # object detection
+    elif task_id < 50:  # object detection
         # Additional data has r,g,b of image + image bytes
         r = struct.unpack('I', additional_data[:4])[0]
         g = struct.unpack('I', additional_data[4:8])[0]
@@ -299,7 +299,7 @@ def __process_task_entry(pipe, executor_id, power, task_request, additional_data
 
         res_data = run_obj_detection_task(image_np.astype('float32')).encode('utf-8')
 
-    elif task_id == 41:
+    elif task_id < 60:
         # Additional data has r,g,b of image + image bytes
         r = struct.unpack('I', additional_data[:4])[0]
         g = struct.unpack('I', additional_data[4:8])[0]

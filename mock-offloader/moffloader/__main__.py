@@ -11,6 +11,7 @@ import flomqtt.serialize as flserialize
 from threading import Thread
 import paho.mqtt.client as mqtt
 import queue
+import math
 from PIL import Image
 
 ControllerHTTPPort = 8001
@@ -163,17 +164,17 @@ def offload_one(address, device_id, task_id, job_id=0, executor_id=None):
 
     if task_id < 10:
         # For loop task.
-        task_data['deadline'] = task_id * ((4350-925)/9) + 925
+        task_data['deadline'] = 180000
 
         input_data = (task_id + 1) * 1000000  # 1,000,000 -> 10,000,000 loops
         input_data_bytes = struct.pack('I', input_data)
 
     elif task_id < 20:
         # Matrix multiplication task.
-        task_data['deadline'] = (task_id - 10) * ((20000-8250)/9)+8250
+        task_data['deadline'] = 180000
 
         # Generate a matrix and send it as the input data.
-        size = 750 + (83 * (task_id - 10))  # 750x750 -> ~1500x1500
+        size = 500 + math.ceil((task_id - 10) * 55.5)  # 500x500 -> 1000x1000
         m1_bytes = np.random.randint(low=1, high=256, size=(size,size), dtype=adt).tobytes()
         m2_bytes = np.random.randint(low=1, high=256, size=(size,size), dtype=adt).tobytes()
         # Serialize the numpy arrays, placing the length of the first matrix as the first piece of data.
@@ -181,13 +182,29 @@ def offload_one(address, device_id, task_id, job_id=0, executor_id=None):
 
     elif task_id < 30:
         # FFT task. 3s -> 30s of audio data
-        task_data['deadline'] = (task_id - 20) * ((6000-2600)/9)+2600
+        task_data['deadline'] = 180000
         samples = np.random.rand(44100 * (task_id - 19) * 3)
         input_data_bytes = np.array(samples, dtype='<f8').tobytes()
 
-    elif task_id == 30:  # Object detection (AR headset)
-        task_data['deadline'] = 9500
-        filepath = os.path.join('mock-offloader', 'moffloader', 'obj_det_input_files', 'test1.jpg')
+    elif task_id < 40:  # Human Activity Recognition (smart watch)
+        task_data['deadline'] = 180000
+
+        # randomly generate HAR sample
+        batch_size = (task_id - 30 + 1) * 50  # 1s to 10s at 50Hz
+        print(batch_size)
+        r = 100
+        c = 23
+        samples = np.random.rand(batch_size, r, c)
+        input_data_np = np.array(samples, dtype='<f8')
+        input_data_bytes = struct.pack('I', batch_size) + \
+                           struct.pack('I', r) + \
+                           struct.pack('I', c) + \
+                           input_data_np.tobytes()
+
+    elif task_id < 50:  # Object detection (AR headset)
+        task_data['deadline'] = 180000
+        input_img_id = str(task_id - 40)
+        filepath = os.path.join('mock-offloader', 'moffloader', 'obj_det_input_files', f'dog{input_img_id}.jpg')
         image = Image.open(filepath)
 
         # convert image to numpy array
@@ -198,9 +215,10 @@ def offload_one(address, device_id, task_id, job_id=0, executor_id=None):
                            struct.pack('I', input_data_shape[2]) + \
                            input_data_np.tobytes()
 
-    elif task_id == 31:  # Room classification (robot)
-        task_data['deadline'] = 1750
-        filepath = os.path.join('mock-offloader', 'moffloader', 'room_classification_input_files', '00000003.jpg')
+    elif task_id < 60:  # Room classification (robot)
+        task_data['deadline'] = 180000
+        input_img_id = str(task_id - 50)
+        filepath = os.path.join('mock-offloader', 'moffloader', 'room_classification_input_files', f'room{input_img_id}.jpg')
         image = Image.open(filepath).convert('RGB')
 
         # convert image to numpy array
@@ -209,20 +227,6 @@ def offload_one(address, device_id, task_id, job_id=0, executor_id=None):
         input_data_bytes = struct.pack('I', input_data_shape[0]) + \
                            struct.pack('I', input_data_shape[1]) + \
                            struct.pack('I', input_data_shape[2]) + \
-                           input_data_np.tobytes()
-
-    elif task_id == 32:  # Human Activity Recognition (smart watch)
-        task_data['deadline'] = 6500
-
-        # randomly generate HAR sample
-        batch_size = 10 * 50  # 10s at 50Hz
-        r = 100
-        c = 23
-        samples = np.random.rand(batch_size, r, c)
-        input_data_np = np.array(samples, dtype='<f8')
-        input_data_bytes = struct.pack('I', batch_size) + \
-                           struct.pack('I', r) + \
-                           struct.pack('I', c) + \
                            input_data_np.tobytes()
 
     # elif task_id < 40:
