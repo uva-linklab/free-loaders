@@ -287,30 +287,12 @@ def __process_task_entry(pipe, executor_id, power, task_request, additional_data
         res_data = run_har_task(input_data).encode('utf-8')
 
     elif task_id < 50:  # object detection
-        # Additional data has r,g,b of image + image bytes
-        r = struct.unpack('I', additional_data[:4])[0]
-        g = struct.unpack('I', additional_data[4:8])[0]
-        b = struct.unpack('I', additional_data[8:12])[0]
-        image_bytes = additional_data[12:]
-
-        import numpy as np
-        adt = np.dtype('<i4')
-        image_np = np.frombuffer(image_bytes, adt).reshape((r, g, b))
-
-        res_data = run_obj_detection_task(image_np.astype('float32')).encode('utf-8')
+        image_bytes = additional_data
+        res_data = run_obj_detection_task(image_bytes).encode('utf-8')
 
     elif task_id < 60:
-        # Additional data has r,g,b of image + image bytes
-        r = struct.unpack('I', additional_data[:4])[0]
-        g = struct.unpack('I', additional_data[4:8])[0]
-        b = struct.unpack('I', additional_data[8:12])[0]
-        image_bytes = additional_data[12:]
-
-        import numpy as np
-        adt = np.dtype('<i4')
-        image_np = np.frombuffer(image_bytes, adt).reshape((r, g, b))
-
-        res_data = run_room_classification_task(image_np).encode('utf-8')
+        image_bytes = additional_data
+        res_data = run_room_classification_task(image_bytes).encode('utf-8')
 
     # elif task_id < 40:
     #     import numpy as np

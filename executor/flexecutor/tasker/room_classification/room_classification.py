@@ -1,9 +1,12 @@
 import torch
 from torchvision import transforms
 from PIL import Image
-import numpy as np
+import io
 
 def run_room_classification_task(image_bytes):
+    # convert image_bytes to pillow image
+    image = Image.open(io.BytesIO(image_bytes))
+
     img_size = 512
 
     # Load the model for testing
@@ -23,10 +26,7 @@ def run_room_classification_task(image_bytes):
 
     # Perform prediction and plot results
     with torch.no_grad():
-        # get Pillow image from a numpy array
-        # https://stackoverflow.com/questions/55319949/pil-typeerror-cannot-handle-this-data-type
-        img = Image.fromarray((image_bytes * 255).astype(np.uint8))
-        inputs = preprocess(img).unsqueeze(0).to(device)
+        inputs = preprocess(image).unsqueeze(0).to(device)
         outputs = model(inputs)
         res = str(torch.max(outputs.data, 1)[1])
         return res

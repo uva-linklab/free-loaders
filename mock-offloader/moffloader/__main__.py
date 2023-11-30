@@ -205,29 +205,15 @@ def offload_one(address, device_id, task_id, job_id=0, executor_id=None):
         task_data['deadline'] = 180000
         input_img_id = str(task_id - 40)
         filepath = os.path.join('mock-offloader', 'moffloader', 'obj_det_input_files', f'dog{input_img_id}.jpg')
-        image = Image.open(filepath)
-
-        # convert image to numpy array
-        input_data_np = np.asarray(image, dtype=adt)
-        input_data_shape = input_data_np.shape
-        input_data_bytes = struct.pack('I', input_data_shape[0]) + \
-                           struct.pack('I', input_data_shape[1]) + \
-                           struct.pack('I', input_data_shape[2]) + \
-                           input_data_np.tobytes()
+        f = open(filepath, mode='rb')
+        input_data_bytes = f.read()  # send raw bytes of the jpg image
 
     elif task_id < 60:  # Room classification (robot)
         task_data['deadline'] = 180000
         input_img_id = str(task_id - 50)
         filepath = os.path.join('mock-offloader', 'moffloader', 'room_classification_input_files', f'room{input_img_id}.jpg')
-        image = Image.open(filepath).convert('RGB')
-
-        # convert image to numpy array
-        input_data_np = np.asarray(image, dtype=adt)
-        input_data_shape = input_data_np.shape
-        input_data_bytes = struct.pack('I', input_data_shape[0]) + \
-                           struct.pack('I', input_data_shape[1]) + \
-                           struct.pack('I', input_data_shape[2]) + \
-                           input_data_np.tobytes()
+        f = open(filepath, mode='rb')
+        input_data_bytes = f.read()  # send raw bytes of the jpg image
 
     # elif task_id < 40:
     #     # For loop + matrix multiplication
