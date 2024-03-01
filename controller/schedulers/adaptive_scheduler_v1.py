@@ -7,7 +7,7 @@ import queue
 
 MAX_NORM_CPU_LOAD = 0.75
 
-class AdaptiveScheduler:
+class AdaptiveSchedulerV1:
     def __init__(self, executors):
         self.executors = executors
         self.total_executor = len(executors.keys())
@@ -25,7 +25,7 @@ class AdaptiveScheduler:
         ]
         self.state_table = {}
         self.no_of_active_tasks = [0] * self.total_executor
-        self.task_executor_deadline_met = [[True]*self.total_executor for i in range(50)] # assuming max 50 task ids
+        self.task_executor_candidate = [[True] * self.total_executor for i in range(50)]  # assuming max 50 tasks
 
     def get_executor_candidate(self, before_state, task):
         cpu_counts = [before_state[str(i)]['cpu-count'] for i in range(0, self.total_executor)]
@@ -44,9 +44,9 @@ class AdaptiveScheduler:
             print(f'no. of active tasks on e{executor} = {self.no_of_active_tasks[executor]}')
 
             # 1. don't schedule if this executor has failed to meet the deadline of this task_id in the past
-            # 2. don't schedule more tasks than the no. of available cpus
-            # 3. don't schedule if 1min avg normalized cpu load is higher than max allowed load
-            if self.task_executor_deadline_met[task.task_id][executor]:
+            # 2. don't schedule more tasks than the no. of available cpus (basic load balancing)
+            # 3. don't schedule if 1min avg normalized cpu load is higher than max allowed load (basic load balancing)
+            if self.task_executor_candidate[task.task_id][executor]:
                 if self.no_of_active_tasks[executor] < cpu_counts[executor]:
                     if normalized_loads[executor][1] < MAX_NORM_CPU_LOAD:
                         return executor
@@ -74,7 +74,7 @@ class AdaptiveScheduler:
 
         # record if we met the deadline for this task or not
         deadline_met = exec_time <= self.state_table[offload_id]
-        self.task_executor_deadline_met[task_id][int(exec_id)] = deadline_met
+        self.task_executor_candidate[task_id][int(exec_id)] = deadline_met
 
     def feedback_consumer(self):
         print("[adpt-lb] starting feedback consumer")

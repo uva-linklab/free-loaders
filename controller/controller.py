@@ -10,14 +10,15 @@ from schedulers.energy_wrr_scheduler import EnergyWRRScheduler
 from schedulers.load_balancing_scheduler import LoadBalancingScheduler
 from schedulers.heros import HerosScheduler
 from schedulers.heteroedge_online import HeteroedgeScheduler
-from schedulers.adaptive_scheduler import AdaptiveScheduler
+from schedulers.adaptive_scheduler_v1 import AdaptiveSchedulerV1
+from schedulers.adaptive_scheduler_v2 import AdaptiveSchedulerV2
 from classes.executer import Executer
 
 ap = argparse.ArgumentParser(description='fReeLoaders controller.')
 ap.add_argument('-s', '--scheduler', help='Set the scheduler.',
                 metavar='SCHEDULER',
                 choices=['rl', 'random', 'time-greedy', 'energy-greedy', 'time-wrr', 'energy-wrr', 'load-bal',
-                         'heteroedge', 'heros', 'adpt-lb'],
+                         'heteroedge', 'heros', 'adpt-lb-v1', 'adpt-lb-v2'],
                 dest='scheduler', default='rl')
 args = ap.parse_args()
 
@@ -57,8 +58,10 @@ elif args.scheduler == "heros":
     scheduler = HerosScheduler(executers)
 elif args.scheduler == "heteroedge":
     scheduler = HeteroedgeScheduler(executers)
-elif args.scheduler == "adpt-lb":
-    scheduler = AdaptiveScheduler(executers)
+elif args.scheduler == "adpt-lb-v1":
+    scheduler = AdaptiveSchedulerV1(executers)
+elif args.scheduler == "adpt-lb-v2":
+    scheduler = AdaptiveSchedulerV2(executers)
 
 print(f'[controller] using {args.scheduler} scheduler')
 
