@@ -144,7 +144,7 @@ def offload_many(address, device_id, count, rate):
         # if extended == True:
         #     task_id = random.randint(30, 59)  # Random selection.
         # else:
-        task_id = random.randint(0, 32)
+        task_id = random.randint(0, 59)
 
         offload_one(address, device_id, task_id)
         time.sleep(intertask_delay)
