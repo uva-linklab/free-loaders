@@ -191,7 +191,6 @@ def offload_one(address, device_id, task_id, job_id=0, executor_id=None):
 
         # randomly generate HAR sample
         batch_size = (task_id - 30 + 1) * 50  # 1s to 10s at 50Hz
-        print(batch_size)
         r = 100
         c = 23
         samples = np.random.rand(batch_size, r, c)
