@@ -3,16 +3,14 @@ import queue
 #
 # - use most capable as the primary.
 # - If there are other executors available and not loaded, use them instead of primary.
-# - If an executor misses the deadline, temporarily revoke candidacy of executor for 5 mins.
-# - Allow maximum of 10 temporary revokes before permanently revoking the candidacy on an executor.
+# - Allow maximum of 10 deadline misses for an executor for a task before permanently banning it.
 from threading import Timer
 from enum import Enum
 
 MAX_NORM_CPU_LOAD = 0.75
-MAX_TEMP_REVOKES = 10
-TEMP_REVOKE_TIME_SEC = 5 * 60.0
+MAX_ALLOWED_DEADLINE_MISSES = 5
 
-ExecutorState = Enum('ExecutorState', ['CANDIDATE', 'TEMP_BANNED', 'PERM_BANNED'])
+ExecutorState = Enum('ExecutorState', ['CANDIDATE', 'PERM_BANNED'])
 
 class AdaptiveSchedulerV2:
     def __init__(self, executors):
@@ -64,13 +62,6 @@ class AdaptiveSchedulerV2:
         print(f'[adpt-lb] scheduled task(offload_id={task.offload_id}, task_id={task.task_id}) on executer_id={executor}.')
         return executor
 
-    def __temp_revoke_timer_expired__(self, task_id, exec_id):
-        # TODO: check if thread-safe
-        # make the executor a candidate again, if not permabanned
-        if self.executor_states[task_id][int(exec_id)] != ExecutorState.PERM_BANNED:
-            self.executor_states[task_id][int(exec_id)] = ExecutorState.CANDIDATE
-            print(f'removed temporary revoke of e{exec_id} for task_id={task_id}.')
-
     # status = 0 => successful task, status != 0 => failed task
     def task_finished(self, offload_id, exec_id, task_id, status, exec_time, energy, new_state_of_executor):
         self.no_of_active_tasks[int(exec_id)] -= 1
@@ -79,22 +70,12 @@ class AdaptiveSchedulerV2:
         deadline_met = exec_time <= self.state_table[offload_id]
 
         if not deadline_met:
-            # self.is_executor_candidate[task_id][int(exec_id)] = False
             self.deadline_miss_count[task_id][int(exec_id)] += 1
             print(f'missed deadline for task_id={task_id}, on e{exec_id} for {self.deadline_miss_count[task_id][int(exec_id)]} times')
 
-            if self.deadline_miss_count[task_id][int(exec_id)] < MAX_TEMP_REVOKES:
-                # temporarily ban this executor
-                self.executor_states[task_id][int(exec_id)] = ExecutorState.TEMP_BANNED
-                print(f'temp revoked candidacy of e{exec_id} for task_id={task_id}')
-
-                # start a timer to remove temporary ban after sometime
-                t = Timer(TEMP_REVOKE_TIME_SEC, self.__temp_revoke_timer_expired__, args=[task_id, exec_id])
-                t.start()
-            else:
-                # max temp revokes reached, permanently revoke candidacy
+            if self.deadline_miss_count[task_id][int(exec_id)] >= MAX_ALLOWED_DEADLINE_MISSES:
                 self.executor_states[task_id][int(exec_id)] = ExecutorState.PERM_BANNED
-                print(f'permanently revoked candidacy of e{exec_id} for task_id={task_id}')
+                print(f'permanently banned e{exec_id} for task_id={task_id}')
 
     def feedback_consumer(self):
         print("[adpt-lb] starting feedback consumer")
