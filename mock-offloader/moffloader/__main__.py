@@ -182,12 +182,12 @@ def offload_one(address, device_id, task_id, job_id=0, executor_id=None):
 
     elif task_id < 30:
         # FFT task. 3s -> 30s of audio data
-        task_data['deadline'] = 642.2 * (task_id - 20) + 616.2
+        task_data['deadline'] = 900.32 * (task_id - 20) + 2733.06
         samples = np.random.rand(44100 * (task_id - 19) * 3)
         input_data_bytes = np.array(samples, dtype='<f8').tobytes()
 
     elif task_id < 40:  # Human Activity Recognition (smart watch)
-        task_data['deadline'] = 620.6 * (task_id - 30) + 882.7
+        task_data['deadline'] = 519.55 * (task_id - 30) + 882.7
 
         # randomly generate HAR sample
         batch_size = (task_id - 30 + 1) * 50  # 1s to 10s at 50Hz
@@ -202,14 +202,14 @@ def offload_one(address, device_id, task_id, job_id=0, executor_id=None):
                            input_data_np.tobytes()
 
     elif task_id < 50:  # Object detection (AR headset)
-        task_data['deadline'] = 60.2 * (task_id - 40) + 3956.9
+        task_data['deadline'] = 140.111 * (task_id - 40) + 7017.53
         input_img_id = str(task_id - 40)
         filepath = os.path.join('mock-offloader', 'moffloader', 'obj_det_input_files', f'dog{input_img_id}.jpg')
         f = open(filepath, mode='rb')
         input_data_bytes = f.read()  # send raw bytes of the jpg image
 
     elif task_id < 60:  # Room classification (robot)
-        task_data['deadline'] = 70.4 * (task_id - 50) + 1649.7
+        task_data['deadline'] = 182.117 * (task_id - 50) + 3107.38
         input_img_id = str(task_id - 50)
         filepath = os.path.join('mock-offloader', 'moffloader', 'room_classification_input_files', f'room{input_img_id}.jpg')
         f = open(filepath, mode='rb')
