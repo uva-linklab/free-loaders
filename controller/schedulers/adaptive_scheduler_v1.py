@@ -25,7 +25,7 @@ class AdaptiveSchedulerV1:
         ]
         self.state_table = {}
         self.no_of_active_tasks = [0] * self.total_executor
-        self.task_executor_candidate = [[True] * self.total_executor for i in range(50)]  # assuming max 50 tasks
+        self.task_executor_candidate = [[True] * self.total_executor for i in range(100)]  # assuming max 100 tasks
 
     def get_executor_candidate(self, before_state, task):
         cpu_counts = [before_state[str(i)]['cpu-count'] for i in range(0, self.total_executor)]
