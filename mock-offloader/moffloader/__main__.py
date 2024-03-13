@@ -171,7 +171,7 @@ def offload_one(address, device_id, task_id, job_id=0, executor_id=None):
 
     elif task_id < 20:
         # Matrix multiplication task.
-        task_data['deadline'] = 662.7 * (task_id - 10) + 1323.7
+        task_data['deadline'] = 821.34 * (task_id - 10) + 1377.63
 
         # Generate a matrix and send it as the input data.
         size = 500 + math.ceil((task_id - 10) * 55.5)  # 500x500 -> 1000x1000
@@ -182,7 +182,7 @@ def offload_one(address, device_id, task_id, job_id=0, executor_id=None):
 
     elif task_id < 30:
         # FFT task. 3s -> 30s of audio data
-        task_data['deadline'] = 900.32 * (task_id - 20) + 2733.06
+        task_data['deadline'] = 445.53 * (task_id - 20) + 1306.79
         samples = np.random.rand(44100 * (task_id - 19) * 3)
         input_data_bytes = np.array(samples, dtype='<f8').tobytes()
 
@@ -201,14 +201,14 @@ def offload_one(address, device_id, task_id, job_id=0, executor_id=None):
                            input_data_np.tobytes()
 
     elif task_id < 50:  # Object detection (AR headset)
-        task_data['deadline'] = 140.111 * (task_id - 40) + 7017.53
+        task_data['deadline'] = 140.11 * (task_id - 40) + 7017.53
         input_img_id = str(task_id - 40)
         filepath = os.path.join('mock-offloader', 'moffloader', 'obj_det_input_files', f'dog{input_img_id}.jpg')
         f = open(filepath, mode='rb')
         input_data_bytes = f.read()  # send raw bytes of the jpg image
 
     elif task_id < 60:  # Room classification (robot)
-        task_data['deadline'] = 182.117 * (task_id - 50) + 3107.38
+        task_data['deadline'] = 182.12 * (task_id - 50) + 3107.38
         input_img_id = str(task_id - 50)
         filepath = os.path.join('mock-offloader', 'moffloader', 'room_classification_input_files', f'room{input_img_id}.jpg')
         f = open(filepath, mode='rb')
