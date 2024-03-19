@@ -87,7 +87,7 @@ do
         total_ins=$(( $trial_ins + $total_ins ))
 	done
 
-    max_resident=$(/usr/bin/time -f '%M' python3 har/human_act_rec.py $i 2>&1 >/dev/null)
+    max_resident=$(/usr/bin/time -f '%M' python3 har/human_act_rec.py $i 2>&1 | grep -Eo '^[0-9]+')
     average_ins=$(( $total_ins / 10 ))
     printf "HAR, %d = %d, %d\n" "$i" "$average_ins" "$max_resident"
 done
