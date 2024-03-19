@@ -1,8 +1,10 @@
 #!/bin/bash
+#
+# profile.sh - Profile tasks' CPU and memory usage for HEROS.
+#
 
 set -e
 set -u
-
 
 FL_PATH=${FL_PATH:-~/free-loaders}
 TASKER_PATH="$FL_PATH"/executor/flexecutor/tasker
@@ -12,13 +14,13 @@ PERF_PATH=${PERF_PATH:-/bin/perf}
 
 if [ ! -d "$FL_PATH" ]
 then
-    printf "fReeLoaders repository not found.\n"
+    printf "fReeLoaders (FL_PATH) repository not found.\n"
     exit 1
 fi
 
 if [ ! -e "$PERF_PATH" ]
 then
-    printf "perf not found.\n"
+    printf "perf (PERF_PATH) not found.\n"
     exit 1
 fi
 
@@ -98,17 +100,17 @@ do
     total_ins=0
 	for _i in 0 1 2 3 4 5 6 7 8 9
 	do
-		trial_ins=$( $PERF_PATH stat -e instructions:u python3 obj_detection.py \
+		trial_ins=$( $PERF_PATH stat -e instructions:u python3 obj_detection.py 2>&1 \
 			"$FL_PATH/mock-offloader/moffloader/obj_det_input_files/dog$i".jpg \
 			| grep -Eo '^.+instructions' \
 			| grep -Eo '[0-9,]+' \
-            | tr -d ',' )
+                        | tr -d ',' )
         total_ins=$(( $trial_ins + $total_ins ))
 	done
 
     max_resident=$(/usr/bin/time -f '%M' python3 obj_detection.py \
                                  "$FL_PATH/mock-offloader/moffloader/obj_det_input_files/dog$i.jpg" \
-                                 $i 2>&1 >/dev/null)
+                                 $i 2>&1 | grep -Eo '^[0-9]+')
     average_ins=$(( $total_ins / 10 ))
     printf "Object classification, %d = %d, %d\n" "$i" "$average_ins" "$max_resident"
 done
@@ -116,17 +118,18 @@ done
 printf "Room classification:\n"
 for i in 0 1 2 3 4 5 6 7 8 9
 do
-    total_ins=0
+        total_ins=0
 	for _i in 0 1 2 3 4 5 6 7 8 9
 	do
 		trial_ins=$( $PERF_PATH stat -e instructions:u python3 room_classification/room_classification.py \
-			"$FL_PATH/mock-offloader/moffloader/room_classification_input_files/room$i".jpg \
+			"$FL_PATH/mock-offloader/moffloader/room_classification_input_files/room$i".jpg 2>&1 \
 			| grep -Eo '^.+instructions' \
 			| grep -Eo '[0-9,]+' \
-            | tr -d ',' )
+                        | tr -d ',' )
+		total_ins=$(( $total_ins + $trial_ins ))
 	done
 
-    max_resident=$(/usr/bin/time -f '%M' python3 har/human_act_rec.py $i 2>&1 >/dev/null)
+    max_resident=$(/usr/bin/time -f '%M' python3 har/human_act_rec.py $i 2>&1 >/dev/null | grep -Eo '^[0-9]+')
     average_ins=$(( $total_ins / 10 ))
     printf "Room classification, %d = %d, %d\n" "$i" "$average_ins" "$max_resident"
 done
