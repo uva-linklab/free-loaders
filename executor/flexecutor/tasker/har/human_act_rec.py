@@ -109,9 +109,14 @@ def run_har_task(input_data):
 
 
 if __name__ == '__main__':
-    sample_input = torch.rand(1, 100, 23).float()
-    model = MHEALTHClassification(16, 23)
-    model.eval()
-    outputs = model(sample_input)
-    _, predicted = torch.max(outputs.data, 1)
-    print(predicted)
+    import sys
+    import numpy as np
+
+    samples = 50 * int(sys.argv[1])
+    sample_input = np.random.rand(samples, 100, 23)
+    run_har_task(sample_input)
+    #model = MHEALTHClassification(16, 23)
+    #model.eval()
+    #outputs = model(sample_input)
+    #_, predicted = torch.max(outputs.data, 1)
+    #print(predicted)

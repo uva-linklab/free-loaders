@@ -31,5 +31,11 @@ def run_room_classification_task(image_bytes):
         res = str(torch.max(outputs.data, 1)[1])
         return res
 
-
-
+if __name__ == '__main__':
+    # load in image bytes to Python bytes
+    # call room classification function
+    # use room[0-9].jpg
+    import sys
+    f = open(sys.argv[1], 'rb')
+    input_data = f.read()
+    run_room_classification_task(input_data)

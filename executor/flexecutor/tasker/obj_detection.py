@@ -13,3 +13,11 @@ def run_obj_detection_task(image_bytes):
     results = model(image)
     return str(results)
 
+if __name__ == '__main__':
+    # read in image bytes as raw Python bytes
+    # call run_obj_detection_task with input image bytes
+
+    import sys
+    f = open(sys.argv[1], 'rb')
+    input_data = f.read()
+    run_obj_detection_task(input_data)
