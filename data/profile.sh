@@ -2,15 +2,19 @@
 #
 # profile.sh - Profile tasks' CPU and memory usage for HEROS.
 #
+# Run with env PATH=$PATH to work with `pipenv shell`.
+#
 
 set -e
 set -u
 
 FL_PATH=${FL_PATH:-~/free-loaders}
+PERF_PATH=${PERF_PATH:-/bin/perf}
+PYTHON_PATH="$(which python)"
 TASKER_PATH="$FL_PATH"/executor/flexecutor/tasker
 
-PERF_PATH=${PERF_PATH:-/bin/perf}
-# perf=/usr/lib/linux-tools/4.15.0-213-generic/perf
+export PERF_PATH
+export PYTHON_PATH
 
 if [ ! -d "$FL_PATH" ]
 then
@@ -22,6 +26,20 @@ if [ ! -e "$PERF_PATH" ]
 then
     printf "perf (PERF_PATH) not found.\n"
     exit 1
+else
+    # Test that perf actually runs correctly.
+    r=$("$PERF_PATH" stat ls >/dev/null 2>&1; echo "$?")
+    if [ "$r" != "0" ]
+    then
+        printf "Something is wrong with perf.\n"
+        exit 1
+    fi
+fi
+
+if [ -z "$(which time || true)" ]
+then
+    printf "The time utility is not installed.\n"
+    exit 1
 fi
 
 cd "$TASKER_PATH"
@@ -31,13 +49,13 @@ do
     total_ins=0
     for _i in 0 1 2 3 4 5 6 7 8 9
     do
-        trial_ins=$( $PERF_PATH stat -e instructions:u python3 loop.py "$i"000000 2>&1 \
+        trial_ins=$( $PERF_PATH stat -e instructions:u "$PYTHON_PATH" loop.py "$i"000000 2>&1 \
             | grep -Eo '^.+instructions' \
             | grep -Eo '[0-9,]+' \
             | tr -d ',' )
         total_ins=$(($total_ins + $trial_ins))
     done
-    max_resident=$( /usr/bin/time -f '%M' python3 loop.py "$i"000000 2>&1 >/dev/null )
+    max_resident=$( /usr/bin/time -f '%M' "$PYTHON_PATH" loop.py "$i"000000 2>&1 >/dev/null )
     average_ins=$(( $total_ins / 10 ))
     printf "Loop, %d = %d, %d\n" "$i" "$average_ins" "$max_resident"
 done
@@ -47,14 +65,14 @@ do
     total_ins=0
     for _i in 0 1 2 3 4 5 6 7 8 9
     do
-        trial_ins=$( $PERF_PATH stat -e instructions:u python3 mm.py $i 2>&1 \
+        trial_ins=$( $PERF_PATH stat -e instructions:u "$PYTHON_PATH" mm.py $i 2>&1 \
             | grep -Eo '^.+instructions' \
             | grep -Eo '[0-9,]+' \
             | tr -d ',' )
         total_ins=$(( $total_ins + $trial_ins ))
     done
 
-    max_resident=$( /usr/bin/time -f '%M' python3 mm.py $i 2>&1 >/dev/null )
+    max_resident=$( /usr/bin/time -f '%M' "$PYTHON_PATH" mm.py $i 2>&1 >/dev/null )
     average_ins=$(( $total_ins / 10 ))
     printf "Matrix, %dx%d = %d, %d\n" "$i" "$i" "$average_ins" "$max_resident"
 done
@@ -64,14 +82,14 @@ do
     total_ins=0
     for _i in 0 1 2 3 4 5 6 7 8 9
     do
-        trial_ins=$( $PERF_PATH stat -e instructions:u python3 fft.py $i 2>&1 \
+        trial_ins=$( $PERF_PATH stat -e instructions:u "$PYTHON_PATH" fft.py $i 2>&1 \
             | grep -Eo '^.+instructions' \
             | grep -Eo '[0-9,]+' \
             | tr -d ',' )
         total_ins=$(( $total_ins + $trial_ins ))
     done
 
-    max_resident=$( /usr/bin/time -f '%M' python3 fft.py $i 2>&1 >/dev/null )
+    max_resident=$( /usr/bin/time -f '%M' "$PYTHON_PATH" fft.py $i 2>&1 >/dev/null )
     average_ins=$(( $total_ins / 10 ))
     printf "FFT, %d = %d, %d\n" "$i" "$average_ins" "$max_resident"
 done
@@ -82,14 +100,14 @@ do
     total_ins=0
 	for _i in 0 1 2 3 4 5 6 7 8 9
 	do
-		trial_ins=$( $PERF_PATH stat -e instructions:u python3 har/human_act_rec.py $i 2>&1 \
+		trial_ins=$( $PERF_PATH stat -e instructions:u "$PYTHON_PATH" har/human_act_rec.py $i 2>&1 \
 			| grep -Eo '^.+instructions' \
 			| grep -Eo '[0-9,]+' \
             | tr -d ',' )
         total_ins=$(( $trial_ins + $total_ins ))
 	done
 
-    max_resident=$(/usr/bin/time -f '%M' python3 har/human_act_rec.py $i 2>&1 | grep -Eo '^[0-9]+')
+    max_resident=$(/usr/bin/time -f '%M' "$PYTHON_PATH" har/human_act_rec.py $i 2>&1 | grep -Eo '^[0-9]+')
     average_ins=$(( $total_ins / 10 ))
     printf "HAR, %d = %d, %d\n" "$i" "$average_ins" "$max_resident"
 done
@@ -100,7 +118,7 @@ do
     total_ins=0
 	for _i in 0 1 2 3 4 5 6 7 8 9
 	do
-		trial_ins=$( $PERF_PATH stat -e instructions:u python3 obj_detection.py 2>&1 \
+		trial_ins=$( $PERF_PATH stat -e instructions:u "$PYTHON_PATH" obj_detection.py 2>&1 \
 			"$FL_PATH/mock-offloader/moffloader/obj_det_input_files/dog$i".jpg \
 			| grep -Eo '^.+instructions' \
 			| grep -Eo '[0-9,]+' \
@@ -108,7 +126,7 @@ do
         total_ins=$(( $trial_ins + $total_ins ))
 	done
 
-    max_resident=$(/usr/bin/time -f '%M' python3 obj_detection.py \
+    max_resident=$(/usr/bin/time -f '%M' "$PYTHON_PATH" obj_detection.py \
                                  "$FL_PATH/mock-offloader/moffloader/obj_det_input_files/dog$i.jpg" \
                                  $i 2>&1 | grep -Eo '^[0-9]+')
     average_ins=$(( $total_ins / 10 ))
@@ -121,7 +139,7 @@ do
         total_ins=0
 	for _i in 0 1 2 3 4 5 6 7 8 9
 	do
-		trial_ins=$( $PERF_PATH stat -e instructions:u python3 room_classification/room_classification.py \
+		trial_ins=$( $PERF_PATH stat -e instructions:u "$PYTHON_PATH" room_classification/room_classification.py \
 			"$FL_PATH/mock-offloader/moffloader/room_classification_input_files/room$i".jpg 2>&1 \
 			| grep -Eo '^.+instructions' \
 			| grep -Eo '[0-9,]+' \
@@ -129,7 +147,7 @@ do
 		total_ins=$(( $total_ins + $trial_ins ))
 	done
 
-    max_resident=$(/usr/bin/time -f '%M' python3 har/human_act_rec.py $i 2>&1 >/dev/null | grep -Eo '^[0-9]+')
+    max_resident=$(/usr/bin/time -f '%M' "$PYTHON_PATH" har/human_act_rec.py $i 2>&1 >/dev/null | grep -Eo '^[0-9]+')
     average_ins=$(( $total_ins / 10 ))
     printf "Room classification, %d = %d, %d\n" "$i" "$average_ins" "$max_resident"
 done
