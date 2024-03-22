@@ -9,15 +9,15 @@ class ExecutorSpecification:
         self.device = device
 
 _ExecutorData = {
-    0: ExecutorSpecification(3085.06, 'aarc64-nano'),
-    1: ExecutorSpecification(1137.11, 'aarc64-rpi3'),
-    2: ExecutorSpecification(1137.11, 'aarc64-rpi3'),
-    3: ExecutorSpecification(2422.04, 'aarc64-rpi4'),
-    4: ExecutorSpecification(2422.04, 'aarc64-rpi4'),
-    5: ExecutorSpecification(2422.04, 'aarc64-rpi4'),
-    6: ExecutorSpecification(2422.04, 'aarc64-rpi4'),
-    7: ExecutorSpecification(2422.04, 'aarc64-rpi4'),
-    8: ExecutorSpecification(4140.84, 'aarc64-tx2'),
+    0: ExecutorSpecification(3085.06, 'aarch64-nano'),
+    1: ExecutorSpecification(1137.11, 'aarch64-rpi3'),
+    2: ExecutorSpecification(1137.11, 'aarch64-rpi3'),
+    3: ExecutorSpecification(2422.04, 'aarch64-rpi4'),
+    4: ExecutorSpecification(2422.04, 'aarch64-rpi4'),
+    5: ExecutorSpecification(2422.04, 'aarch64-rpi4'),
+    6: ExecutorSpecification(2422.04, 'aarch64-rpi4'),
+    7: ExecutorSpecification(2422.04, 'aarch64-rpi4'),
+    8: ExecutorSpecification(4140.84, 'aarch64-tx2'),
     9: ExecutorSpecification(15274.47, 'x86_64-pc'),
 }
 
@@ -159,9 +159,9 @@ __TaskData = {
     },
 
     'aarch64-rpi4': {
-        0: Task(45243078, 8656)
-        1: Task(441596296, 8108)
-        2: Task(837967784, 8108)
+        0: Task(45243078, 8656),
+        1: Task(441596296, 8108),
+        2: Task(837967784, 8108),
         3: Task(1234366298, 8108),
         4: Task(1628385509, 8112),
         5: Task(2027196721, 8108),
@@ -260,37 +260,38 @@ __TaskData = {
         28: Task(620615607, 50892),
         29: Task(635756156, 53472),
 
-        31: Task(13574097133, 233108),
-        32: Task(14148026505, 250792),
-        33: Task(14765769925, 269988),
-        34: Task(14859076086, 288212),
-        35: Task(15238020470, 309088),
-        36: Task(15639139247, 334848),
-        37: Task(15789877361, 350120),
-        38: Task(16293000202, 368132),
-        39: Task(16571187110, 391180),
+        30: Task(7534544310, 219124),
+        31: Task(7827232762, 237496),
+        32: Task(8196524889, 256912),
+        33: Task(8460710009, 277076),
+        34: Task(8760332535, 297068),
+        35: Task(9067858553, 317008),
+        36: Task(9460769095, 338000),
+        37: Task(9827516562, 357456),
+        38: Task(10047523927, 378064),
+        39: Task(10343300662, 398024),
 
-        40: Task(58497242356, 419416),
-        41: Task(58579824665, 422876),
-        42: Task(58233188818, 433040),
-        43: Task(58385565892, 449756),
-        44: Task(58539598411, 465732),
-        45: Task(58781741386, 521528),
-        46: Task(58817871292, 556444),
-        47: Task(58730217899, 610992),
-        48: Task(59021271323, 674656),
-        49: Task(59794005300, 741692),
+        40: Task(19242388591, 407060),
+        41: Task(19285618977, 422236),
+        42: Task(19680417406, 423948),
+        43: Task(19475546886, 441512),
+        44: Task(19663178765, 472680),
+        45: Task(19607798119, 512920),
+        46: Task(19715890882, 555440),
+        47: Task(19864256786, 602756),
+        48: Task(20040350728, 666220),
+        49: Task(20867765717, 730920),
 
-        50: Task(3681729983, 197888),
-        51: Task(3681418445, 230280),
-        52: Task(3682033010, 251012),
-        53: Task(3681325989, 269936),
-        54: Task(3681022381, 288164),
-        55: Task(3681772582, 309880),
-        56: Task(3681189370, 334256),
-        57: Task(3681500735, 350608),
-        58: Task(3682088591, 368536),
-        59: Task(3681514923, 391292),
+        50: Task(6172594103, 196980),
+        51: Task(6213024263, 219120),
+        52: Task(6264296015, 237520),
+        53: Task(6336658527, 256924),
+        54: Task(6442588754, 277088),
+        55: Task(6514396338, 297072),
+        56: Task(6627339653, 317032),
+        57: Task(6751233135, 337096),
+        58: Task(6884346604, 357692),
+        59: Task(7030333433, 378244),
     },
 
     'x86_64-pc': {
@@ -404,13 +405,13 @@ class HerosScheduler:
 
 def executor_is_eligible(eid, state, task):
     executor_data = _ExecutorData[eid]
-    task_m_ins = __TaskData[eid.device][task.task_id].ins / 1000000
+    task_m_ins = __TaskData[executor_data.device][task.task_id].ins / 1000000
     est_req_time = task_m_ins / _ExecutorData[eid].max_mips
     print('[heros] est. completion time: {:.2} s'.format(est_req_time))
     cpu_good = (est_req_time * 1000) <= task.deadline
 
     # Memory usage
     free_ram_kb = state['free-ram'] / 1024
-    memory_good = free_ram_kb > __TaskData[eid.device][task.task_id].memory
+    memory_good = free_ram_kb > __TaskData[executor_data.device][task.task_id].memory
 
     return cpu_good and memory_good
