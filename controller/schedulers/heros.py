@@ -363,6 +363,55 @@ __TaskData = {
     }
 }
 
+# Running times for tasks (including networking) on each machine.
+# Used to calculate network transfer time for each task.
+__ProfilingTotalTime = {
+    'aarch64-nano': [
+        (416.35, 2353.61),
+        (2634.29, 12217.47),
+        (2484.60, 9850.85),
+        (1521.56, 7913.33),
+        (7307.04, 8671.28),
+        (716.47, 1835.27),
+    ],
+
+    'aarch64-rpi3': [
+        (605.63, 4283.46),
+        (3309.31, 30257.08),
+        (560.20,  5814.92),
+        (1338.50, 14474.55),
+        (43654, 89494),
+        (2824.89, 4314.94),
+    ],
+
+    'aarch64-rpi4': [
+        (306.4, 1931.6),
+        (1252.40, 7972.51),
+        (1187.99, 4833.20),
+        (802.45, 5879.98),
+        (7533.64, 9288.47),
+        (940.83, 1637.64),
+    ],
+
+    'aarch64-tx2': [
+        (353.61, 1703.08),
+        (1203.36, 6625.46),
+        (1235.00, 2839.78),
+        (1390.03, 5053.32),
+        (10385.06, 11316.44),
+        (1499.69, 2075.76),
+    ],
+
+    'x86_64-pc': [
+        (186.69, 517.77),
+        (464.90, 1856.82),
+        (417.84, 3724.11),
+        (362.65, 1990.57),
+        (3597.15, 4089.90),
+        (403.27, 662.02),
+    ],
+}
+
 class HerosScheduler:
 
     def __init__(self, executors):
@@ -381,7 +430,7 @@ class HerosScheduler:
         best_eid = 0
 
         print('[heros] selection scores: {}'.format(
-            [(eid, '{:.2}'.format(s['h']),) for (eid, s) in before_state.items()]))
+            [(eid, '{}'.format(round(s['h'], 2)),) for (eid, s) in before_state.items()]))
 
         # Use the executor with the greatest H.
         for (eid, state) in before_state.items():
@@ -394,8 +443,7 @@ class HerosScheduler:
                 best_eid = eid
                 best_h = state['h']
 
-        print('[heros] selecting executor_id={} (h={:.3})'.format(
-            best_eid, best_h))
+        print('[heros] selecting executor_id={} (h={})'.format(best_eid, round(best_h, 2)))
 
         return best_eid
 
@@ -405,10 +453,35 @@ class HerosScheduler:
 
 def executor_is_eligible(eid, state, task):
     executor_data = _ExecutorData[eid]
+
+    task_type_id = int(task.task_id / 10) # 0 = loop, 1 = matrix mult., 2 = FFT, ...
+    task_type_level = task.task_id % 10 # 0 = MM 500x500, 1 = MM 556x556, ...
+
     task_m_ins = __TaskData[executor_data.device][task.task_id].ins / 1000000
-    est_req_time = task_m_ins / _ExecutorData[eid].max_mips
-    print('[heros] est. completion time: {:.2} s'.format(est_req_time))
-    cpu_good = (est_req_time * 1000) <= task.deadline
+    est_computation_time = task_m_ins / _ExecutorData[eid].max_mips * 1000
+
+    min_profile_time = __ProfilingTotalTime[executor_data.device][task_type_id][0]
+    max_profile_time = __ProfilingTotalTime[executor_data.device][task_type_id][1]
+    # There are nine "steps" between the smallest task of the type and the largest task of the type.
+    # Add to the minimum profile time the number of steps needed to interpolate the task time.
+    est_profile_time = min_profile_time + ((max_profile_time - min_profile_time) / 9) * task_type_level
+    est_network_time = est_profile_time - est_computation_time
+
+    # Estimated required time in milliseconds.
+    est_req_time = est_computation_time + est_network_time
+    # The math should not have given us a negative number, but with linear interpolation,
+    # it is possible.
+    if est_network_time < 0:
+        print('[heros] estimated network time is negative ({}); may be incorrect interpolation?'.format(
+            round(est_network_time, 2)))
+        print('[heros] est. computation time = {}, est. profile time = {}'.format(
+            est_computation_time, est_profile_time))
+    else:
+        print('[heros] net_time + comp_time = {} + {} = {}'.format(
+            round(est_network_time, 2), round(est_computation_time, 2), est_req_time))
+
+    print('[heros] est. completion time: {} ms'.format(round(est_req_time, 2)))
+    cpu_good = est_req_time <= task.deadline
 
     # Memory usage
     free_ram_kb = state['free-ram'] / 1024
