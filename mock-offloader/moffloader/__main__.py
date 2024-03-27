@@ -76,7 +76,7 @@ def on_connect(client, userdata, flags, rc):
     client.subscribe(controller_offloader_task_response_topic, qos=2)
 
 def on_subscribe(client, userdata, mid, granted_qos):
-    offload_heteroedge(userdata["address"])
+    Thread(target=offload_heteroedge, args=(userdata["address"],)).start()
 
 def on_message(client, userdata, mqtt_message):
     message_json = json.loads(mqtt_message.payload)
@@ -127,6 +127,8 @@ def offload_heteroedge(address):
         executor_id = int(result.group(2))
         offload_one(address, 0, task_id, job_id=job_id, executor_id=executor_id)
         current_submitted_task[job_id] = 1
+
+        time.sleep(4)  # hardcoding 4s as delay between jobs (15 tasks/min)
 
 
 def offload_many(address, device_id, count, rate):
