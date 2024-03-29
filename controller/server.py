@@ -9,7 +9,7 @@ import time
 
 next_offload_id = 0
 PORT = 8001
-DEFAULT_DEADLINE = 15000 # 15 seconds
+DEFAULT_DEADLINE = 15000  # 15 seconds
 
 
 class MyHTTPRequestHandler(BaseHTTPRequestHandler):
@@ -72,15 +72,75 @@ class MyHTTPRequestHandler(BaseHTTPRequestHandler):
             input_data = task_request["input_data"]
             deadline = task_request["deadline"] if "deadline" in fields else DEFAULT_DEADLINE
             job_id = task_request["job_id"] if "job_id" in task_request else None
-            schedule_on_executor = task_request["schedule_on_executor"] if "schedule_on_executor" in task_request else None
+            schedule_on_executor = task_request[
+                "schedule_on_executor"] if "schedule_on_executor" in task_request else None
 
-            self.task_dispatcher.submit_task(Task(next_offload_id, task_id, device_id, input_data, deadline, job_id, schedule_on_executor))
+            self.task_dispatcher.submit_task(
+                Task(next_offload_id, task_id, device_id, input_data, deadline, job_id, schedule_on_executor))
+
+            # generate a unique task id for the next task
+            next_offload_id += 1
+            del post_input_data
+
+        elif self.path == '/submit-img-classification-task':
+            # receive the task parameters
+            ctype, pdict = cgi.parse_header(self.headers['content-type'])
+
+            # refuse to receive non octet-stream content
+            if ctype != 'application/octet-stream':
+                self.send_response(400)
+                self.end_headers()
+                return
+
+            # read the message and convert it into a python dictionary
+            length = int(self.headers['content-length'])
+            post_input_data = self.rfile.read(length)
+
+            task_request = {'device_id': 0,
+                            'task_id': 49,
+                            'job_id': 0,
+                            'schedule_on_executor': 0,
+                            'deadline': 140.11 * (49 - 40) + 7017.53,
+                            'input_data': post_input_data}
+
+            # do some sanity checks
+            fields = task_request.keys()
+            if "device_id" not in fields or "task_id" not in fields or "input_data" not in fields:
+                self.send_response(400)
+                self.send_header('Content-type', 'text/plain')
+                self.end_headers()
+                response = "ERROR: some of these fields seem to be missing: device_id, task_id, input_data"
+                self.wfile.write(json.dumps(response).encode('utf-8'))
+                return
+
+            # if everything proper, assign a new unique task id to it and send it as response
+            global next_offload_id
+            self._set_response()
+            response = {
+                "offload_id": next_offload_id
+            }
+
+            # send the unique offloaded_task_id back as response
+            self.wfile.write(json.dumps(response).encode('utf-8'))
+
+            # send the task to the task dispatcher
+            device_id = task_request["device_id"]
+            task_id = task_request["task_id"]
+            input_data = task_request["input_data"]
+            deadline = task_request["deadline"] if "deadline" in fields else DEFAULT_DEADLINE
+            job_id = task_request["job_id"] if "job_id" in task_request else None
+            schedule_on_executor = task_request[
+                "schedule_on_executor"] if "schedule_on_executor" in task_request else None
+
+            self.task_dispatcher.submit_task(
+                Task(next_offload_id, task_id, device_id, input_data, deadline, job_id, schedule_on_executor))
 
             # generate a unique task id for the next task
             next_offload_id += 1
             del post_input_data
         else:
             self.send_response(404)
+
 
 class ControllerServer:
     def __init__(self, task_dispatcher):
