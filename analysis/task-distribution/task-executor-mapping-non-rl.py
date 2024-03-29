@@ -10,6 +10,8 @@ ap.add_argument('-ois', '--offload-id-start', help='starting offload_id',
                 type=int, default=0, dest='start_offload_id')
 ap.add_argument('-oie', '--offload-id-end', help='ending offload_id',
                 type=int, default=500000, dest='end_offload_id') # setting default end offload to a large number
+ap.add_argument('-c', '--csv', help='generate in csv format',
+                action='store_true', dest='generate_csv')
 ap.add_argument('log_file', help='Log file to parse')
 args = ap.parse_args()
 
@@ -33,13 +35,18 @@ sorted_mapping = dict(sorted(task_to_executor_mapping.items()))
 # print(sorted_mapping)
 devices = ["nano", "rpi3", "rpi3", "rpi4", "rpi4", "rpi4", "rpi4", "rpi4", "tx2", "desktop"]
 devices_with_index = [f'{device}({index})' for (index,device) in enumerate(devices)]
+headers = ["TaskId"] + devices_with_index + ["MaxOffloaded"]
 res = []
 for key, val in sorted_mapping.items():
     highest_offloaded = max(val)
     highest_offloaded_index = val.index(highest_offloaded)
     res.append([key] + val + [devices[highest_offloaded_index] + f"({highest_offloaded_index})"])
 
-# headers = ["TaskId"] + ["Executor" + str(i) for i in range(args.num_executors)]
-headers = ["TaskId"] + devices_with_index + ["MaxOffloaded"]
-
-print(tabulate(res, headers=headers))
+if args.generate_csv:
+    print('#', end='')
+    print(*headers, sep=',')
+    for row in res:
+        print(*row, sep=',')
+else:
+    # headers = ["TaskId"] + ["Executor" + str(i) for i in range(args.num_executors)]
+    print(tabulate(res, headers=headers))
