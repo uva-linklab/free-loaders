@@ -443,7 +443,8 @@ class HerosScheduler:
                 best_eid = eid
                 best_h = state['h']
 
-        print('[heros] selecting executor_id={} (h={})'.format(best_eid, round(best_h, 2)))
+        print(f'[heros] scheduled task(offload_id={task.offload_id}, task_id={task.task_id}) ' +
+              f'on executer_id={best_eid}, h={round(best_h, 2)}.')
 
         return best_eid
 
