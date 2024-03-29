@@ -28,6 +28,7 @@ class MyHTTPRequestHandler(BaseHTTPRequestHandler):
         pass
 
     def do_POST(self):
+        global next_offload_id
         if self.path == '/submit-task':
             # receive the task parameters
             ctype, pdict = cgi.parse_header(self.headers['content-type'])
@@ -57,7 +58,6 @@ class MyHTTPRequestHandler(BaseHTTPRequestHandler):
                 return
 
             # if everything proper, assign a new unique task id to it and send it as response
-            global next_offload_id
             self._set_response()
             response = {
                 "offload_id": next_offload_id
@@ -114,7 +114,6 @@ class MyHTTPRequestHandler(BaseHTTPRequestHandler):
                 return
 
             # if everything proper, assign a new unique task id to it and send it as response
-            global next_offload_id
             self._set_response()
             response = {
                 "offload_id": next_offload_id
