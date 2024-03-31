@@ -52,21 +52,13 @@ class NumpyEncoder(json.JSONEncoder):
 
 controller_offloader_task_response_topic = "ctrl-offl-task-response"
 current_submitted_task = {}
-# schedule_plan = [['s0', 't9-e0-base', 't9-e0-thread', 't9-e0-end', 't19-e8-base', 't19-e8-thread', 't19-e8-end', 't29-e8-base', 't29-e8-thread', 't29-e8-end', 't'],
-#                  ['s1', 't9-e0-base', 't9-e0-thread', 't9-e0-end', 't19-e8-base', 't19-e8-thread', 't19-e8-end', 't29-e8-base', 't29-e8-thread', 't29-e8-end', 't'],
-#                  ['s2', 't9-e0-base', 't9-e0-thread', 't9-e0-end', 't19-e8-base', 't19-e8-thread', 't19-e8-end', 't29-e8-base', 't29-e8-thread', 't29-e8-end', 't'],
-#                  ['s3', 't9-e0-base', 't9-e0-thread', 't9-e0-end', 't19-e8-base', 't19-e8-thread', 't19-e8-end', 't29-e8-base', 't29-e8-thread', 't29-e8-end', 't'],
-#                  ['s4', 't9-e3-base', 't9-e3-thread', 't9-e3-end', 't19-e8-base', 't19-e8-thread', 't19-e8-end', 't29-e8-base', 't29-e8-thread', 't29-e8-end', 't']]
-schedule_plan = [['s0', 't9-e0-base', 't9-e0-thread', 't9-e0-end', 't19-e8-base', 't19-e8-thread', 't19-e8-end', 't29-e8-base', 't29-e8-thread', 't29-e8-end', 't'],
-                 ['s1', 't9-e0-base', 't9-e0-thread', 't9-e0-end', 't19-e8-base', 't19-e8-thread', 't19-e8-end', 't29-e8-base', 't29-e8-thread', 't29-e8-end', 't'],
-                 ['s2', 't9-e0-base', 't9-e0-thread', 't9-e0-end', 't19-e8-base', 't19-e8-thread', 't19-e8-end', 't29-e8-base', 't29-e8-thread', 't29-e8-end', 't'],
-                 ['s3', 't9-e0-base', 't9-e0-thread', 't9-e0-end', 't19-e8-base', 't19-e8-thread', 't19-e8-end', 't29-e8-base', 't29-e8-thread', 't29-e8-end', 't'],
-                 ['s4', 't9-e3-base', 't9-e3-thread', 't9-e3-end', 't19-e8-base', 't19-e8-thread', 't19-e8-end', 't29-e8-base', 't29-e8-thread', 't29-e8-end', 't'],
-                 ['s5', 't9-e3-base', 't9-e3-thread', 't9-e3-end', 't19-e8-base', 't19-e8-thread', 't19-e8-end', 't29-e8-base', 't29-e8-thread', 't29-e8-end', 't'],
-                 ['s6', 't9-e3-base', 't9-e3-thread', 't9-e3-end', 't19-e0-base', 't19-e0-thread', 't19-e0-end', 't29-e8-base', 't29-e8-thread', 't29-e8-end', 't'],
-                 ['s7', 't9-e3-base', 't9-e3-thread', 't9-e3-end', 't19-e0-base', 't19-e0-thread', 't19-e0-end', 't29-e8-base', 't29-e8-thread', 't29-e8-end', 't'],
-                 ['s8', 't9-e4-base', 't9-e4-thread', 't9-e4-end', 't19-e0-base', 't19-e0-thread', 't19-e0-end', 't29-e8-base', 't29-e8-thread', 't29-e8-end', 't'],
-                 ['s9', 't9-e4-base', 't9-e4-thread', 't9-e4-end', 't19-e0-base', 't19-e0-thread', 't19-e0-end', 't29-e8-base', 't29-e8-thread', 't29-e8-end', 't']]
+schedule_plan = [
+    ['s0', 't9-e3-base', 't9-e3-thread', 't9-e3-end', 't19-e3-base', 't19-e3-thread', 't19-e3-end', 't29-e8-base', 't29-e8-thread', 't29-e8-end', 't39-e3-base', 't39-e3-thread', 't39-e3-end', 't49-e0-base', 't49-e0-thread', 't49-e0-end', 't59-e3-base', 't59-e3-thread', 't59-e3-end', 't'],
+    ['s1', 't9-e3-base', 't9-e3-thread', 't9-e3-end', 't19-e3-base', 't19-e3-thread', 't19-e3-end', 't29-e8-base', 't29-e8-thread', 't29-e8-end', 't39-e3-base', 't39-e3-thread', 't39-e3-end', 't49-e0-base', 't49-e0-thread', 't49-e0-end', 't59-e3-base', 't59-e3-thread', 't59-e3-end', 't'],
+    ['s2', 't9-e3-base', 't9-e3-thread', 't9-e3-end', 't19-e3-base', 't19-e3-thread', 't19-e3-end', 't29-e8-base', 't29-e8-thread', 't29-e8-end', 't39-e3-base', 't39-e3-thread', 't39-e3-end', 't49-e0-base', 't49-e0-thread', 't49-e0-end', 't59-e3-base', 't59-e3-thread', 't59-e3-end', 't'],
+    ['s3', 't9-e3-base', 't9-e3-thread', 't9-e3-end', 't19-e3-base', 't19-e3-thread', 't19-e3-end', 't29-e8-base', 't29-e8-thread', 't29-e8-end', 't39-e3-base', 't39-e3-thread', 't39-e3-end', 't49-e0-base', 't49-e0-thread', 't49-e0-end', 't59-e3-base', 't59-e3-thread', 't59-e3-end', 't'],
+    ['s4', 't9-e4-base', 't9-e4-thread', 't9-e4-end', 't19-e4-base', 't19-e4-thread', 't19-e4-end', 't29-e8-base', 't29-e8-thread', 't29-e8-end', 't39-e4-base', 't39-e4-thread', 't39-e4-end', 't49-e3-base', 't49-e3-thread', 't49-e3-end', 't59-e4-base', 't59-e4-thread', 't59-e4-end', 't']
+]
 
 def on_connect(client, userdata, flags, rc):
     print("[td] connected to mqtt with result code " + str(rc))
