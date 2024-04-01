@@ -1,9 +1,6 @@
 class LoadBalancingScheduler:
 
     def __init__(self, executors):
-        executors.pop(8)
-        executors.pop(9)
-
         self.executors = executors
         self.total_executor = len(executors.keys())
         self.needs_before_state = True
