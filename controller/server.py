@@ -3,6 +3,8 @@ import json
 import socketserver
 from http.server import BaseHTTPRequestHandler
 from classes.task import Task
+from queue import Queue
+from threading import Thread
 import cgi
 import flomqtt.serialize as flserialize
 import time
@@ -11,10 +13,28 @@ next_offload_id = 0
 PORT = 8001
 DEFAULT_DEADLINE = 15000  # 15 seconds
 
+def submit_to_task_dispatcher(task_dispatcher, task_queue):
+    '''Send task submissions to the task dispatcher asynchronously.
+    '''
+
+    print('[tda] started')
+    while True:
+        print('[tda] awaiting task submission')
+        dequeued_task = task_queue.get()
+
+        print('[tda] submitting offload_id={} to task dispatcher'.format(dequeued_task.offload_id))
+        task_dispatcher.submit_task(dequeued_task)
+
 
 class MyHTTPRequestHandler(BaseHTTPRequestHandler):
     def __init__(self, task_dispatcher, *args, **kwargs):
         self.task_dispatcher = task_dispatcher
+        self.task_queue = Queue()
+        self.td_async_thread = Thread(target=submit_to_task_dispatcher,
+                                      args=(self.task_dispatcher, self.task_queue,))
+
+        self.td_async_thread.start()
+
         # BaseHTTPRequestHandler calls do_GET **inside** __init__ !!!
         # So we have to call super().__init__ after setting attributes.
         super().__init__(*args, **kwargs)
@@ -75,8 +95,8 @@ class MyHTTPRequestHandler(BaseHTTPRequestHandler):
             schedule_on_executor = task_request[
                 "schedule_on_executor"] if "schedule_on_executor" in task_request else None
 
-            self.task_dispatcher.submit_task(
-                Task(next_offload_id, task_id, device_id, input_data, deadline, job_id, schedule_on_executor))
+            task = Task(next_offload_id, task_id, device_id, input_data, deadline, job_id, schedule_on_executor)
+            self.task_queue.put(task)
 
             # generate a unique task id for the next task
             next_offload_id += 1
