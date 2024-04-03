@@ -207,6 +207,7 @@ class TaskDispatcher:
 
         # task.input_data is already in bytes
         mqtt_message = flserialize.pack(task_json, task.input_data)
+        print('[td] sending {} B (input size: {} B) for task {}'.format(len(mqtt_message), len(task.input_data), task.task_id))
         executor_topic = f'{controller_executer_task_execute_topic}-{executer_id}'
 
         self.mqtt_client.publish(executor_topic,
