@@ -49,7 +49,7 @@ class RLScheduler:
 
         self.total_executor = len(executers.keys())
 
-        self.Q = Q_Network(input_size=102, hidden_size=400, output_size=self.total_executor)
+        self.Q = Q_Network(input_size=12, hidden_size=400, output_size=self.total_executor)
         if os.path.exists('Q.model'):
             serializers.load_npz('Q.model', self.Q)
             print('[rl] loaded Q.model')
@@ -98,12 +98,23 @@ class RLScheduler:
         state = [int(task.task_id), task.deadline]
         # task_id_vec = [int(x) for x in list('{:032b}'.format(int(task.task_id)))]
 
-        for key in before_state:
-            state.extend(list(before_state[key].values()))
+        # Add in the normalized load.
+        for eid in before_state.keys():
+            before_state[eid]['normal-load'] = before_state[eid]['cpu-load'] / before_state[eid]['cpu-count']
+
+        # Include only the stats named here.
+        included_stats = ['normal-load']
+        for eid in before_state:
+            executor_state = [v for (k, v) in before_state[eid].items() if k in included_stats]
+            state.extend(executor_state)
+
+        # print('[rls] input state: {}'.format(state))
 
         path_to_scaler = os.path.join(os.getcwd(), 'controller', 'rl', 'std_scaler.bin')
         scaler=load(path_to_scaler)
         scaled_data = scaler.transform(np.array(state).reshape(1, -1))
+        # print('[rls] scaled state: {}'.format(scaled_data))
+
         return scaled_data
 
     def generate_new_state(self, before_state, new_state_of_executor, exec_id):
