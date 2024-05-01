@@ -165,7 +165,8 @@ class TaskDispatcher:
             self.deadlines_met += (1 if deadline_met else 0)
 
         dsr = self.deadlines_met/(self.finished_tasks+self.failed_tasks)
-        print(f"[td] deadlines_met={self.deadlines_met}, finished_tasks={self.finished_tasks}, failed_tasks={self.failed_tasks}, pending_tasks={self.total_tasks-(self.finished_tasks+self.failed_tasks)}, dsr={dsr}")
+        pending_task_count = len(self.execution_times.keys()) - 1 # -1 because this task just finished.
+        print(f"[td] deadlines_met={self.deadlines_met}, finished_tasks={self.finished_tasks}, failed_tasks={self.failed_tasks}, pending_tasks={pending_task_count}, dsr={dsr}")
 
         # # give the feedback to the rl scheduler
         if self.scheduler.needs_feedback:
