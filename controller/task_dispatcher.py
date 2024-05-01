@@ -29,8 +29,19 @@ def request_feedback(self, task_id, feedback):
 
 
 async def fetch_json(executer_id: int, url: str, session: ClientSession, **kwargs) -> tuple:
-    resp = await session.request(method="GET", url=url, **kwargs)
+    import aiohttp.client_exceptions
+    resp = None
+    while True:
+        try:
+            resp = await session.request(method="GET", url=url, **kwargs)
+            break
+        except aiohttp.client_exceptions.ClientOSError:
+            print('[td] error getting state from executor {}'.format(executer_id))
+            time.sleep(0.5)
+            continue
+
     response_json = await resp.json()
+
     return executer_id, response_json
 
 
