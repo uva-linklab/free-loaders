@@ -7,33 +7,15 @@ from queue import Queue
 from threading import Thread
 import cgi
 import flomqtt.serialize as flserialize
+import threading
 import time
 
-next_offload_id = 0
 PORT = 8001
 DEFAULT_DEADLINE = 15000  # 15 seconds
 
-def submit_to_task_dispatcher(task_dispatcher, task_queue):
-    '''Send task submissions to the task dispatcher asynchronously.
-    '''
-
-    print('[tda] started')
-    while True:
-        print('[tda] awaiting task submission')
-        dequeued_task = task_queue.get()
-
-        print('[tda] submitting offload_id={} to task dispatcher'.format(dequeued_task.offload_id))
-        task_dispatcher.submit_task(dequeued_task)
-
-
 class MyHTTPRequestHandler(BaseHTTPRequestHandler):
-    def __init__(self, task_dispatcher, *args, **kwargs):
-        self.task_dispatcher = task_dispatcher
-        self.task_queue = Queue()
-        self.td_async_thread = Thread(target=submit_to_task_dispatcher,
-                                      args=(self.task_dispatcher, self.task_queue,))
-
-        self.td_async_thread.start()
+    def __init__(self, server_state, *args, **kwargs):
+        self.server_state = server_state
 
         # BaseHTTPRequestHandler calls do_GET **inside** __init__ !!!
         # So we have to call super().__init__ after setting attributes.
@@ -48,7 +30,6 @@ class MyHTTPRequestHandler(BaseHTTPRequestHandler):
         pass
 
     def do_POST(self):
-        global next_offload_id
         if self.path == '/submit-task':
             # receive the task parameters
             ctype, pdict = cgi.parse_header(self.headers['content-type'])
@@ -78,9 +59,10 @@ class MyHTTPRequestHandler(BaseHTTPRequestHandler):
                 return
 
             # if everything proper, assign a new unique task id to it and send it as response
+            offload_id = self.server_state.get_next_offload_id()
             self._set_response()
             response = {
-                "offload_id": next_offload_id
+                "offload_id": offload_id
             }
 
             # send the unique offloaded_task_id back as response
@@ -95,11 +77,9 @@ class MyHTTPRequestHandler(BaseHTTPRequestHandler):
             schedule_on_executor = task_request[
                 "schedule_on_executor"] if "schedule_on_executor" in task_request else None
 
-            task = Task(next_offload_id, task_id, device_id, input_data, deadline, job_id, schedule_on_executor)
-            self.task_queue.put(task)
+            task = Task(offload_id, task_id, device_id, input_data, deadline, job_id, schedule_on_executor)
+            self.server_state.enqueue_task(task)
 
-            # generate a unique task id for the next task
-            next_offload_id += 1
             del post_input_data
 
         elif self.path == '/submit-img-classification-task':
@@ -134,9 +114,10 @@ class MyHTTPRequestHandler(BaseHTTPRequestHandler):
                 return
 
             # if everything proper, assign a new unique task id to it and send it as response
+            offload_id = self.server_state.get_next_offload_id()
             self._set_response()
             response = {
-                "offload_id": next_offload_id
+                "offload_id": offload_id
             }
 
             # send the unique offloaded_task_id back as response
@@ -151,24 +132,61 @@ class MyHTTPRequestHandler(BaseHTTPRequestHandler):
             schedule_on_executor = task_request[
                 "schedule_on_executor"] if "schedule_on_executor" in task_request else None
 
-            self.task_dispatcher.submit_task(
-                Task(next_offload_id, task_id, device_id, input_data, deadline, job_id, schedule_on_executor))
+            task = Task(offload_id, task_id, device_id, input_data, deadline, job_id, schedule_on_executor)
+            self.server_state.enqueue_task(task)
 
-            # generate a unique task id for the next task
-            next_offload_id += 1
             del post_input_data
         else:
             self.send_response(404)
 
+class ServerState:
+    def __init__(self, task_dispatcher):
+        self.task_dispatcher = task_dispatcher
+
+        # Asynchronous task queueing and submission.
+        self.__task_queue = Queue()
+        self.__task_queue_cv = threading.Condition(lock=threading.Lock())
+
+        self.__task_dispatch_thread = threading.Thread(
+            target=async_task_dispatch_main,
+            name='task-dispatch',
+            args=(task_dispatcher,
+                  self.__task_queue,
+                  self.__task_queue_cv,))
+        self.__task_dispatch_thread.start()
+
+        # Offload ID handling.
+        self.__next_offload_id = 0
+        self.__next_offload_id_lock = threading.Lock()
+
+    def get_next_offload_id(self):
+        '''Return the next available offload ID.
+        '''
+
+        self.__next_offload_id_lock.acquire()
+        offload_id = self.__next_offload_id
+        self.__next_offload_id += 1
+        self.__next_offload_id_lock.release()
+
+        return offload_id
+
+    def enqueue_task(self, task):
+        '''Send a task to the dispatch queue.
+        '''
+
+        self.__task_queue_cv.acquire()
+        self.__task_queue.put(task)
+        self.__task_queue_cv.notify()
+        self.__task_queue_cv.release()
 
 class ControllerServer:
     def __init__(self, task_dispatcher):
-        self.task_dispatcher = task_dispatcher
+        self.state = ServerState(task_dispatcher)
 
     def start_server(self):
         # use partial application to pass task_dispatcher object to MyHTTPRequestHandler.
         # ref: https://stackoverflow.com/a/52046062
-        handler = partial(MyHTTPRequestHandler, self.task_dispatcher)
+        handler = partial(MyHTTPRequestHandler, self.state)
 
         while True:
             try:
@@ -180,3 +198,18 @@ class ControllerServer:
             except OSError as e:
                 print('[server] binding failed; waiting 30 secs.')
                 time.sleep(30)
+
+def async_task_dispatch_main(task_dispatcher, task_queue, task_queue_cv):
+    '''Send task submissions to the task dispatcher asynchronously.
+    '''
+
+    print('[tda] started')
+    task_queue_cv.acquire()
+    while True:
+        while task_queue.empty():
+            task_queue_cv.wait()
+
+        # This is the only thread dequeueing tasks; there will always be a task to dequeue.
+        dequeued_task = task_queue.get()
+        print('[tda] submitting offload_id={} to task dispatcher'.format(dequeued_task.offload_id))
+        task_dispatcher.submit_task(dequeued_task)
