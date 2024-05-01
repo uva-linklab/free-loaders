@@ -204,12 +204,23 @@ def async_task_dispatch_main(task_dispatcher, task_queue, task_queue_cv):
     '''
 
     print('[tda] started')
-    task_queue_cv.acquire()
+    local_task_queue = Queue()
+
     while True:
+        task_queue_cv.acquire()
         while task_queue.empty():
             task_queue_cv.wait()
 
         # This is the only thread dequeueing tasks; there will always be a task to dequeue.
-        dequeued_task = task_queue.get()
-        print('[tda] submitting offload_id={} to task dispatcher'.format(dequeued_task.offload_id))
-        task_dispatcher.submit_task(dequeued_task)
+        # Move tasks to the local queue.
+        while not task_queue.empty():
+            local_task_queue.put(task_queue.get())
+        task_queue_cv.release()
+
+        # Process the local task queue while not holding the lock,
+        # in case it takes a while.
+        while not local_task_queue.empty():
+            # This should never throw and exception because we check the queue state just prior.
+            dequeued_task = local_task_queue.get(block=False)
+            print('[tda] submitting offload_id={} to task dispatcher'.format(dequeued_task.offload_id))
+            task_dispatcher.submit_task(dequeued_task)
