@@ -5,6 +5,9 @@ import matplotlib.pyplot as plt
 import numpy
 
 ap = argparse.ArgumentParser()
+ap.add_argument('--by-id',
+                help='show individual executor IDs',
+                dest='by_id', action='store_true')
 ap.add_argument('-s', '--starting-offload',
                 help='ID of the first offload to count',
                 type=int, dest='start', default=0)
@@ -26,12 +29,17 @@ with open(args.path, 'r') as fh:
     log_lines = fh.readlines()
 
 r = 'scheduled task.* on executer_id=(?P<eid>\d+)'
-x = ['nano',
-     'rpi3a+',
-     'rpi4b',
-     'tx2',
-     'desktop']
-y = [0 for _i in range(0, 5)]
+x = []
+if args.by_id == False:
+    x = ['nano',
+         'rpi3a+',
+         'rpi4b',
+         'tx2',
+         'desktop']
+else:
+    x = [str(x) for x in range(0,10)]
+
+y = [0 for _i in range(0, len(x))]
 offload_no = 0
 for line in log_lines:
     m = re.search(r, line)
@@ -46,14 +54,15 @@ for line in log_lines:
         break
 
     eid = int(m['eid'])
-    if 1 <= eid and eid <= 2:
-        eid = 1
-    elif 3 <= eid and eid <= 7:
-        eid = 2
-    elif eid == 8:
-        eid = 3
-    elif eid == 9:
-        eid = 4
+    if args.by_id == False:
+        if 1 <= eid and eid <= 2:
+            eid = 1
+        elif 3 <= eid and eid <= 7:
+            eid = 2
+        elif eid == 8:
+            eid = 3
+        elif eid == 9:
+            eid = 4
 
     y[eid] += 1
 
