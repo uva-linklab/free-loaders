@@ -14,11 +14,7 @@ import paho.mqtt.client
 import config
 import stats
 from tasker.loop import run_loop_task
-from tasker.mm import run_mm_task
-from tasker.fft import run_fft_task
-from tasker.obj_detection import run_obj_detection_task
-from tasker.room_classification.room_classification import run_room_classification_task
-from tasker.har.human_act_rec import run_har_task
+
 
 # MQTT server port; fixed to 1883.
 MQTTServerPort = 1883

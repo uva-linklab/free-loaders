@@ -1,10 +1,11 @@
 import http.server
-import random
-
 import json
 import log
+import random
 import stats
 import threading
+
+import load
 
 HTTPServerPort = 8088
 
@@ -19,6 +20,30 @@ class ExecutorHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
             self.get_state()
         else:
             self.send_response(404)
+
+    def do_POST(self):
+        if self.path == '/load/clear':
+            log.i('clearing load profile')
+            load.clear()
+            self.send_response(204)
+        elif self.path == '/load/set/constant':
+            content = self.rfile.read(int(self.headers['content-length']))
+            conf_json = json.loads(content)
+            target_load = conf_json['load']
+
+            log.i('setting load target of {}'.format(target_load))
+            load.set_constant_load(target_load)
+
+            self.send_response(204)
+        elif self.path == '/load/set/intermittent':
+            content = self.rfile.read(int(self.headers['content-length']))
+            conf_json = json.loads(content)
+
+            freq = conf_json['frequency']
+            d_spike = conf_json['duration']
+            load.set_intermittent_load(freq, d_spike)
+
+            self.send_response(204)
 
     def log_message(self, format, *args):
         pass
