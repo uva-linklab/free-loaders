@@ -28,18 +28,22 @@ def __main():
     args = ap.parse_args()
 
     obj = {}
+    url_path = ''
     if args.load == 'clear':
+        url_path = '/load/clear'
         obj['profile'] = 'none'
     else:
         sparts = args.load.split(',')
 
         if sparts[0] == 'constant':
+            url_path = '/load/set/constant'
             obj['profile'] = 'constant'
-            obj['target'] = int(sparts[1])
+            obj['load'] = float(sparts[1])
         elif sparts[0] == 'intermittent':
+            url_path = '/load/set/intermittent'
             obj['profile'] = 'intermittent'
-            obj['frequency'] = 'frequency'
-            obj['duration'] = 'duration'
+            obj['frequency'] = float(sparts[1])
+            obj['duration'] = float(sparts[2])
 
     payload_json = json.dumps(obj)
 
@@ -50,13 +54,13 @@ def __main():
 
     for t in targets:
         print('Sending update to {}'.format(ExecutorIPs[t]))
-        url = 'http://{}:{}/load/set/{}'.format(
+        url = 'http://{}:{}{}'.format(
             ExecutorIPs[t],
             8088,
-            obj['profile'])
+            url_path)
         requests.post(url,
                       data=payload_json,
-                      headers={'Content-Type: application/json'})
+                      headers={'Content-Type': 'application/json'})
 
 if __name__ == '__main__':
     __main()
