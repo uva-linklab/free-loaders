@@ -1,17 +1,19 @@
 import argparse
 import time
 
-import config
-import executor
-import log
 import multiprocessing
 import multiprocessing.connection
 import os
 import service
 import signal
-import stats
 import sys
 import threading
+
+import config
+import executor
+import load
+import log
+import stats
 
 __Children = {
     'executor': None
@@ -31,6 +33,7 @@ def main(args):
 
     gpu_monitor_thread = stats.start_gpu_monitor_thread()
     state_http_server_thread = service.start_state_server(args.unavailable)
+    loading_thread = load.start_loading_thread()
     __Children['executor'] = __start_executor(
         args.controller, args.id, args.power, args.log_level, args.unavailable)
 
