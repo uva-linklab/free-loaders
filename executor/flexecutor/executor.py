@@ -126,6 +126,7 @@ def __mqtt_message_received(client, data, msg):
                 'executor_id': task_request['executer_id'],
                 'task_id': task_request['task_id'],
                 'offload_id': task_request['offload_id'],
+                'job_id': task_request['job_id'],
                 'state': current_state,
                 'energy': 0,
                 'status': -5  # inform the controller that we failed
