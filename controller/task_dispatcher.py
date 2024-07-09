@@ -9,6 +9,7 @@ import time
 import flomqtt.serialize as flserialize
 from threading import Timer
 from schedulers.rl_scheduler import RLScheduler
+import slt
 
 executer_server_port = 8088
 
@@ -281,3 +282,5 @@ class TaskDispatcher:
                                                    0.0])
         self.timers[task.offload_id].start()
         self.total_tasks += 1
+
+        slt.update_load(task.offload_id, self.executers)
