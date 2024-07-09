@@ -171,7 +171,7 @@ class TaskDispatcher:
 
         # # give the feedback to the rl scheduler
         if self.scheduler.needs_feedback:
-            if isinstance(self.scheduler, RLScheduler):
+            if isinstance(self.scheduler, RLScheduler) and 'h' in state_of_executor.keys():
                 del state_of_executor['h']
 
             self.scheduler.feedback_q.put({
