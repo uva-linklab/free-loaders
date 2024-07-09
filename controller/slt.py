@@ -11,13 +11,19 @@ def update_load(offload_id, executors):
 
     if offload_id in __LoadSpec.keys():
         # Clear the load on all of them.
-        for (eid, executor) in executors:
+        for (eid, executor) in executors.items():
             url = 'http://{}:8088/load/clear'.format(executor.executer_ip)
-            requests.post(url)
+            try:
+                requests.post(url)
+            except:
+                pass
 
         # Set the load on the specified executors.
         load_eids = next(__ExecutorCycle)
         for eid in load_eids:
             executor = executors[eid]
             url = 'http://{}:8088/load/set/constant'.format(executor.executer_ip)
-            requests.post(url, json={ 'load': 1.0 })
+            try:
+                requests.post(url, json={ 'load': 1.0 })
+            except:
+                pass
