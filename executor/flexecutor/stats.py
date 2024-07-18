@@ -99,11 +99,14 @@ def _cpu_stload():
     '''Return the short-term CPU load of the executor.
     '''
 
+    global __CPULoad
+    global __CPULoadLock
+
     __CPULoadLock.acquire(block=True)
     cpu_load = __CPULoad
     __CPULoadLock.release()
 
-    return __CPULoad
+    return cpu_load
 
 # Path to the NVIDIA SMI binary.
 __NVIDIASMIPath = '/usr/bin/nvidia-smi'
@@ -150,11 +153,12 @@ def __cpu_load_entry():
     '''
 
     global __CPULoad
+    global __CPULoadLock
 
     log.i('started')
 
     while True:
-        current_usage = psutil.cpu_percent() / 100 * psutil.cpu_count()
+        current_usage = psutil.cpu_percent(interval=1.0) / 100 * psutil.cpu_count()
 
         __CPULoadLock.acquire(block=True)
         __CPULoad = __CPULoad * .8 + current_usage * .2
