@@ -58,7 +58,7 @@ def fetch():
     state = {
         'cpu-count': os.cpu_count(),
         # 'cpu-load': psutil.getloadavg()[0],
-        'cpu-load': _cpu_stload(),
+        'cpu-load': round(_cpu_stload(), 2),
         'free-ram': mem.available,
         'total-ram': mem.total,
         'has-gpu': gpu_stats['has-gpu'],
@@ -148,9 +148,8 @@ def __cpu_load_entry():
 
     log.i('started')
 
-    p = psutil.Process()
     while True:
-        current_usage = p.cpu_percent() / os.cpu_count()
+        current_usage = psutil.cpu_percent() / 100 * psutil.cpu_count()
         __CPULoad = __CPULoad * .8 + current_usage * .2
         time.sleep(1)
 
