@@ -10,6 +10,17 @@ import psutil
 
 import log
 
+def start_cpu_monitor_thread():
+    '''Starts a CPU load-monitoring thread.
+    '''
+
+    t = threading.Thread(name='cpu-monitor',
+                         target=__cpu_load_entry)
+    t.daemon = True
+    t.start()
+
+    return t
+
 def start_gpu_monitor_thread():
     '''Starts a GPU-monitoring thread.
     '''
@@ -46,7 +57,8 @@ def fetch():
 
     state = {
         'cpu-count': os.cpu_count(),
-        'cpu-load': psutil.getloadavg()[0],
+        # 'cpu-load': psutil.getloadavg()[0],
+        'cpu-load': _cpu_stload(),
         'free-ram': mem.available,
         'total-ram': mem.total,
         'has-gpu': gpu_stats['has-gpu'],
@@ -79,6 +91,12 @@ def _process_thread_count():
             time.sleep(.05)
 
     return (process_count, thread_count)
+
+def _cpu_stload():
+    '''Return the short-term CPU load of the executor.
+    '''
+
+    return __CPULoad
 
 # Path to the NVIDIA SMI binary.
 __NVIDIASMIPath = '/usr/bin/nvidia-smi'
@@ -119,6 +137,22 @@ def _gpu_stats():
             stats['free-vram'] = stats['total-vram'] - (int(m['free']) * 1024 * 1024)
 
     return stats
+
+__CPULoad = 0.0
+
+def __cpu_load_entry():
+    '''Entry point for CPU monitoring thread.
+    '''
+
+    global __CPULoad
+
+    log.i('started')
+
+    p = psutil.Process()
+    while True:
+        current_usage = p.cpu_percent() / os.cpu_count()
+        __CPULoad = __CPULoad * .8 + current_usage * .2
+        time.sleep(1)
 
 __GPULoad = 0
 __GPULoadCollectInterval = .25
