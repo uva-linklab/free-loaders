@@ -92,18 +92,21 @@ def _process_thread_count():
 
     return (process_count, thread_count)
 
-__CPULoad = 0.0
+__CPULoads = [float(os.cpu_count())]
 __CPULoadLock = multiprocessing.Lock()
 
 def _cpu_stload():
     '''Return the short-term CPU load of the executor.
     '''
 
-    global __CPULoad
+    global __CPULoads
     global __CPULoadLock
 
     __CPULoadLock.acquire(block=True)
-    cpu_load = __CPULoad
+    if len(__CPULoads) > 0:
+        cpu_load = sum(__CPULoads) / float(len(__CPULoads))
+    else:
+        cpu_load = float(os.cpu_count())
     __CPULoadLock.release()
 
     return cpu_load
@@ -152,18 +155,20 @@ def __cpu_load_entry():
     '''Entry point for CPU monitoring thread.
     '''
 
-    global __CPULoad
+    global __CPULoads
     global __CPULoadLock
 
     log.i('started')
 
     while True:
-        current_usage = psutil.cpu_percent(interval=1.0) / 100 * psutil.cpu_count()
+        current_usage = psutil.cpu_percent() / 100 * psutil.cpu_count()
+        print('current usage is {}'.format(current_usage))
 
         __CPULoadLock.acquire(block=True)
-        __CPULoad = __CPULoad * .8 + current_usage * .2
+        __CPULoads.append(current_usage)
+        while len(__CPULoads) > 5:
+            __CPULoads = __CPULoads[1:]
         __CPULoadLock.release()
-
         time.sleep(1)
 
 __GPULoad = 0
