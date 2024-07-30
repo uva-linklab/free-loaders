@@ -67,7 +67,7 @@ def fetch():
         'total-vram': gpu_stats['total-vram'],
         'process-count': proc_count,
         'thread-count': thread_count,
-        'h': _selection_value(psutil.getloadavg()[0]),
+        'h': _selection_value(_cpu_stload()),
     }
 
     return state
@@ -305,7 +305,8 @@ def _selection_value(load):
 
     cpu_count = psutil.cpu_count(logical=False)
     # unitary_load = min(load / cpu_count, 1)
-    unitary_load = psutil.cpu_percent() / 100
+    # unitary_load = psutil.cpu_percent() / 100
+    unitary_load = load
     # Load balancing optimization.
     unitary_load = max(unitary_load, 0.15)
     # unitary_load = min(load / cpu_count, 1)
