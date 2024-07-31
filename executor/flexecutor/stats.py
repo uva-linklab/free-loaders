@@ -162,7 +162,7 @@ def __cpu_load_entry():
 
     while True:
         current_usage = psutil.cpu_percent() / 100 * psutil.cpu_count()
-        print('current usage is {}'.format(current_usage))
+        # print('current usage is {}'.format(current_usage))
 
         __CPULoadLock.acquire(block=True)
         __CPULoads.append(current_usage)
