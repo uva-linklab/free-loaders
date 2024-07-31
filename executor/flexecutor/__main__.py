@@ -27,8 +27,6 @@ def main(args):
     # Perform boring configuration.
     config.configure_process()
 
-    __configure_signals()
-
     threading.current_thread().name = 'top'
 
     cpu_monitor_thread = stats.start_cpu_monitor_thread()
@@ -37,6 +35,9 @@ def main(args):
     loading_thread = load.start_loading_thread()
     __Children['executor'] = __start_executor(
         args.controller, args.id, args.power, args.log_level, args.unavailable)
+
+    # Set up signal handling to terminate child processes.
+    __configure_signals()
 
     # Idle around.
     while True:
