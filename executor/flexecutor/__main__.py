@@ -15,11 +15,14 @@ import load
 import log
 import stats
 
+__ParentPID = 0
 __Children = {
     'executor': None
 }
 
 def main(args):
+    __ParentPID = os.getpid()
+
     # Set the logging level as an environment variable.
     if config.LoggingEnvVar not in os.environ:
         os.environ[config.LoggingEnvVar] = args.log_level
@@ -64,11 +67,13 @@ def __configure_signals():
 
 def __signal_handler(signal_no, stack_frame):
     log.i('terminating flexecutor')
-    for child in __Children.keys():
-        proc = __Children[child]
-        if proc.is_alive():
-            log.d('terminating child {} (PID {})'.format(child, proc.pid))
-            proc.terminate()
+
+    if os.getpid() == __ParentPID:
+        for child in __Children.keys():
+            proc = __Children[child]
+            if proc.is_alive():
+                log.d('terminating child {} (PID {})'.format(child, proc.pid))
+                proc.terminate()
 
     sys.exit(0)
 
