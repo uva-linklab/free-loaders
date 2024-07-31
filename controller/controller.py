@@ -12,6 +12,7 @@ from schedulers.heros import HerosScheduler
 from schedulers.heteroedge_online import HeteroedgeScheduler
 from schedulers.adaptive_scheduler_v1 import AdaptiveSchedulerV1
 from schedulers.adaptive_scheduler_v2 import AdaptiveSchedulerV2
+from schedulers.adaptive_scheduler_v3 import AdaptiveSchedulerV3
 from classes.executer import Executer
 
 ap = argparse.ArgumentParser(description='fReeLoaders controller.')
@@ -62,6 +63,8 @@ elif args.scheduler == "adpt-lb-v1":
     scheduler = AdaptiveSchedulerV1(executers)
 elif args.scheduler == "adpt-lb-v2":
     scheduler = AdaptiveSchedulerV2(executers)
+elif args.scheduler == "adpt-lb-v3":
+    scheduler = AdaptiveSchedulerV3(executers)
 
 print(f'[controller] using {args.scheduler} scheduler')
 
