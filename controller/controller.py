@@ -19,7 +19,7 @@ ap = argparse.ArgumentParser(description='fReeLoaders controller.')
 ap.add_argument('-s', '--scheduler', help='Set the scheduler.',
                 metavar='SCHEDULER',
                 choices=['rl', 'random', 'time-greedy', 'energy-greedy', 'time-wrr', 'energy-wrr', 'load-bal',
-                         'heteroedge', 'heros', 'adpt-lb-v1', 'adpt-lb-v2'],
+                         'heteroedge', 'heros', 'adpt-lb-v1', 'adpt-lb-v2', 'adpt-lb-v3'],
                 dest='scheduler', default='rl')
 args = ap.parse_args()
 
