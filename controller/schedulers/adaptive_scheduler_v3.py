@@ -39,8 +39,9 @@ class AdaptiveSchedulerV3:
                        key=lambda tup: tup[1],
                        reverse=True)))
 
-        # stores the current executor for a given task_id, default -> most powerful executor
-        self.current_executor = [self.ordered_exec_list[0]] * 100  # assuming max 100 tasks
+        # stores the current executor for a given task_id
+        # default to the most powerful executor (index 0 in self.ordered_exec_list)
+        self.current_executor = [0] * 100  # assuming max 100 tasks
         self.is_exploration_allowed = [True] * 100  # assuming max 100 tasks
         self.deadline_hit_count = [0] * 100  # assuming max 100 tasks
 
@@ -106,6 +107,7 @@ class AdaptiveSchedulerV3:
         self.no_of_active_tasks[int(exec_id)] -= 1
 
         if offload_id in self.temporary_mode:
+            self.temporary_mode.remove(offload_id)
             return
 
         deadline_met = exec_time <= self.deadline_table[offload_id]
