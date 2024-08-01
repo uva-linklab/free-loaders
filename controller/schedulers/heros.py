@@ -422,11 +422,22 @@ class HerosScheduler:
 
     def schedule(self, before_state, task):
         # Filter to only those that can handle the task.
-        eligible_executors = [it[0] for it in _ExecutorData.items() if executor_is_eligible(it[0], before_state[str(it[0])], task)]
+        eligible_executors = []
+        for (eid, exec_spec) in _ExecutorData.items():
+            # See if the executor is defined in the dictionary in controller.py.
+            is_online = str(eid) in before_state.keys()
+            if not is_online:
+                continue
+
+            is_eligible = executor_is_eligible(eid, before_state[str(eid)], task)
+            print('{} is online? {}, is eligible? {}'.format(eid, is_online, is_eligible))
+            if is_eligible:
+                eligible_executors.append(eid)
+
         print('[heros] executors eligible for task_id={}: {}'.format(
             task.task_id, eligible_executors))
 
-        best_h = -999
+        best_h = -999999
         best_eid = 0
 
         print('[heros] selection scores: {}'.format(
