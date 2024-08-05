@@ -1,6 +1,8 @@
 import argparse
 import json
+import random
 import requests
+import time
 
 ExecutorIPs = {
     0: "172.27.153.31",  # nano
@@ -23,9 +25,16 @@ def __main():
 
     ap.add_argument('-t', '--target', help='Which executors to target; comma-delimited list',
                     type=str, default='')
+    ap.add_argument('--seed', help='Set the random seed',
+            type=int, default=None)
+    ap.add_argument('--stagger', help='Delay after setting an executor load',
+            action='store_true', default=False)
     ap.add_argument('load', help='Load specification',
                     type=str)
     args = ap.parse_args()
+
+    if args.seed != None:
+        random.seed(args.seed)
 
     obj = {}
     url_path = ''
@@ -53,14 +62,20 @@ def __main():
         targets = list(map(int, args.target.split(',')))
 
     for t in targets:
-        print('Sending update to {}'.format(ExecutorIPs[t]))
-        url = 'http://{}:{}{}'.format(
-            ExecutorIPs[t],
-            8088,
-            url_path)
-        requests.post(url,
-                      data=payload_json,
-                      headers={'Content-Type': 'application/json'})
+        try:
+            print('Sending update to {}'.format(ExecutorIPs[t]))
+            url = 'http://{}:{}{}'.format(
+                ExecutorIPs[t],
+                8088,
+                url_path)
+            requests.post(url,
+                          data=payload_json,
+                          headers={'Content-Type': 'application/json'})
+        except:
+            pass
+
+        print('load set on {}'.format(ExecutorIPs[t]))
+        time.sleep(random.randint(13, 43))
 
 if __name__ == '__main__':
     __main()
