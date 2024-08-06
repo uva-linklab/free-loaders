@@ -5,7 +5,6 @@ import multiprocessing
 import multiprocessing.connection
 import os
 import service
-import signal
 import sys
 import threading
 
@@ -26,8 +25,6 @@ def main(args):
 
     # Perform boring configuration.
     config.configure_process()
-
-    __configure_signals()
 
     threading.current_thread().name = 'top'
 
@@ -55,21 +52,6 @@ def __start_executor(controller_addr, executor_id, power, log_level, unavailable
     log.i('started executor (PID {})'.format(proc.pid))
 
     return proc
-
-def __configure_signals():
-    signums = [signal.SIGINT, signal.SIGTERM]
-    for signum in signums:
-        signal.signal(signum, __signal_handler)
-
-def __signal_handler(signal_no, stack_frame):
-    log.i('terminating flexecutor')
-    for child in __Children.keys():
-        proc = __Children[child]
-        if proc.is_alive():
-            log.d('terminating child {} (PID {})'.format(child, proc.pid))
-            proc.terminate()
-
-    sys.exit(0)
 
 if __name__ == '__main__':
     ap = argparse.ArgumentParser(description='fReeLoaders executor.')

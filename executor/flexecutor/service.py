@@ -41,9 +41,12 @@ class ExecutorHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
 
             freq = conf_json['frequency']
             d_spike = conf_json['duration']
-            load.set_intermittent_load(freq, d_spike)
 
-            self.send_response(204)
+            if d_spike >= freq:
+                self.send_response(400)
+            else:
+                load.set_intermittent_load(freq, d_spike)
+                self.send_response(204)
 
     def log_message(self, format, *args):
         pass

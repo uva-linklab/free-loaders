@@ -98,15 +98,11 @@ def main(args):
         clientloop_thread = Thread(target=connect, args=(mqtt_client,))
         clientloop_thread.start()
     else:
-        if args.task_id == None:
-            offload_many(args.address,
-                         args.device_id,
-                         args.task_count,
-                         args.rate)
-        else:
-            offload_one(args.address,
-                        args.device_id,
-                        args.task_id)
+        offload_many(args.address,
+                     args.device_id,
+                     args.task_count,
+                     args.rate,
+                     constant_task_id=args.task_id)
 
 
 def offload_heteroedge(address):
@@ -123,7 +119,7 @@ def offload_heteroedge(address):
         time.sleep(4)  # hardcoding 4s as delay between jobs (15 tasks/min)
 
 
-def offload_many(address, device_id, count, rate):
+def offload_many(address, device_id, count, rate, constant_task_id=None):
     intertask_delay = 1 / (rate / 60)
     print('Sending tasks every {} sec.'.format(intertask_delay))
 
@@ -139,6 +135,8 @@ def offload_many(address, device_id, count, rate):
         #     task_id = random.randint(30, 59)  # Random selection.
         # else:
         task_id = random.randint(0, 59)
+        if constant_task_id != None:
+            task_id = constant_task_id
 
         offload_one(address, device_id, task_id)
         time.sleep(intertask_delay)
