@@ -25,6 +25,9 @@ ap.add_argument('-s', '--scheduler', help='Set the scheduler.',
                 choices=['rl', 'random', 'time-greedy', 'energy-greedy', 'time-wrr', 'energy-wrr', 'load-bal',
                          'heteroedge', 'heros', 'adpt-lb-v1', 'adpt-lb-v2', 'adpt-lb-v3'],
                 dest='scheduler', default='rl')
+ap.add_argument('-l', '--enable-load-testing', help='Enable synthetic load testing',
+                dest='slt', action='store_true', default=False)
+
 args = ap.parse_args()
 
 # Assume that the CWD will always be the top of the repository.
@@ -36,6 +39,14 @@ executers = { e.executer_id: e for e in executers }
 print('[controller] loaded {} executers'.format(len(executers)))
 for (eid, executer) in executers.items():
     print('[controller] EID {} at {}'.format(eid, executer.executer_ip))
+
+# Create synthetic load tester.
+sl_tester = None
+if args.slt == True:
+    print('[controller] syntehtic load testing enabled')
+    sl_tester = slt.SyntheticLoadTester(
+        os.path.join(os.getcwd(), 'load-spec.json'),
+        executers)
 
 scheduler = None
 
@@ -67,7 +78,7 @@ elif args.scheduler == "adpt-lb-v3":
 print(f'[controller] using {args.scheduler} scheduler')
 
 # start the task dispatcher
-task_dispatcher = TaskDispatcher(scheduler, executers)
+task_dispatcher = TaskDispatcher(scheduler, executers, sl_tester)
 
 # start the http server to receive tasks from offloaders
 controller_server = ControllerServer(task_dispatcher)
