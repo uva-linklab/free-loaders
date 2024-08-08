@@ -1,4 +1,9 @@
 import argparse
+import classes.executer
+import os
+import os.path
+import slt
+
 from server import ControllerServer
 from task_dispatcher import TaskDispatcher
 from schedulers.random_scheduler import RandomScheduler
@@ -13,7 +18,6 @@ from schedulers.heteroedge_online import HeteroedgeScheduler
 from schedulers.adaptive_scheduler_v1 import AdaptiveSchedulerV1
 from schedulers.adaptive_scheduler_v2 import AdaptiveSchedulerV2
 from schedulers.adaptive_scheduler_v3 import AdaptiveSchedulerV3
-from classes.executer import Executer
 
 ap = argparse.ArgumentParser(description='fReeLoaders controller.')
 ap.add_argument('-s', '--scheduler', help='Set the scheduler.',
@@ -23,21 +27,15 @@ ap.add_argument('-s', '--scheduler', help='Set the scheduler.',
                 dest='scheduler', default='rl')
 args = ap.parse_args()
 
-executers = {
-    0: Executer(0, "172.27.153.31"),  # nano
+# Assume that the CWD will always be the top of the repository.
+executer_json_path = os.path.join(os.getcwd(), 'executers.json')
+print('[controller] loaded executers from {}'.format(executer_json_path))
+executers = classes.executer.from_file(executer_json_path)
+executers = { e.executer_id: e for e in executers }
 
-    1: Executer(1, "172.27.133.177"),  # rpi3
-    2: Executer(2, "172.27.134.111"),  # rpi3
-
-    3: Executer(3, "172.27.186.208"),  # rpi4 32bd
-    4: Executer(4, "172.27.166.35"),  # rpi4 32fa
-    5: Executer(5, "172.27.190.174"),  # rpi4 5e16
-    6: Executer(6, "172.27.190.243"),  # rpi4 655d
-    7: Executer(7, "172.27.184.70"),  # rpi4 a906
-
-    8: Executer(8, "172.27.130.255"),  # tx2
-    9: Executer(9, "172.27.156.67"),  # desktop
-}
+print('[controller] loaded {} executers'.format(len(executers)))
+for (eid, executer) in executers.items():
+    print('[controller] EID {} at {}'.format(eid, executer.executer_ip))
 
 scheduler = None
 
