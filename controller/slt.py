@@ -96,7 +96,7 @@ class SyntheticLoadTester:
         self.__total_offload_count = j['total_offload_count']
         self.__represented_duration_hours = j['represented_duration_hrs']
         self.__task_rate = j['tasks_per_minute']
-        _log('expected offloads: {}, represented duration: {}, expected rate: {} tpm'.format(
+        _log('expected offloads: {} tasks, represented duration: {} hrs., expected rate: {} tpm'.format(
             self.__total_offload_count, self.__represented_duration_hours, self.__task_rate))
 
         self.__timeline = []
@@ -199,15 +199,16 @@ class SyntheticLoadTester:
             # Remove the corresponding load from the active load set.
             self.__active_loads[eid] = remaining_active
             # Create requests to reapply those that should still be active.
-            reapply_requests = list(map(lambda ld: (ld.eid, ld.lid(), ld.request_data(),), remaining_active))
+            reapply_requests = list(map(lambda ld: (ld.eid(), ld.lid(), ld.request_data(),), remaining_active))
             # They must be placed directly after the clear in the list.
             it = zip(itertools.count(), all_requests)
             clear_request_idx = next(filter(lambda t: t[1][1] == clear_lid, it))[0]
-            all_requests = all_requests[0:clear_request_idx] + reapply_requests + all_requests[clear_request_idx:]
+            all_requests = all_requests[0:clear_request_idx+1] + reapply_requests + all_requests[clear_request_idx+1:]
 
         for (eid, lid, (url, j,),) in all_requests:
             if 'clear' not in url:
-                self.__active_loads.get(eid, []).append(self.__find_in_timeline(lid))
+                active_load_definition = self.__find_in_timeline(lid)
+                self.__add_to_active_loads(active_load_definition)
 
             if dry_run == True:
                 _log('at offload_id={}, apply LID {}: {} to eid={}'.format(
@@ -218,12 +219,27 @@ class SyntheticLoadTester:
                 except:
                     pass
 
+        _log('active loads at offload_id={}:'.format(offload_id))
+        for (eid, active_loads) in self.__active_loads.items():
+            _log('  EID {} -> {}'.format(eid, list(map(lambda ld: ld.lid(), active_loads))))
+
+    def __add_to_active_loads(self, load_definition):
+        '''Add a load definition to the active loads if it is not already there.
+        '''
+
+        l = list(filter(lambda ld: ld.lid() == load_definition.lid(),
+                        self.__active_loads.get(load_definition.eid(), [])))
+        if len(l) == 0:
+            currently_active_loads = self.__active_loads.get(load_definition.eid(), [])
+            currently_active_loads.append(load_definition)
+            self.__active_loads[load_definition.eid()] = currently_active_loads
+
     def __find_in_timeline(self, lid):
         '''Retrieve the non-clearing load definition with the LID.
         '''
 
-        ld = next(filter(lambda t: t[1].lid() == lid, self.__timeline))
-        return ld
+        t = next(filter(lambda t: t[1].lid() == lid, self.__timeline))
+        return t[1]
 
     def __test_timeline(self):
         _log('testing SLT timeline...')
