@@ -10,6 +10,10 @@ import psutil
 
 import log
 
+__ExecutorName = os.getenv('EXEC_NAME')
+if __ExecutorName == None:
+    raise Exception('EXEC_NAME environment variable not set.')
+
 def start_cpu_monitor_thread():
     '''Starts a CPU load-monitoring thread.
     '''
@@ -58,7 +62,7 @@ def fetch():
     state = {
         'cpu-count': os.cpu_count(),
         # 'cpu-load': psutil.getloadavg()[0],
-        'cpu-load': _cpu_stload(),
+        'cpu-load': round(_cpu_stload(), 2),
         'free-ram': mem.available,
         'total-ram': mem.total,
         'has-gpu': gpu_stats['has-gpu'],
@@ -67,7 +71,7 @@ def fetch():
         'total-vram': gpu_stats['total-vram'],
         'process-count': proc_count,
         'thread-count': thread_count,
-        'h': _selection_value(psutil.getloadavg()[0]),
+        'h': _selection_value(),
     }
 
     return state
@@ -92,11 +96,24 @@ def _process_thread_count():
 
     return (process_count, thread_count)
 
+__CPULoads = [float(os.cpu_count())]
+__CPULoadLock = multiprocessing.Lock()
+
 def _cpu_stload():
     '''Return the short-term CPU load of the executor.
     '''
 
-    return __CPULoad
+    global __CPULoads
+    global __CPULoadLock
+
+    __CPULoadLock.acquire(block=True)
+    if len(__CPULoads) > 0:
+        cpu_load = sum(__CPULoads) / float(len(__CPULoads))
+    else:
+        cpu_load = float(os.cpu_count())
+    __CPULoadLock.release()
+
+    return cpu_load
 
 # Path to the NVIDIA SMI binary.
 __NVIDIASMIPath = '/usr/bin/nvidia-smi'
@@ -138,20 +155,24 @@ def _gpu_stats():
 
     return stats
 
-__CPULoad = 0.0
-
 def __cpu_load_entry():
     '''Entry point for CPU monitoring thread.
     '''
 
-    global __CPULoad
+    global __CPULoads
+    global __CPULoadLock
 
     log.i('started')
 
-    p = psutil.Process()
     while True:
-        current_usage = p.cpu_percent() / os.cpu_count()
-        __CPULoad = __CPULoad * .8 + current_usage * .2
+        current_usage = psutil.cpu_percent() / 100 * psutil.cpu_count()
+        # print('current usage is {}'.format(current_usage))
+
+        __CPULoadLock.acquire(block=True)
+        __CPULoads.append(current_usage)
+        while len(__CPULoads) > 5:
+            __CPULoads = __CPULoads[1:]
+        __CPULoadLock.release()
         time.sleep(1)
 
 __GPULoad = 0
@@ -255,57 +276,13 @@ def _get_gpu_load():
 
     return l
 
-def __device_name():
-    '''
-    Return the device's name based on its executor ID.
-    '''
-
-    eid = int(os.getenv('EXEC_ID'))
-    if eid == 0:
-        return 'nano'
-    elif eid >= 1 and eid <= 2:
-        return 'rpi3'
-    elif eid >= 3 and eid <= 7:
-        return 'rpi4'
-    elif eid == 8:
-        return 'tx2'
-    elif eid == 9:
-        return 'desktop'
-    else:
-        return ''
-
 MIPSTable = {
     'rpi3':    1137.11,
     'rpi4':    2422.04,
     'nano':    3085.06,
     'tx2':     4140.84,
-    'desktop': 15274.47,
+    'dellxps': 15274.47,
 }
-
-def _selection_value(load):
-    '''Return the selection value for the given load.
-    '''
-
-    cpu_count = psutil.cpu_count(logical=False)
-    # unitary_load = min(load / cpu_count, 1)
-    unitary_load = psutil.cpu_percent() / 100
-    # Load balancing optimization.
-    unitary_load = max(unitary_load, 0.15)
-    # unitary_load = min(load / cpu_count, 1)
-
-    max_mips = MIPSTable[__device_name()]
-    # Recommended parameters.
-    g = 1.2
-    a = 110
-    # b = 0.9
-    b = 0.8
-
-    import math
-
-    current_power = __selection_power_value(load)
-    h = ((max_mips * unitary_load) / current_power) * (1 - (g / (1 + pow(math.e, -a * (unitary_load - b)))))
-
-    return h
 
 PowerTables = {
     'rpi3': [
@@ -361,7 +338,7 @@ PowerTables = {
         (6.0, 7.63),
     ],
 
-    'desktop': [
+    'dellxps': [
         (0, 38.7),
         (1, 61.64),
         (1.25, 71.27),
@@ -375,8 +352,40 @@ PowerTables = {
     ]
 }
 
+def _selection_value():
+    '''Return the selection value for the given (non-unit) load.
+    '''
+
+    cpu_count = psutil.cpu_count(logical=False)
+    is_hyperthreading = (psutil.cpu_count(logical=True) != psutil.cpu_count(logical=False))
+    ht_factor = 2 if is_hyperthreading else 1
+    # print('ht_factor = {}'.format(ht_factor))
+    # print('cpu_count = {}'.format(cpu_count))
+    current_load = psutil.cpu_percent(interval=0.1) * ht_factor * cpu_count / 100
+    # print('current_load = {}'.format(round(current_load, 2)))
+
+    max_mips = MIPSTable[__ExecutorName]
+    # Recommended parameters.
+    g = 1.2
+    a = 110
+    b = 0.8
+
+    import math
+
+    current_power = __selection_power_value(current_load)
+    # Assumption: the power-MIPS function of these executors is linear with increasing load,
+    # which is not the case for all hardware.
+    ppw_at_l = (max_mips * current_load) / current_power
+    power_table = PowerTables[__ExecutorName]
+    max_load = power_table[-1][0] # Load value of the last entry in the table.
+    # print('max_load = {}'.format(max_load))
+
+    h = ppw_at_l * (1 - (g / (1 + pow(math.e, -(a / max_load) * (current_load - (b * max_load))))))
+
+    return h
+
 def __selection_power_value(current_load):
-    ptab = PowerTables[__device_name()]
+    ptab = PowerTables[__ExecutorName]
 
     # If the load is greater than the number of cores, then we assume max load and power values.
     if current_load > os.cpu_count():
