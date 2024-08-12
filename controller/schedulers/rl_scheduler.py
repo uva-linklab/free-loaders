@@ -98,12 +98,8 @@ class RLScheduler:
         state = [int(task.task_id), task.deadline]
         # task_id_vec = [int(x) for x in list('{:032b}'.format(int(task.task_id)))]
 
-        # Add in the normalized load.
-        for eid in before_state.keys():
-            before_state[eid]['normal-load'] = before_state[eid]['cpu-load'] / before_state[eid]['cpu-count']
-
         # Include only the stats named here.
-        included_stats = ['normal-load']
+        included_stats = ['cpu-load']
         for eid in before_state:
             executor_state = [v for (k, v) in before_state[eid].items() if k in included_stats]
             state.extend(executor_state)
