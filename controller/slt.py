@@ -227,8 +227,8 @@ class SyntheticLoadTester:
         '''Hook function to be called when a task is finished.
         '''
 
-        _log('clearing all synthetic load')
         if offload_id + 1 == self.__total_offload_count:
+            _log('clearing all synthetic load')
             for executer in self.__executers.values():
                 url = 'http://{}:8088/load/clear'.format(executer.executer_ip)
                 try:
