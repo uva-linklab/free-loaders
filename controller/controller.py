@@ -47,7 +47,7 @@ for (eid, executer) in executers.items():
 # Create synthetic load tester.
 sl_tester = None
 if args.slt == True or args.test_load_spec == True:
-    print('[controller] syntehtic load testing enabled')
+    print('[controller] synthetic load testing enabled')
     sl_tester = slt.SyntheticLoadTester(
         os.path.join(os.getcwd(), 'load-spec.json'),
         executers)
