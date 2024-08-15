@@ -205,7 +205,8 @@ class TaskDispatcher:
         del self.timers[offload_id]
 
         # let the synthetic load tester know in case this is the end of testing
-        self.load_tester.hook_task_finished(offload_id)
+        if self.load_tester != None:
+            self.load_tester.hook_task_finished(offload_id)
 
         print('[td] pending (eid): {}'.format(['{} ({})'.format(k, Assignments.get(k, '?')) for k in self.execution_times.keys()]))
         #print(f"[td] pending task offload_ids: {self.execution_times.keys()}")
