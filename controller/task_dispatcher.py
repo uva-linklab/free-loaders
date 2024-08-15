@@ -288,4 +288,4 @@ class TaskDispatcher:
         self.total_tasks += 1
 
         if self.load_tester != None:
-            load_tester.update_load(task.offload_id, self.executers)
+            self.load_tester.update_load(task.offload_id, self.executers)
