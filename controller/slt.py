@@ -223,6 +223,19 @@ class SyntheticLoadTester:
         for (eid, active_loads) in self.__active_loads.items():
             _log('  EID {} -> {}'.format(eid, list(map(lambda ld: ld.lid(), active_loads))))
 
+    def hook_task_finished(self, offload_id):
+        '''Hook function to be called when a task is finished.
+        '''
+
+        _log('clearing all synthetic load')
+        if offload_id + 1 == self.__total_offload_count:
+            for executer in self.__executers.values():
+                url = 'http://{}:8088/load/clear'.format(executer.executer_ip)
+                try:
+                    requests.post(url, json={})
+                except:
+                    pass
+
     def __add_to_active_loads(self, load_definition):
         '''Add a load definition to the active loads if it is not already there.
         '''
