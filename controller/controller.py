@@ -1,7 +1,9 @@
 import argparse
-import classes.executer
 import os
 import os.path
+import sys
+
+import classes.executer
 import slt
 
 from server import ControllerServer
@@ -27,6 +29,8 @@ ap.add_argument('-s', '--scheduler', help='Set the scheduler.',
                 dest='scheduler', default='rl')
 ap.add_argument('-l', '--enable-load-testing', help='Enable synthetic load testing',
                 dest='slt', action='store_true', default=False)
+ap.add_argument('--test-load-spec', help='Parse and verify synthetic load specification',
+                dest='test_load_spec', action='store_true', default=False)
 
 args = ap.parse_args()
 
@@ -42,11 +46,16 @@ for (eid, executer) in executers.items():
 
 # Create synthetic load tester.
 sl_tester = None
-if args.slt == True:
+if args.slt == True or args.test_load_spec == True:
     print('[controller] syntehtic load testing enabled')
     sl_tester = slt.SyntheticLoadTester(
         os.path.join(os.getcwd(), 'load-spec.json'),
         executers)
+
+# Check of the --test-load-spec flag was given; if so, exit now.
+if args.test_load_spec == True:
+    print('[controller] testing load spec finished')
+    sys.exit(0)
 
 scheduler = None
 
