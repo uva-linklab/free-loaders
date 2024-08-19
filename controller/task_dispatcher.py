@@ -238,6 +238,9 @@ class TaskDispatcher:
         return dict(asyncio.run(make_requests(url_tuples=url_tuples)))
 
     def submit_task(self, task):
+        if self.load_tester != None:
+            self.load_tester.update_load(task.offload_id, self.executers)
+
         print(f"[td] new task(offload_id={task.offload_id}, task_id={task.task_id}, job_id={task.job_id}, deadline={task.deadline})")
 
         self.execution_times[task.offload_id] = time.time()
@@ -287,6 +290,3 @@ class TaskDispatcher:
                                                    0.0])
         self.timers[task.offload_id].start()
         self.total_tasks += 1
-
-        if self.load_tester != None:
-            self.load_tester.update_load(task.offload_id, self.executers)
