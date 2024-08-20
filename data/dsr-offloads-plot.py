@@ -7,8 +7,6 @@ import numpy
 ap = argparse.ArgumentParser()
 ap.add_argument('-o', '--output', help='Output file path.',
                 type=str, dest='output', default='dsr-offloads.pdf')
-ap.add_argument('--window-size', help='Number of samples in a window',
-                type=int, dest='window', default=300)
 ap.add_argument('-s', '--starting-offload', help='ID of the first offload to count',
                 type=int, dest='start', default=0)
 ap.add_argument('-e', '--ending-offload', help='ID of the last offload to count',
@@ -41,11 +39,11 @@ for (label_path, color) in zip(args.paths, range(0,10)):
 
     RL_MEMORY_SKIP_TOTAL = 0
     if label == 'fReeLoaders':
-        RL_MEMORY_SKIP_TOTAL= 93
+        RL_MEMORY_SKIP_TOTAL= 0
     elif label == 'fReeLoaders (more training)':
-        RL_MEMORY_SKIP_TOTAL = 375
+        RL_MEMORY_SKIP_TOTAL = 0
     elif label == 'fReeLoaders (-100 reward)':
-        RL_MEMORY_SKIP_TOTAL = 300
+        RL_MEMORY_SKIP_TOTAL = 0
 
     x = []
     y = []
