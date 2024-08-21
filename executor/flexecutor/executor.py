@@ -52,6 +52,9 @@ def __executor_entry(controller_addr, executor_id, power, log_level, unavailable
     config.configure_process('executor')
     signal.signal(signal.SIGALRM, __signal_handler)
 
+    stats.start_cpu_monitor_thread()
+    stats.start_gpu_monitor_thread()
+
     log.i('started')
 
     add_data = { 'executor_id': executor_id,
@@ -238,7 +241,8 @@ def __process_task_entry(pipe, executor_id, power, task_request, additional_data
     config.configure_process()
 
     # Lower process priority.
-    # os.nice(12)
+    import os
+    os.nice(12)
 
     # log.i('executing task')
     start_time = time.time()

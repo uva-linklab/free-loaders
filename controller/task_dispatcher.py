@@ -59,7 +59,7 @@ async def make_requests(url_tuples: list, **kwargs) -> None:
 
 
 class TaskDispatcher:
-    def __init__(self, scheduler, executers):
+    def __init__(self, scheduler, executers, load_tester):
         self.scheduler = scheduler
         self.executers = executers
         self.mqtt_client = mqtt.Client(client_id="fl-controller", clean_session=False)
@@ -70,6 +70,7 @@ class TaskDispatcher:
         self.finished_tasks = 0
         self.failed_tasks = 0
         self.total_tasks = 0
+        self.load_tester = load_tester
 
         # The callback for when the client receives a CONNACK response from the server.
         clientloop_thread = Thread(target=self.connect, args=(self.mqtt_client,))
@@ -203,6 +204,10 @@ class TaskDispatcher:
         del self.deadlines[offload_id]
         del self.timers[offload_id]
 
+        # let the synthetic load tester know in case this is the end of testing
+        if self.load_tester != None:
+            self.load_tester.hook_task_finished(offload_id)
+
         print('[td] pending (eid): {}'.format(['{} ({})'.format(k, Assignments.get(k, '?')) for k in self.execution_times.keys()]))
         #print(f"[td] pending task offload_ids: {self.execution_times.keys()}")
 
@@ -233,6 +238,9 @@ class TaskDispatcher:
         return dict(asyncio.run(make_requests(url_tuples=url_tuples)))
 
     def submit_task(self, task):
+        if self.load_tester != None:
+            self.load_tester.update_load(task.offload_id, self.executers)
+
         print(f"[td] new task(offload_id={task.offload_id}, task_id={task.task_id}, job_id={task.job_id}, deadline={task.deadline})")
 
         self.execution_times[task.offload_id] = time.time()
@@ -282,5 +290,3 @@ class TaskDispatcher:
                                                    0.0])
         self.timers[task.offload_id].start()
         self.total_tasks += 1
-
-        slt.update_load(task.offload_id, self.executers)

@@ -164,16 +164,19 @@ def __cpu_load_entry():
 
     log.i('started')
 
+    target_sample_count = 20
+    load_history_secs = 5
+    sample_interval = load_history_secs / target_sample_count
+
     while True:
         current_usage = psutil.cpu_percent() / 100 * psutil.cpu_count()
-        # print('current usage is {}'.format(current_usage))
 
         __CPULoadLock.acquire(block=True)
         __CPULoads.append(current_usage)
-        while len(__CPULoads) > 5:
+        while len(__CPULoads) > target_sample_count:
             __CPULoads = __CPULoads[1:]
         __CPULoadLock.release()
-        time.sleep(1)
+        time.sleep(sample_interval)
 
 __GPULoad = 0
 __GPULoadCollectInterval = .25

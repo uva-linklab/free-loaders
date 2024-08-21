@@ -1,4 +1,11 @@
 import argparse
+import os
+import os.path
+import sys
+
+import classes.executer
+import slt
+
 from server import ControllerServer
 from task_dispatcher import TaskDispatcher
 from schedulers.random_scheduler import RandomScheduler
@@ -13,7 +20,6 @@ from schedulers.heteroedge_online import HeteroedgeScheduler
 from schedulers.adaptive_scheduler_v1 import AdaptiveSchedulerV1
 from schedulers.adaptive_scheduler_v2 import AdaptiveSchedulerV2
 from schedulers.adaptive_scheduler_v3 import AdaptiveSchedulerV3
-from classes.executer import Executer
 
 ap = argparse.ArgumentParser(description='fReeLoaders controller.')
 ap.add_argument('-s', '--scheduler', help='Set the scheduler.',
@@ -21,23 +27,35 @@ ap.add_argument('-s', '--scheduler', help='Set the scheduler.',
                 choices=['rl', 'random', 'time-greedy', 'energy-greedy', 'time-wrr', 'energy-wrr', 'load-bal',
                          'heteroedge', 'heros', 'adpt-lb-v1', 'adpt-lb-v2', 'adpt-lb-v3'],
                 dest='scheduler', default='rl')
+ap.add_argument('-l', '--enable-load-testing', help='Enable synthetic load testing',
+                dest='slt', action='store_true', default=False)
+ap.add_argument('--test-load-spec', help='Parse and verify synthetic load specification',
+                dest='test_load_spec', action='store_true', default=False)
+
 args = ap.parse_args()
 
-executers = {
-    0: Executer(0, "172.27.153.31"),  # nano
+# Assume that the CWD will always be the top of the repository.
+executer_json_path = os.path.join(os.getcwd(), 'executers.json')
+print('[controller] loaded executers from {}'.format(executer_json_path))
+executers = classes.executer.from_file(executer_json_path)
+executers = { e.executer_id: e for e in executers }
 
-    1: Executer(1, "172.27.133.177"),  # rpi3
-    2: Executer(2, "172.27.134.111"),  # rpi3
+print('[controller] loaded {} executers'.format(len(executers)))
+for (eid, executer) in executers.items():
+    print('[controller] EID {} at {}'.format(eid, executer.executer_ip))
 
-    3: Executer(3, "172.27.186.208"),  # rpi4 32bd
-    4: Executer(4, "172.27.166.35"),  # rpi4 32fa
-    5: Executer(5, "172.27.190.174"),  # rpi4 5e16
-    6: Executer(6, "172.27.190.243"),  # rpi4 655d
-    7: Executer(7, "172.27.184.70"),  # rpi4 a906
+# Create synthetic load tester.
+sl_tester = None
+if args.slt == True or args.test_load_spec == True:
+    print('[controller] synthetic load testing enabled')
+    sl_tester = slt.SyntheticLoadTester(
+        os.path.join(os.getcwd(), 'load-spec.json'),
+        executers)
 
-    8: Executer(8, "172.27.130.255"),  # tx2
-    9: Executer(9, "172.27.156.67"),  # desktop
-}
+# Check of the --test-load-spec flag was given; if so, exit now.
+if args.test_load_spec == True:
+    print('[controller] testing load spec finished')
+    sys.exit(0)
 
 scheduler = None
 
@@ -69,7 +87,7 @@ elif args.scheduler == "adpt-lb-v3":
 print(f'[controller] using {args.scheduler} scheduler')
 
 # start the task dispatcher
-task_dispatcher = TaskDispatcher(scheduler, executers)
+task_dispatcher = TaskDispatcher(scheduler, executers, sl_tester)
 
 # start the http server to receive tasks from offloaders
 controller_server = ControllerServer(task_dispatcher)
