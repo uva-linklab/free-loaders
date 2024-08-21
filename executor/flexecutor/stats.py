@@ -359,12 +359,7 @@ def _selection_value():
     '''Return the selection value for the given (non-unit) load.
     '''
 
-    cpu_count = psutil.cpu_count(logical=False)
-    is_hyperthreading = (psutil.cpu_count(logical=True) != psutil.cpu_count(logical=False))
-    ht_factor = 2 if is_hyperthreading else 1
-    # print('ht_factor = {}'.format(ht_factor))
-    # print('cpu_count = {}'.format(cpu_count))
-    current_load = _cpu_stload() * ht_factor * cpu_count
+    current_load = _cpu_stload()
     # print('current_load = {}'.format(round(current_load, 2)))
 
     max_mips = MIPSTable[__ExecutorName]
