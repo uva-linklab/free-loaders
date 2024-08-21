@@ -38,7 +38,7 @@ for (label_path, color) in zip(args.paths, range(0,10)):
 
     x = []
     y = []
-    rwin = [True for _i in range(0, 100)]
+    rwin = [True for _i in range(0, args.window_size)]
     offset = 0
     last_met = 0
     for line in log_lines:
