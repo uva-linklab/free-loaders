@@ -195,10 +195,12 @@ def __executor_task_entry(mqtt_client, executor_id, power, task_request, additio
     try:
         process.start()
         p_send.close()
-        result = p_recv.recv()  # block and waits for data from the process
+        (response_json, result_data,) = p_recv.recv()  # block and waits for data from the process
 
         process.join()  # wait for process to finish up
         log.i(f'offload_id={task_request["offload_id"]}. after process.join()')
+        result = flserialize.pack(json.dumps(response_json),
+                                  result_data)
         # check if the process exited
         if process.exitcode is not None:
             timer.cancel()
@@ -378,17 +380,18 @@ def __process_task_entry(pipe, executor_id, power, task_request, additional_data
     log.i(f'offload_id={task_request["offload_id"]}. completed executing task. time={(time.time() - start_time)*1000}')
 
     # Collect current state and send it, along with the result.
-    current_state = stats.fetch()
-    response_json = json.dumps({
+    # This process does not have a reliable source of information for current state,
+    # so we rely on the parent to fill that in and to complete the serialization.
+    response_json = {
         'executor_id': task_request['executer_id'],
         'task_id': task_request['task_id'],
         'job_id': task_request['job_id'],
         'offload_id': task_request['offload_id'],
-        'state': current_state,
+        'state': None,
         'energy': power * (end_time - start_time),
         'status': 0
-    })
-    response_data = flserialize.pack(response_json, res_data)
+    }
+    response = (response_json, res_data,)
 
-    pipe.send(response_data)
+    pipe.send(response)
     pipe.close()
