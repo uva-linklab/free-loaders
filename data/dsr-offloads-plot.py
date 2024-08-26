@@ -117,4 +117,5 @@ plt.ylim(0, 1)
 plt.gca().spines['right'].set_visible(False)
 plt.gca().spines['top'].set_visible(False)
 plt.grid()
-plt.savefig(args.output, format='pdf', dpi='figure', pad_inches=0.1)
+
+plt.savefig(args.output, format='pdf', dpi='figure', pad_inches=0.1, metadata={'Producer': str(args.paths)})
