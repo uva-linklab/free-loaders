@@ -195,11 +195,14 @@ def __executor_task_entry(mqtt_client, executor_id, power, task_request, additio
     try:
         process.start()
         p_send.close()
-        (response_json, result_data,) = p_recv.recv()  # block and waits for data from the process
+        (response, result_data,) = p_recv.recv()  # block and waits for data from the process
 
         process.join()  # wait for process to finish up
         log.i(f'offload_id={task_request["offload_id"]}. after process.join()')
-        result = flserialize.pack(json.dumps(response_json),
+
+        # Place the updated state in the response.
+        response['state'] = stats.fetch()
+        result = flserialize.pack(json.dumps(response),
                                   result_data)
         # check if the process exited
         if process.exitcode is not None:
