@@ -115,7 +115,8 @@ class RLScheduler:
 
     def generate_new_state(self, before_state, new_state_of_executor, exec_id):
 
-        new_state = before_state
+        import copy
+        new_state = copy.deepcopy(before_state)
 
         new_state[exec_id] = new_state_of_executor
 
@@ -151,8 +152,9 @@ class RLScheduler:
         if np.random.rand() > self.epsilon:
             self.q_lock.acquire()
 
-            pact = self.Q(np.array(pobs, dtype=np.float32).reshape(1, -1))
-            pact = np.argmax(pact.data).item()
+            pact_arr = self.Q(np.array(pobs, dtype=np.float32).reshape(1, -1))
+            pact = np.argmax(pact_arr.data).item()
+            print('[rls] p_act_arr = {}, p_act = {}'.format(pact_arr, pact))
             explore = False
 
             self.q_lock.release()
