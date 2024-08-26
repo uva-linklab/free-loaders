@@ -168,8 +168,13 @@ class RLScheduler:
     def task_finished(self, offload_id, exec_id, task_id, status, exec_time, energy, new_state_of_executor):
         # status = 0 => successful task, status != 0 => failed task
 
+        # Create a before and after state to train with.
         task, before_state, pact, deadline = self.get_saved_state(offload_id)
         new_state = self.generate_new_state(before_state, new_state_of_executor, exec_id)
+        print('[rls] before state for offload_id={}, executer_id={}: {}'.format(
+            offload_id, exec_id, before_state[exec_id]))
+        print('[rls]  after state for offload_id={}, executer_id={}: {}'.format(
+            offload_id, exec_id, new_state[exec_id]))
 
         pobs = self.process_state(before_state, task)
         obs =  self.process_state(new_state, task)
