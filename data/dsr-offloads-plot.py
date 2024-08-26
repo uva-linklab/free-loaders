@@ -15,27 +15,44 @@ ap.add_argument('-f', '--initial-window', help='Assume a perfect initial DSR win
                 dest='initial_window', action='store_true', default=False)
 ap.add_argument('--x-limit', help='Max offload no. to plot',
                 dest='x_limit', type=int, action='store', default=None)
-ap.add_argument('paths', help='label,path to log file',
+ap.add_argument('paths', help='path to log file',
                 nargs='+', type=str)
 
 args = ap.parse_args()
 
 colors = {
-    'fReeLoaders': [26 / 255, 121 / 255, 172 / 255],
-    'fReeLoaders (-100 reward)': [0, 0, 0],
-    'fReeLoaders (more training)': [199 / 255, 105 / 255, 239 / 255],
-    'load balancing': [28 / 255, 160 / 255, 63 / 255],
-    'performance-WRR': [255 / 255, 124 / 255, 45 / 255],
+    'rl': [26 / 255, 121 / 255, 172 / 255],
+    'load-bal': [28 / 255, 160 / 255, 63 / 255],
     'random': [217 / 255, 28 / 255, 44 / 255],
+    'heros': [111 / 255, 166 / 255, 17 / 255],
 }
+
+pretty_names = {
+    'rl': 'fReeLoaders',
+    'load-bal': 'load balancer',
+    'random': 'random',
+    'heros': 'HEROS',
+}
+
+def which_scheduler(log):
+    scheduler_name = None
+    r = 'using (?P<sched>[a-z0-9-]+) scheduler'
+    for line in log:
+        m = re.search(r, line)
+        if m != None:
+            scheduler_name = m['sched']
+            break
+
+    return scheduler_name
 
 r = 'deadlines_met=(?P<met>\d+).*finished_tasks=(?P<finished>\d+).*failed_tasks=(?P<failed>\d+)'
 r2 = 'finished task.*offload_id=(?P<oid>\d+), task_id=(?P<tid>\d+).*time\(ms\)=(?P<t>\d+\.\d+)'
-for (label_path, color) in zip(args.paths, range(0,10)):
-    [label, path] = label_path.split(',')
+for (path, color) in zip(args.paths, range(0,10)):
     log_lines = ''
     with open(path, 'r') as fh:
         log_lines = fh.readlines()
+
+    label = which_scheduler(log_lines)
 
     RL_MEMORY_SKIP_TOTAL = 0
     if label == 'fReeLoaders':
@@ -90,7 +107,7 @@ for (label_path, color) in zip(args.paths, range(0,10)):
 
         last_met = met
 
-    plt.plot(x, y, label=label, color=colors[label])
+    plt.plot(x, y, label=pretty_names[label], color=colors[label])
 
 plt.legend(fancybox=True)
 plt.xlabel('Number of offloads')
