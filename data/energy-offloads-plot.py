@@ -13,7 +13,7 @@ log_lines = ''
 with open(args.path, 'r') as fh:
     log_lines = fh.readlines()
 
-r = 'energy=(?P<energy>\d+)'
+r = 'finished task.+energy=(?P<energy>\d+)'
 x = [0]
 y = [0]
 for line in log_lines:
