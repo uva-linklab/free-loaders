@@ -1,4 +1,5 @@
 import multiprocessing
+import os
 import queue
 import threading
 import time
@@ -62,12 +63,19 @@ def __loading_thread_main():
             active_processes.clear()
 
 def __whole_load_thread_main():
+    '''Generate whole-core CPU load.
+    '''
+
+    os.nice(2)
+
     while True:
         pass
 
 def __partial_load_thread_main(load):
     '''Generate partial CPU load.
     '''
+
+    os.nice(2)
 
     # Based on https://qxf2.com/blog/generate-cpu-load
     import math
@@ -85,6 +93,8 @@ def __intermittent_load_thread_main(frequency, duration, t_base):
     Synchronize the times of processes with a common time base, t_base.
     Invariant: duration < frequency
     '''
+
+    os.nice(2)
 
     QuietDuration = frequency - duration
 
