@@ -39,3 +39,5 @@ plt.ylim(bottom=0)
 plt.grid()
 
 plt.savefig('/tmp/output.pdf', format='pdf', dpi='figure', pad_inches=0.1)
+
+print('Total energy consumed: {:.2f} J'.format(y[-1] / 1000))
