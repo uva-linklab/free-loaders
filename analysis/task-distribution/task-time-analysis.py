@@ -19,6 +19,8 @@ ap.add_argument('--percent', help='Show std. dev. as percent values',
                 dest='percent', default=False, action='store_true')
 ap.add_argument('--importable', help='Print the table less fancy for copying',
                 dest='importable', default=False, action='store_true')
+ap.add_argument('--include-deadline-misses', help='Include figures from offloads that missed deadlines',
+                dest='include_deadline_misses', action='store_true', default=False)
 
 ap.add_argument('dataset', help='dataset to calculate',
                 type=str, choices=['runtime', 'runtime-stdev', 'slack', 'dsr', 'energy'])
@@ -52,16 +54,16 @@ with open(args.log_file, 'r') as f:
         task_slack_times = task_to_executor_mapping.get(tid, {x: [] for x in range(0, 10)})
         ex_slack_times = task_slack_times.get(eid, [])
 
-        if args.dataset.startswith('runtime'):
-            ex_slack_times.append(round(t_exec, 1))
-        elif args.dataset.startswith('slack') or args.dataset == 'dsr':
-            ex_slack_times.append(round(t_dl - t_exec, 1))
-        elif args.dataset == 'energy':
-            if t_dl - t_exec > 0:
+        if t_exec <= t_dl or args.include_deadline_misses == True:
+            if args.dataset.startswith('runtime'):
+                ex_slack_times.append(round(t_exec, 1))
+            elif args.dataset.startswith('slack') or args.dataset == 'dsr':
+                ex_slack_times.append(round(t_dl - t_exec, 1))
+            elif args.dataset == 'energy':
                 ex_slack_times.append(energy)
 
-        task_slack_times[eid] = ex_slack_times
-        task_to_executor_mapping[tid] = task_slack_times
+            task_slack_times[eid] = ex_slack_times
+            task_to_executor_mapping[tid] = task_slack_times
 
 # Transform times into averages or stdev.
 rows = []
