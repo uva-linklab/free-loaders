@@ -7,23 +7,17 @@ from tabulate import tabulate
 ap = argparse.ArgumentParser(description='Task run-time analyzer')
 ap.add_argument('-e', '--executor-count', help='specify no. of executors',
                 type=int, default=10, dest='num_executors')
-ap.add_argument('-es', '--epsilon-start', help='starting epsilon value',
-                type=float, default=0.0, dest='epsilon_start')
-ap.add_argument('-ee', '--epsilon-end', help='ending epsilon value',
-                type=float, default=1.0, dest='epsilon_end')
-ap.add_argument('-ois', '--offload-id-start', help='starting offload_id',
-                type=int, default=0, dest='start_offload_id')
-ap.add_argument('-oie', '--offload-id-end', help='ending offload_id',
-                type=int, default=500000, dest='end_offload_id') # setting default end offload to a large number
+ap.add_argument('-s', '--oid-start', help='Offload ID to start dataset at',
+                type=int, default=0, dest='oid_start')
 ap.add_argument('--percent', help='Show std. dev. as percent values',
                 dest='percent', default=False, action='store_true')
 ap.add_argument('--importable', help='Print the table less fancy for copying',
                 dest='importable', default=False, action='store_true')
-ap.add_argument('--include-deadline-misses', help='Include figures from offloads that missed deadlines',
-                dest='include_deadline_misses', action='store_true', default=False)
+ap.add_argument('--data', help='Which data to include',
+                dest='data', type=str, choices=['all', 'hits', 'misses'], default='all')
 
 ap.add_argument('dataset', help='dataset to calculate',
-                type=str, choices=['runtime', 'runtime-stdev', 'slack', 'dsr', 'energy'])
+                type=str, choices=['runtime', 'runtime-stdev', 'slack', 'slack-stdev', 'dsr', 'energy'])
 ap.add_argument('log_file', help='Log file to parse')
 
 args = ap.parse_args()
@@ -32,7 +26,7 @@ DEVICES = ["nano", "rpi3", "rpi3", "rpi4", "rpi4", "rpi4", "rpi4", "rpi4", "tx2"
 POWER   = [1.33,   1.07,   1.07,   1.8,    1.8,    1.8,    1.8,    1.8,    4.01,  70.9]
 
 # TID -> (EID -> [slack times])
-task_to_executor_mapping = {}
+task_to_executor_mapping = {tid: {eid: [] for eid in range(len(DEVICES))} for tid in range(60)}
 
 def raw_or_imp(a, raw, fancy):
     if a.importable == True:
@@ -41,20 +35,27 @@ def raw_or_imp(a, raw, fancy):
         return fancy
 
 # open log file
-regexp = '.*finished task.*task_id=(?P<tid>\d+).*executer_id=(?P<eid>\d+).*time\(ms\)=(?P<t>\d+|\d+\.\d+).*deadline=(?P<dl>\d+|\d+\.\d+).*energy=(?P<energy>\d+\.\d+)'
+regexp = '.*finished task.*offload_id=(?P<oid>\d+).*task_id=(?P<tid>\d+).*executer_id=(?P<eid>\d+).*time\(ms\)=(?P<t>\d+|\d+\.\d+).*deadline=(?P<dl>\d+|\d+\.\d+).*energy=(?P<energy>\d+\.\d+)'
 with open(args.log_file, 'r') as f:
     data = f.read()
     for m in re.findall(regexp, data):
-        eid = int(m[1])
-        tid = int(m[0])
-        t_exec = float(m[2])
-        t_dl = float(m[3])
-        energy = float(m[4])
+        oid = int(m[0])
+        tid = int(m[1])
+        eid = int(m[2])
+        t_exec = float(m[3])
+        t_dl = float(m[4])
+        energy = float(m[5])
+
+        if oid < args.oid_start:
+            continue
 
         task_slack_times = task_to_executor_mapping.get(tid, {x: [] for x in range(0, 10)})
         ex_slack_times = task_slack_times.get(eid, [])
 
-        if t_exec <= t_dl or args.include_deadline_misses == True:
+        include_datapoint = args.data == 'all' \
+            or (args.data == 'hits' and t_exec <= t_dl) \
+            or (args.data == 'misses' and t_exec > t_dl)
+        if include_datapoint:
             if args.dataset.startswith('runtime'):
                 ex_slack_times.append(round(t_exec, 1))
             elif args.dataset.startswith('slack') or args.dataset == 'dsr':
@@ -107,7 +108,7 @@ for (tid, eid_slack_times) in task_to_executor_mapping.items():
                     row.append(raw_or_imp(args,
                                           sum(slack_times) / len(slack_times),
                                           '{:.2f} J'.format(round(sum(slack_times) / len(slack_times), 2))))
-                else:
+                elif args.dataset == 'slack':
                     avg = sum(slack_times) / len(slack_times)
                     row.append(raw_or_imp(args,
                                           avg,
