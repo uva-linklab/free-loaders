@@ -16,7 +16,7 @@ ap.add_argument('-e', '--ending-offload',
                 type=int, dest='end', default=None)
 ap.add_argument('-o', '--output-path',
                 help='Path to save the figure to',
-                type=str, dest='output', default='task-distribution.pdf')
+                type=str, dest='output', default='/tmp/task-distribution.pdf')
 ap.add_argument('--y-limit', help='Maximum y-axis value',
                 type=int, dest='y_lim', default=None)
 ap.add_argument('path', help='path to log file',
