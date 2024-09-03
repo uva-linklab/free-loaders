@@ -173,6 +173,15 @@ class SyntheticLoadTester:
         def ___into_requests_and_data(t):
             return (t[1].eid(), t[1].lid(), t[1].request_data(),)
 
+        real_offload_id = offload_id
+        offload_id = offload_id % self.__total_offload_count
+
+        # Issue clear requests if this is the first offload of the timeline.
+        if offload_id == 0 and not dry_run:
+            import time
+            self.clear_synthetic_load()
+            time.sleep(1.0)
+
         # t = (oid, LoadDefinition)
         it = filter(lambda t: t[0] == offload_id, self.__timeline)
         it = map(___into_requests_and_data, it)
@@ -181,7 +190,7 @@ class SyntheticLoadTester:
         if len(all_requests) == 0:
             return
 
-        _log('updating load at offload_id={}'.format(offload_id))
+        _log('updating load at offload_id={} (as={})'.format(real_offload_id, offload_id))
 
         # Make sure clear operations occur first.
         # (eid, lid, (url, json,),)
@@ -227,14 +236,16 @@ class SyntheticLoadTester:
         '''Hook function to be called when a task is finished.
         '''
 
-        if offload_id + 1 == self.__total_offload_count:
-            _log('clearing all synthetic load')
-            for executer in self.__executers.values():
-                url = 'http://{}:8088/load/clear'.format(executer.executer_ip)
-                try:
-                    requests.post(url, json={})
-                except:
-                    pass
+        pass
+
+    def clear_synthetic_load(self):
+        _log('clearing all synthetic load')
+        for executer in self.__executers.values():
+            url = 'http://{}:8088/load/clear'.format(executer.executer_ip)
+            try:
+                requests.post(url, json={})
+            except:
+                pass
 
     def __add_to_active_loads(self, load_definition):
         '''Add a load definition to the active loads if it is not already there.
