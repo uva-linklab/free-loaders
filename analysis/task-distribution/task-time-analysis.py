@@ -128,7 +128,7 @@ if args.importable == False:
 
 import itertools
 devices = ['{}-{}'.format(n, name) for (n, name) in zip(itertools.count(), DEVICES)]
-headers = ["TaskId"] + DEVICES
+headers = ["TaskId"] + devices
 
 alignment = ['right' for _i in range(0, len(rows[0]))]
 
