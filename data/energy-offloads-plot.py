@@ -5,6 +5,8 @@ import matplotlib.pyplot as plt
 import numpy
 
 ap = argparse.ArgumentParser()
+ap.add_argument('-o', '--output', help='path to output',
+                default='/tmp/energy-offloads.pdf')
 ap.add_argument('paths', help='path to log files',
                 nargs='+', type=str)
 args = ap.parse_args()
@@ -40,7 +42,7 @@ for path in args.paths:
         log_lines = fh.readlines()
 
     sched_label = which_scheduler(log_lines)
-    r = 'finished task.+energy=(?P<energy>\d+)'
+    r = 'finished task.+energy=(?P<energy>\d+\.\d+)'
     x = [0]
     y = [0]
     for line in log_lines:
@@ -48,7 +50,7 @@ for path in args.paths:
         if m == None:
             continue
 
-        energy = int(m['energy'])
+        energy = float(m['energy'])
 
         x.append(x[-1]+1)
         y.append(y[-1]+energy)
@@ -66,4 +68,4 @@ plt.ylim(bottom=0)
 
 plt.grid()
 
-plt.savefig('/tmp/output.pdf', format='pdf', dpi='figure', pad_inches=0.1)
+plt.savefig(args.output, format='pdf', dpi='figure', pad_inches=0.1)
