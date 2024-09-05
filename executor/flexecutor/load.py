@@ -34,6 +34,7 @@ def __loading_thread_main():
                                             args=())
                 p.start()
                 active_processes.append(p)
+                time.sleep(0.25)
 
             # Start the partial load process.
             p = multiprocessing.Process(target=__partial_load_thread_main,
@@ -54,6 +55,7 @@ def __loading_thread_main():
                                             args=(freq, d_spike, t_base,))
                 p.start()
                 active_processes.append(p)
+                time.sleep(0.25)
 
         elif msg['profile'] == 'none':
             log.d('killing {} load processes'.format(len(active_processes)))
