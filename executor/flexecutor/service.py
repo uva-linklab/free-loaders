@@ -48,6 +48,8 @@ class ExecutorHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
                 load.set_intermittent_load(freq, d_spike)
                 self.send_response(204)
 
+        log.i('done setting load')
+
     def log_message(self, format, *args):
         pass
 
