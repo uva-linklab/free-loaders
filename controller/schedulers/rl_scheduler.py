@@ -144,15 +144,10 @@ class RLScheduler:
         if np.random.rand() > self.epsilon:
             self.q_lock.acquire()
 
-<<<<<<< Updated upstream
-            pact = self.Q(np.array(pobs, dtype=np.float32).reshape(1, -1))
-            pact = np.argmax(pact.data).item()
-=======
             pact_arr = self.Q(np.array(pobs, dtype=np.float32).reshape(1, -1))
             pact = np.argmax(pact_arr.data).item()
             pact_l = [round(x, 2) for x in pact_arr[0].tolist()]
             print('[rls] p_act_arr = {}, p_act = {}'.format(pact_l, pact))
->>>>>>> Stashed changes
             explore = False
 
             self.q_lock.release()
