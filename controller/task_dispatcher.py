@@ -239,7 +239,7 @@ class TaskDispatcher:
 
     def submit_task(self, task):
         if self.load_tester != None:
-            self.load_tester.update_load(task.offload_id, self.executers)
+            self.load_tester.update_load(task.offload_id)
 
         print(f"[td] new task(offload_id={task.offload_id}, task_id={task.task_id}, job_id={task.job_id}, deadline={task.deadline})")
 
