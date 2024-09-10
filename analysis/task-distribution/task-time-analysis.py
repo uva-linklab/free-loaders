@@ -59,7 +59,10 @@ with open(args.log_file, 'r') as f:
             if args.dataset.startswith('runtime'):
                 ex_slack_times.append(round(t_exec, 1))
             elif args.dataset.startswith('slack') or args.dataset == 'dsr':
-                ex_slack_times.append(round(t_dl - t_exec, 1))
+                if args.percent == True:
+                    ex_slack_times.append(round((t_dl - t_exec) / t_dl, 1))
+                else:
+                    ex_slack_times.append(round(t_dl - t_exec, 1))
             elif args.dataset == 'energy':
                 ex_slack_times.append(energy)
 
@@ -103,16 +106,21 @@ for (tid, eid_slack_times) in task_to_executor_mapping.items():
                     dsr = len(list(filter(lambda st: st >= 0.0, slack_times))) / len(slack_times)
                     row.append(raw_or_imp(args,
                                           dsr,
-                                          '{:.2f} %'.format(round(dsr * 100, 1))))
+                                          '{:.2f}%'.format(round(dsr * 100, 1))))
                 elif args.dataset == 'energy':
                     row.append(raw_or_imp(args,
                                           sum(slack_times) / len(slack_times),
                                           '{:.2f} J'.format(round(sum(slack_times) / len(slack_times), 2))))
                 elif args.dataset == 'slack':
                     avg = sum(slack_times) / len(slack_times)
-                    row.append(raw_or_imp(args,
-                                          avg,
-                                          '{:.1f} ms'.format(round(avg, 1))))
+                    if args.percent == True:
+                        row.append(raw_or_imp(args,
+                                              avg,
+                                              '{:.1f}%'.format(round(avg * 100, 1))))
+                    else:
+                        row.append(raw_or_imp(args,
+                                              avg,
+                                              '{:.1f} ms'.format(round(avg, 1))))
 
     rows.append(row)
 
