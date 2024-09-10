@@ -54,22 +54,10 @@ for (path, color) in zip(args.paths, range(0,10)):
 
     label = which_scheduler(log_lines)
 
-    RL_MEMORY_SKIP_TOTAL = 0
-    if label == 'fReeLoaders':
-        RL_MEMORY_SKIP_TOTAL= 0
-    elif label == 'fReeLoaders (more training)':
-        RL_MEMORY_SKIP_TOTAL = 0
-    elif label == 'fReeLoaders (-100 reward)':
-        RL_MEMORY_SKIP_TOTAL = 0
-
     x = []
     y = []
     offset = 0
     last_met = 0
-    rl_memory_skip = 0
-    rl_memory_met = 0
-    rl_memory_finished = 0
-    rl_memory_failed = 0
     for line in log_lines:
         m = re.search(r, line)
         if m == None:
@@ -78,29 +66,10 @@ for (path, color) in zip(args.paths, range(0,10)):
             if m == None:
                 continue
 
-            # See if this one failed due to network conditions.
-            t = float(m['t'])
-            oid = int(m['oid'])
-            if oid > 3000 and t > 80000:
-                offset += 1
-                print('not counting long time {} for task ID {}'.format(t, m['tid']))
-            continue
-
-
-        # Skip over the offloads where the memory was filling for the RL scheduler.
-        if 'fReeLoaders' in label and rl_memory_skip < RL_MEMORY_SKIP_TOTAL:
-            rl_memory_skip += 1
-            if rl_memory_skip == RL_MEMORY_SKIP_TOTAL:
-                # Set the offset nos.
-                rl_memory_met = int(m['met'])
-                rl_memory_finished = int(m['finished'])
-                rl_memory_failed = int(m['failed'])
-            continue
-
-        met = int(m['met']) - rl_memory_met
-        finished = int(m['finished']) - rl_memory_finished - offset
-        failed = int(m['failed']) - rl_memory_failed
-        processed = finished + failed - offset
+        met = int(m['met'])
+        finished = int(m['finished'])
+        failed = int(m['failed'])
+        processed = finished + failed
 
         x.append(processed)
         y.append(met / processed)
