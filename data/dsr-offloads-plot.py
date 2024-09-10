@@ -15,16 +15,20 @@ ap.add_argument('-f', '--initial-window', help='Assume a perfect initial DSR win
                 dest='initial_window', action='store_true', default=False)
 ap.add_argument('--x-limit', help='Max offload no. to plot',
                 dest='x_limit', type=int, action='store', default=None)
+ap.add_argument('--date-runs', help='Append date labels to legends',
+                dest='date_runs', action='store_true', default=False)
+
 ap.add_argument('paths', help='path to log file',
                 nargs='+', type=str)
 
 args = ap.parse_args()
 
 colors = {
-    'rl': [26 / 255, 121 / 255, 172 / 255],
-    'load-bal': [28 / 255, 160 / 255, 63 / 255],
-    'random': [217 / 255, 28 / 255, 44 / 255],
-    'heros': [111 / 255, 166 / 255, 17 / 255],
+    'rl': [[26 / 255, 121 / 255, 172 / 255],
+           [137 / 255, 204 / 255, 240 / 255]],
+    'load-bal': [[28 / 255, 160 / 255, 63 / 255]],
+    'random': [[217 / 255, 28 / 255, 44 / 255]],
+    'heros': [[111 / 255, 166 / 255, 17 / 255]],
 }
 
 pretty_names = {
@@ -47,6 +51,7 @@ def which_scheduler(log):
 
 r = 'deadlines_met=(?P<met>\d+).*finished_tasks=(?P<finished>\d+).*failed_tasks=(?P<failed>\d+)'
 r2 = 'finished task.*offload_id=(?P<oid>\d+), task_id=(?P<tid>\d+).*time\(ms\)=(?P<t>\d+\.\d+)'
+plotted = []
 for (path, color) in zip(args.paths, range(0,10)):
     log_lines = ''
     with open(path, 'r') as fh:
@@ -66,6 +71,8 @@ for (path, color) in zip(args.paths, range(0,10)):
             if m == None:
                 continue
 
+            continue
+
         met = int(m['met'])
         finished = int(m['finished'])
         failed = int(m['failed'])
@@ -76,7 +83,16 @@ for (path, color) in zip(args.paths, range(0,10)):
 
         last_met = met
 
-    plt.plot(x, y, label=pretty_names[label], color=colors[label])
+    plot_label = pretty_names[label]
+    if args.date_runs == True:
+        date_r = '^[A-Za-z]+ \d+ [0-9:]+'
+        timestamp = re.search(date_r, log_lines[1])[0]
+        plot_label = '{} ({})'.format(plot_label, timestamp)
+
+    color2_idx = len(list(filter(lambda l: l == label, plotted)))
+
+    plt.plot(x, y, label=plot_label, color=colors[label][color2_idx])
+    plotted.append(label)
 
 plt.legend(fancybox=True)
 plt.xlabel('Number of offloads')
