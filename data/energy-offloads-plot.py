@@ -5,6 +5,10 @@ import matplotlib.pyplot as plt
 import numpy
 
 ap = argparse.ArgumentParser()
+ap.add_argument('-s', '--starting-offload', help='ID of the first offload to count',
+                type=int, dest='start', default=None)
+ap.add_argument('-e', '--ending-offload', help='ID of the last offload to count',
+                type=int, dest='end', default=None)
 ap.add_argument('-o', '--output', help='path to output',
                 default='/tmp/energy-offloads.pdf')
 ap.add_argument('paths', help='path to log files',
@@ -42,12 +46,19 @@ for path in args.paths:
         log_lines = fh.readlines()
 
     sched_label = which_scheduler(log_lines)
-    r = 'finished task.+energy=(?P<energy>\d+\.\d+)'
+    r = 'finished task.+offload_id=(?P<oid>\d+).+energy=(?P<energy>\d+\.\d+)'
     x = [0]
     y = [0]
     for line in log_lines:
         m = re.search(r, line)
         if m == None:
+            continue
+
+        oid = int(m['oid'])
+
+        if args.start != None and oid < args.start:
+            continue
+        if args.end != None and oid >=args.end:
             continue
 
         energy = float(m['energy'])
