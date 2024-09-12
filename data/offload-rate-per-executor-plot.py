@@ -74,12 +74,15 @@ hmap = [[] for _i in range(executor_count)]
 for i in range(len(oid_executor_selection)):
     # Make the window that contains the EID of the executor selected to run the offloads.
     hmap_window = oid_executor_selection[i:i+args.window_size]
+    start_oid = max(0, i - args.window_size + 1)
+    end_oid = i
+    hmap_window = oid_executor_selection[start_oid:end_oid+1]
     # Place an average "rate" value: selections/offload count.
     for eid in range(executor_count):
         hmap[eid].append(float(hmap_window.count(eid)) / float(len(hmap_window)))
 
 sns.heatmap(hmap, annot=False, xticklabels=args.x_interval,
-            rasterized=True, linewidths=0.0)
+    rasterized=True, linewidths=0.0)
 
 # plt.legend(fancybox=True)
 plt.xlabel('Number of offloads')
