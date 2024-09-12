@@ -79,8 +79,8 @@ for i in range(len(oid_executor_selection)):
 sns.heatmap(hmap, annot=False, xticklabels=200)
 
 # plt.legend(fancybox=True)
-# plt.xlabel('Number of offloads')
-# plt.ylabel('Deadline satisfaction ratio')
+plt.xlabel('Number of offloads')
+plt.ylabel('Executor ID')
 # plt.xlim(0, x[-1] if args.x_limit == None else args.x_limit)
 # plt.ylim(0, 1)
 # plt.gca().spines['right'].set_visible(False)
