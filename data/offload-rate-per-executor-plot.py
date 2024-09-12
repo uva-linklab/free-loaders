@@ -78,7 +78,8 @@ for i in range(len(oid_executor_selection)):
     for eid in range(executor_count):
         hmap[eid].append(float(hmap_window.count(eid)) / float(len(hmap_window)))
 
-sns.heatmap(hmap, annot=False, xticklabels=args.x_interval)
+sns.heatmap(hmap, annot=False, xticklabels=args.x_interval,
+            rasterized=True, linewidths=0.0)
 
 # plt.legend(fancybox=True)
 plt.xlabel('Number of offloads')
