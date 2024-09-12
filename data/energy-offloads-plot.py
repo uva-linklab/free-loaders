@@ -11,6 +11,8 @@ ap.add_argument('-e', '--ending-offload', help='ID of the last offload to count'
                 type=int, dest='end', default=None)
 ap.add_argument('-o', '--output', help='path to output',
                 default='/tmp/energy-offloads.pdf')
+ap.add_argument('--x-limit', help='x-axis max value',
+                type=int, dest='x_limit', default=None)
 ap.add_argument('paths', help='path to log files',
                 nargs='+', type=str)
 args = ap.parse_args()
@@ -40,6 +42,7 @@ def which_scheduler(log):
 
     return scheduler_name
 
+x_lim = args.x_limit
 for path in args.paths:
     log_lines = ''
     with open(path, 'r') as fh:
@@ -66,6 +69,9 @@ for path in args.paths:
         x.append(x[-1]+1)
         y.append(y[-1]+energy)
 
+        if args.x_limit == None:
+            x_lim = max(x_lim, len(x))
+
     plt.plot(x, y, label=pretty_names[sched_label], color=colors[sched_label])
     print('Total energy consumed by {}: {:.2f} J'.format(pretty_names[sched_label], y[-1] / 1000))
 
@@ -74,7 +80,7 @@ plt.legend(fancybox=True)
 plt.xlabel('Number of offloads')
 plt.ylabel('Total energy consumed')
 
-plt.xlim(0, len(x))
+plt.xlim(0, x_lim)
 plt.ylim(bottom=0)
 
 plt.grid()
