@@ -13,6 +13,8 @@ ap.add_argument('-e', '--ending-offload', help='ID of the last offload to count'
                 type=int, dest='end', default=None)
 ap.add_argument('-w', '--window-size', help='Number of offloads in the averaging window',
                 type=int, dest='window_size', default=25)
+ap.add_argument('--x-interval', help='x-axis tick interval',
+                type=int, dest='x_interval', default=250)
 
 ap.add_argument('path', help='path to log file', type=str)
 
@@ -76,7 +78,7 @@ for i in range(len(oid_executor_selection)):
     for eid in range(executor_count):
         hmap[eid].append(float(hmap_window.count(eid)) / float(len(hmap_window)))
 
-sns.heatmap(hmap, annot=False, xticklabels=200)
+sns.heatmap(hmap, annot=False, xticklabels=args.x_interval)
 
 # plt.legend(fancybox=True)
 plt.xlabel('Number of offloads')
