@@ -70,7 +70,10 @@ for path in args.paths:
         y.append(y[-1]+energy)
 
         if args.x_limit == None:
-            x_lim = max(x_lim, len(x))
+            if x_lim == None:
+                x_lim = len(x)
+            else:
+                x_lim = max(x_lim, len(x))
 
     plt.plot(x, y, label=pretty_names[sched_label], color=colors[sched_label])
     print('Total energy consumed by {}: {:.2f} J'.format(pretty_names[sched_label], y[-1] / 1000))
