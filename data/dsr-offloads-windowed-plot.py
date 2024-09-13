@@ -1,4 +1,5 @@
 import argparse
+import os.path
 import re
 
 import matplotlib.pyplot as plt
@@ -101,4 +102,9 @@ plt.gca().spines['right'].set_visible(False)
 plt.gca().spines['top'].set_visible(False)
 plt.grid()
 
-plt.savefig(args.output, format='pdf', dpi='figure', pad_inches=0.1, metadata={'Producer': str(args.paths)})
+
+output_path = args.output
+if os.path.isdir(output_path):
+    output_path = os.path.join(output_path, 'dsr-offloads-windowed.pdf')
+
+plt.savefig(output_path, format='pdf', dpi='figure', pad_inches=0.1, metadata={'Producer': str(args.paths)})
