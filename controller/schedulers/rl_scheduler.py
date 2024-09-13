@@ -49,7 +49,7 @@ class RLScheduler:
 
         self.total_executor = len(executers.keys())
 
-        self.Q = Q_Network(input_size=102, hidden_size=400, output_size=self.total_executor)
+        self.Q = Q_Network(input_size=12, hidden_size=400, output_size=self.total_executor)
         if os.path.exists('Q.model'):
             serializers.load_npz('Q.model', self.Q)
             print('[rl] loaded Q.model')
@@ -98,17 +98,25 @@ class RLScheduler:
         state = [int(task.task_id), task.deadline]
         # task_id_vec = [int(x) for x in list('{:032b}'.format(int(task.task_id)))]
 
-        for key in before_state:
-            state.extend(list(before_state[key].values()))
+        # Include only the stats named here.
+        included_stats = ['cpu-load']
+        for eid in before_state:
+            executor_state = [v for (k, v) in before_state[eid].items() if k in included_stats]
+            state.extend(executor_state)
+
+        # print('[rls] input state: {}'.format(state))
 
         path_to_scaler = os.path.join(os.getcwd(), 'controller', 'rl', 'std_scaler.bin')
         scaler=load(path_to_scaler)
         scaled_data = scaler.transform(np.array(state).reshape(1, -1))
+        # print('[rls] scaled state: {}'.format(scaled_data))
+
         return scaled_data
 
     def generate_new_state(self, before_state, new_state_of_executor, exec_id):
 
-        new_state = before_state
+        import copy
+        new_state = copy.deepcopy(before_state)
 
         new_state[exec_id] = new_state_of_executor
 
@@ -146,7 +154,7 @@ class RLScheduler:
 
             pact_arr = self.Q(np.array(pobs, dtype=np.float32).reshape(1, -1))
             pact = np.argmax(pact_arr.data).item()
-            pact_l = [round(x, 2) for x in pact_arr[0].tolist()]
+            pact_l = [round(x, 2) for x in pact_arr.data[0].tolist()]
             print('[rls] p_act_arr = {}, p_act = {}'.format(pact_l, pact))
             explore = False
 
@@ -161,8 +169,13 @@ class RLScheduler:
     def task_finished(self, offload_id, exec_id, task_id, status, exec_time, energy, new_state_of_executor):
         # status = 0 => successful task, status != 0 => failed task
 
+        # Create a before and after state to train with.
         task, before_state, pact, deadline = self.get_saved_state(offload_id)
         new_state = self.generate_new_state(before_state, new_state_of_executor, exec_id)
+        print('[rls] before state for offload_id={}, executer_id={}: {}'.format(
+            offload_id, exec_id, before_state[exec_id]))
+        print('[rls]  after state for offload_id={}, executer_id={}: {}'.format(
+            offload_id, exec_id, new_state[exec_id]))
 
         pobs = self.process_state(before_state, task)
         obs =  self.process_state(new_state, task)

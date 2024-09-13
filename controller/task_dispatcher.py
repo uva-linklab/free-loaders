@@ -238,6 +238,7 @@ class TaskDispatcher:
         return dict(asyncio.run(make_requests(url_tuples=url_tuples)))
 
     def submit_task(self, task):
+        # Update synthetic load.
         if self.load_tester != None:
             self.load_tester.update_load(task.offload_id)
 
