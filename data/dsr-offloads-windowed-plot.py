@@ -6,7 +6,7 @@ import numpy
 
 ap = argparse.ArgumentParser()
 ap.add_argument('-o', '--output', help='Output file path.',
-                type=str, dest='output', default='dsr-offloads.pdf')
+                type=str, dest='output', default='dsr-offloads-windowed.pdf')
 ap.add_argument('-s', '--starting-offload', help='ID of the first offload to count',
                 type=int, dest='start', default=0)
 ap.add_argument('-e', '--ending-offload', help='ID of the last offload to count',
@@ -64,7 +64,7 @@ for (path, color) in zip(args.paths, range(0,10)):
 
     x = []
     y = []
-    rwin = [True for _i in range(0, args.window_size)]
+    rwin = [True for _i in range(0, args.window_size)] if args.initial_window else []
     offset = 0
     last_met = 0
     for line in log_lines:
