@@ -1,4 +1,5 @@
 import argparse
+import os.path
 import re
 
 import matplotlib.pyplot as plt
@@ -10,7 +11,7 @@ ap.add_argument('-s', '--starting-offload', help='ID of the first offload to cou
 ap.add_argument('-e', '--ending-offload', help='ID of the last offload to count',
                 type=int, dest='end', default=None)
 ap.add_argument('-o', '--output', help='path to output',
-                default='/tmp/energy-offloads.pdf')
+                default='/tmp')
 ap.add_argument('--x-limit', help='x-axis max value',
                 type=int, dest='x_limit', default=None)
 ap.add_argument('paths', help='path to log files',
@@ -93,4 +94,8 @@ plt.ylim(bottom=0)
 
 plt.grid()
 
-plt.savefig(args.output, format='pdf', dpi='figure', pad_inches=0.1)
+output_path = args.output
+if os.path.isdir(output_path) == True:
+    output_path = os.path.join(output_path, 'energy-offloads.pdf')
+
+plt.savefig(output_path, format='pdf', dpi='figure', pad_inches=0.1)
