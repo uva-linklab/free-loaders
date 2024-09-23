@@ -52,6 +52,7 @@ for path in args.paths:
     r = 'finished task.+offload_id=(?P<oid>\d+).+energy=(?P<energy>\d+\.\d+)'
     x = [0]
     y = [0]
+    e = []
     for line in log_lines:
         m = re.search(r, line)
         if m == None:
@@ -68,6 +69,7 @@ for path in args.paths:
 
         x.append(x[-1]+1)
         y.append(y[-1]+energy)
+        e.append(energy)
 
         if args.x_limit == None:
             if x_lim == None:
@@ -76,7 +78,10 @@ for path in args.paths:
                 x_lim = max(x_lim, len(x))
 
     plt.plot(x, y, label=pretty_names[sched_label], color=colors[sched_label])
-    print('Total energy consumed by {}: {:.2f} J'.format(pretty_names[sched_label], y[-1] / 1000))
+    print('Total energy consumed by {}: {:.2f} J; Avg. rate: {} J/offload'.format(
+        pretty_names[sched_label],
+        y[-1] / 1000,
+        round(sum(e) / len(e), 2)))
 
 plt.legend(fancybox=True)
 

@@ -96,6 +96,7 @@ for (path, color) in zip(args.paths, range(0,10)):
 
     plt.plot(x, y, label=plot_label, color=colors[label][color2_idx])
     plotted.append(label)
+    print('{}\n    DSR: {:.2f}%'.format(plot_label, y[-1] * 100))
 
 plt.legend(fancybox=True)
 plt.xlabel('Number of offloads')
