@@ -1,4 +1,5 @@
 import argparse
+import os.path
 import re
 
 import seaborn as sns
@@ -93,4 +94,8 @@ plt.ylabel('Executor ID')
 # plt.gca().spines['top'].set_visible(False)
 # plt.grid()
 
-plt.savefig(args.output, format='pdf', dpi='figure', pad_inches=0.1, metadata={'Producer': str(args.path)})
+output_path = args.output
+if os.path.isdir(output_path):
+    output_path = os.path.join(output_path, 'offload-rate.pdf')
+
+plt.savefig(output_path, format='pdf', dpi='figure', pad_inches=0.1, metadata={'Producer': str(args.path)})
