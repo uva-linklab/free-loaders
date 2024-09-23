@@ -14,15 +14,20 @@ ap.add_argument('-o', '--output', help='path to output',
                 default='/tmp')
 ap.add_argument('--x-limit', help='x-axis max value',
                 type=int, dest='x_limit', default=None)
+ap.add_argument('--date-runs', help='Append date labels to legends',
+                dest='date_runs', action='store_true', default=False)
 ap.add_argument('paths', help='path to log files',
                 nargs='+', type=str)
 args = ap.parse_args()
 
 colors = {
-    'rl': [26 / 255, 121 / 255, 172 / 255],
+    'rl': [[26 / 255, 121 / 255, 172 / 255],
+           [137 / 255, 204 / 255, 240 / 255],
+           [183 / 255, 218 / 255, 237 / 255]],
     'load-bal': [28 / 255, 160 / 255, 63 / 255],
     'random': [217 / 255, 28 / 255, 44 / 255],
-    'heros': [111 / 255, 166 / 255, 17 / 255],
+    'heros': [[111 / 255, 166 / 255, 17 / 255],
+              [170 / 255, 227 / 255, 73 / 255]],
 }
 
 pretty_names = {
@@ -43,6 +48,7 @@ def which_scheduler(log):
 
     return scheduler_name
 
+plotted = []
 x_lim = args.x_limit
 for path in args.paths:
     log_lines = ''
@@ -78,10 +84,18 @@ for path in args.paths:
             else:
                 x_lim = max(x_lim, len(x))
 
-    plt.plot(x, y, label=pretty_names[sched_label], color=colors[sched_label])
+    plot_label = pretty_names[sched_label]
+    if args.date_runs == True:
+        date_r = '^[A-Za-z]+ \d+ [0-9:]+'
+        timestamp = re.search(date_r, log_lines[1])[0]
+        plot_label = '{} ({})'.format(plot_label, timestamp)
+
+    color2_idx = len(list(filter(lambda l: l == sched_label, plotted)))
+    plt.plot(x, y, label=plot_label, color=colors[sched_label][color2_idx])
+    plotted.append(sched_label)
     print('Total energy consumed by {}: {:.2f} J; Avg. rate: {} J/offload'.format(
         pretty_names[sched_label],
-        y[-1] / 1000,
+        y[-1],
         round(sum(e) / len(e), 2)))
 
 plt.legend(fancybox=True)
