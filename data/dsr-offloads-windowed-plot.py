@@ -55,6 +55,7 @@ def which_scheduler(log):
     return scheduler_name
 
 r = 'finished task.*offload_id=(?P<oid>\d+), task_id=(?P<tid>\d+).*time\(ms\)=(?P<t>\d+\.\d+).*deadline=(?P<dl>\d+\.\d+)'
+x_limit = 0
 plotted = []
 for (path, color) in zip(args.paths, range(0,10)):
     log_lines = ''
@@ -91,13 +92,18 @@ for (path, color) in zip(args.paths, range(0,10)):
     color2_idx = len(list(filter(lambda l: l == label, plotted)))
 
     plt.plot(x, y, label=plot_label, color=colors[label][color2_idx])
+    x_limit = max(x_limit, len(y))
     plotted.append(label)
 
 plt.legend(fancybox=True)
 plt.xlabel('Number of offloads')
 plt.ylabel('Deadline satisfaction ratio')
+
+if args.x_limit != None:
+    x_limit = args.x_limit
 plt.xlim(0, x[-1] if args.x_limit == None else args.x_limit)
 plt.ylim(0, 1)
+
 plt.gca().spines['right'].set_visible(False)
 plt.gca().spines['top'].set_visible(False)
 plt.grid()
