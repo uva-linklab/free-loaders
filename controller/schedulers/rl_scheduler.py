@@ -69,6 +69,10 @@ class RLScheduler:
         self.gamma = 0.1
         self.show_log_freq = 1
 
+        # Energy consumption extremes per-task ID.
+        # task ID -> (min energy, max_energy)
+        self.energy_usage_per_task = {}
+
         self.memory = []
         self.total_step = 0
         self.total_reward = 0
@@ -127,12 +131,23 @@ class RLScheduler:
         if status !=0:
             return -1
 
-        if exec_time > deadline:
-            reward = self.alpha*(-np.tanh(exec_time/deadline)) + (1-self.alpha)*(-(energy/self.threshold))
-        else:
-            reward = self.alpha*(1-np.tanh(exec_time/(deadline+exec_time))) + (1-self.alpha)*(1-(energy/self.threshold))
+        # Track energy usage of the task.
+        (energy_min, energy_max,) = self.energy_usage_per_task.get(task_id, (energy, energy,))
+        print('[rls] energy range for task_id={}: {} - {}'.format(task_id, energy_min, energy_max))
+        energy_min = min(energy, energy_min)
+        energy_max = max(energy, energy_max)
+        self.energy_usage_per_task[task_id] = (energy_min, energy_max,)
+        energy_range = energy_max - energy_min
 
-        return reward
+        if energy_range == 0:
+            if exec_time > deadline:
+                return -1.0
+            else:
+                return 1.0
+        elif exec_time > deadline:
+            return -1 * ((energy - energy_min) / energy_range)
+        else:
+            return (energy_max - energy) / energy_range
 
     # TODO: When to stop? Optional for now
     def done_with_learning(self, reward):
@@ -209,12 +224,27 @@ class RLScheduler:
                         b_obs = np.array(batch[:, 3].tolist(), dtype=np.float32)
                         b_done = np.array(batch[:, 4].tolist(), dtype=np.bool)
 
+                        # Calculate (rather, re-calculate) the Q-values for taking actions in the before-state.
+                        # Output is a 2D array: (step x action's Q-value)
                         q = self.Q(b_pobs)
 
                         maxq = np.max(self.Q_ast(b_obs).data, axis=1)
                         target = copy.deepcopy(q.data)
 
+                        # For each step we want to train on...
                         for j in range(target.shape[0]):
+                            # Recall, target is 2D array of (step x Q-values).
+                            # We fix j here as the first index because we only want to access that particular step.
+                            # We use b_pact[j] because we only want to update the Q-value for the action we took
+                            # (i.e., the executor we selected).
+                            #
+                            # We want to incorporate some measure of:
+                            # "how well did the action set us up for future success?"
+                            # So we find the maximum Q-value of the next state
+                            # and use that in the calculation as well.
+                            # The target puts the reward for the action taken in the before state
+                            # together with some regard to the maximum Q-value attainable from the after state
+                            # (it is scaled by gamma; lower gamma -> short-sighted agent).
                             target[j, b_pact[j]] = b_reward[j] + self.gamma * maxq[j] * (not b_done[j])
 
                         self.Q.reset()
