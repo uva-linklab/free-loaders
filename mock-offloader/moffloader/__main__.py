@@ -156,14 +156,14 @@ def offload_one(address, device_id, task_id, job_id=0, executor_id=None):
 
     if task_id < 10:
         # For loop task.
-        task_data['deadline'] = 449.5 * task_id + 666.2
+        task_data['deadline'] = 444.1 * task_id + 977.82
 
         input_data = (task_id + 1) * 1000000  # 1,000,000 -> 10,000,000 loops
         input_data_bytes = struct.pack('I', input_data)
 
     elif task_id < 20:
         # Matrix multiplication task.
-        task_data['deadline'] = 821.34 * (task_id - 10) + 1377.63
+        task_data['deadline'] = 881.86 * (task_id - 10) + 1994.81
 
         # Generate a matrix and send it as the input data.
         size = 500 + math.ceil((task_id - 10) * 55.5)  # 500x500 -> 1000x1000
@@ -174,12 +174,12 @@ def offload_one(address, device_id, task_id, job_id=0, executor_id=None):
 
     elif task_id < 30:
         # FFT task. 3s -> 30s of audio data
-        task_data['deadline'] = 445.53 * (task_id - 20) + 1306.79
+        task_data['deadline'] = 694.5 * (task_id - 20) + 1177.53
         samples = np.random.rand(44100 * (task_id - 19) * 3)
         input_data_bytes = np.array(samples, dtype='<f8').tobytes()
 
     elif task_id < 40:  # Human Activity Recognition (smart watch)
-        task_data['deadline'] = 519.55 * (task_id - 30) + 882.7
+        task_data['deadline'] = 391.27 * (task_id - 30) + 1173.47
 
         # randomly generate HAR sample
         batch_size = (task_id - 30 + 1) * 50  # 1s to 10s at 50Hz
@@ -193,14 +193,14 @@ def offload_one(address, device_id, task_id, job_id=0, executor_id=None):
                            input_data_np.tobytes()
 
     elif task_id < 50:  # Object detection (AR headset)
-        task_data['deadline'] = 140.11 * (task_id - 40) + 7017.53
+        task_data['deadline'] = 131.9 * (task_id - 40) + 7206.11
         input_img_id = str(task_id - 40)
         filepath = os.path.join('mock-offloader', 'moffloader', 'obj_det_input_files', f'dog{input_img_id}.jpg')
         f = open(filepath, mode='rb')
         input_data_bytes = f.read()  # send raw bytes of the jpg image
 
     elif task_id < 60:  # Room classification (robot)
-        task_data['deadline'] = 182.12 * (task_id - 50) + 3107.38
+        task_data['deadline'] = 214.56 * (task_id - 50) + 4120.17
         input_img_id = str(task_id - 50)
         filepath = os.path.join('mock-offloader', 'moffloader', 'room_classification_input_files', f'room{input_img_id}.jpg')
         f = open(filepath, mode='rb')
