@@ -126,7 +126,7 @@ class RLScheduler:
 
         return new_state
 
-    def generate_reward(self, deadline, exec_time, status, energy):
+    def generate_reward(self, task_id, deadline, exec_time, status, energy):
 
         if status != 0 or exec_time > deadline:
             return -1
@@ -136,7 +136,7 @@ class RLScheduler:
         # We don't want to penalize the agent for being unable to do the impossible.
         # E.g., cannot get a high reward because it can't get a compute-intensive task to run on RPi3.
         (energy_min, energy_max,) = self.energy_usage_per_task.get(task_id, (energy, energy,))
-        print('[rls] energy range for task_id={}: {} - {}'.format(task_id, energy_min, energy_max))
+        print('[rls] energy range for task_id={}: {:.2f} - {:.2f}'.format(task_id, energy_min, energy_max))
         energy_min = min(energy, energy_min)
         energy_max = max(energy, energy_max)
         self.energy_usage_per_task[task_id] = (energy_min, energy_max,)
@@ -193,7 +193,7 @@ class RLScheduler:
         pobs = self.process_state(before_state, task)
         obs =  self.process_state(new_state, task)
 
-        reward = self.generate_reward(deadline, exec_time, status, energy)
+        reward = self.generate_reward(task_id, deadline, exec_time, status, energy)
         self.total_reward += reward
 
         done = self.done_with_learning(reward)
