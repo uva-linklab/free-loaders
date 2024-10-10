@@ -107,6 +107,9 @@ for (tid, eid_slack_times) in task_to_executor_mapping.items():
                     row.append(raw_or_imp(args,
                                           dsr,
                                           '{:.2f}%'.format(round(dsr * 100, 1))))
+                elif args.dataset == 'runtime':
+                    row.append(raw_or_imp(args, sum(slack_times) / len(slack_times),
+                                          '{:.2f} ms'.format(round(sum(slack_times) / len(slack_times), 2))))
                 elif args.dataset == 'energy':
                     row.append(raw_or_imp(args,
                                           sum(slack_times) / len(slack_times),
