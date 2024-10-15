@@ -30,8 +30,9 @@ colors = {
     'rl': [[26 / 255, 121 / 255, 172 / 255],
            [137 / 255, 204 / 255, 240 / 255],
            [183 / 255, 218 / 255, 237 / 255]],
-    'load-bal': [[28 / 255, 160 / 255, 63 / 255]],
+    'load-bal': [[199 / 255, 157 / 255, 250 / 255]],
     'random': [[217 / 255, 28 / 255, 44 / 255]],
+    'time-wrr': [[252 / 255, 186 / 255,   3 / 255]],
     'heros': [[111 / 255, 166 / 255, 17 / 255],
               [170 / 255, 227 / 255, 73 / 255]],
 }
@@ -40,6 +41,7 @@ pretty_names = {
     'rl': 'fReeLoaders',
     'load-bal': 'load balancer',
     'random': 'random',
+    'time-wrr': 'performance-WRR',
     'heros': 'HEROS',
 }
 
@@ -74,13 +76,18 @@ for (path, color) in zip(args.paths, range(0,10)):
         if m == None:
             continue
 
+        oid = int(m['oid'])
+        if args.start != None and oid < args.start:
+            continue
+        elif args.end != None and oid > args.end:
+            continue
+
         rwin.append(float(m['t']) < float(m['dl']))
         while len(rwin) > args.window_size:
             rwin = rwin[1:]
+        dsr = len(list(filter(lambda b: b, rwin))) / len(rwin)
 
-        dsr = len(list(filter(lambda b: b, rwin))) / args.window_size
-
-        x.append(int(m['oid']))
+        x.append(oid)
         y.append(dsr)
 
     plot_label = pretty_names[label]
@@ -101,7 +108,8 @@ plt.ylabel('Deadline satisfaction ratio')
 
 if args.x_limit != None:
     x_limit = args.x_limit
-plt.xlim(0, x[-1] if args.x_limit == None else args.x_limit)
+xstart = args.start if args.start != None else 0
+plt.xlim(xstart, x_limit)
 plt.ylim(0, 1)
 
 plt.gca().spines['right'].set_visible(False)

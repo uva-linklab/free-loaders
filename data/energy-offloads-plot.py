@@ -24,8 +24,9 @@ colors = {
     'rl': [[26 / 255, 121 / 255, 172 / 255],
            [137 / 255, 204 / 255, 240 / 255],
            [183 / 255, 218 / 255, 237 / 255]],
-    'load-bal': [28 / 255, 160 / 255, 63 / 255],
-    'random': [217 / 255, 28 / 255, 44 / 255],
+    'load-bal': [[199 / 255, 157 / 255, 250 / 255]],
+    'random': [[217 / 255, 28 / 255, 44 / 255]],
+    'time-wrr': [[252 / 255, 186 / 255,   3 / 255]],
     'heros': [[111 / 255, 166 / 255, 17 / 255],
               [170 / 255, 227 / 255, 73 / 255]],
 }
@@ -34,6 +35,7 @@ pretty_names = {
     'rl': 'fReeLoaders',
     'load-bal': 'load balancer',
     'random': 'random',
+    'time-wrr': 'performance-WRR',
     'heros': 'HEROS',
 }
 
@@ -50,6 +52,7 @@ def which_scheduler(log):
 
 plotted = []
 x_lim = args.x_limit
+y_lim = 0
 for path in args.paths:
     log_lines = ''
     with open(path, 'r') as fh:
@@ -71,6 +74,8 @@ for path in args.paths:
             continue
         if args.end != None and oid >=args.end:
             continue
+        if args.x_limit != None and oid >= args.x_limit:
+            continue
 
         energy = float(m['energy'])
 
@@ -91,6 +96,7 @@ for path in args.paths:
         plot_label = '{} ({})'.format(plot_label, timestamp)
 
     color2_idx = len(list(filter(lambda l: l == sched_label, plotted)))
+    y_lim = max(y_lim, y[-1])
     plt.plot(x, y, label=plot_label, color=colors[sched_label][color2_idx])
     plotted.append(sched_label)
     print('Total energy consumed by {}: {:.2f} J; Avg. rate: {} J/offload'.format(
