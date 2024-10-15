@@ -4,6 +4,7 @@ import os.path
 import sys
 
 import classes.executer
+import lpo_server
 import slt
 
 from server import ControllerServer
@@ -31,6 +32,8 @@ ap.add_argument('-l', '--enable-load-testing', help='Enable synthetic load testi
                 dest='slt', action='store_true', default=False)
 ap.add_argument('--test-load-spec', help='Parse and verify synthetic load specification',
                 dest='test_load_spec', action='store_true', default=False)
+ap.add_argument('--enable-lpo-server', help='Listen for offloads from low-power offloaders',
+                dest='enable_lpo_server', action='store_true', default=False)
 
 args = ap.parse_args()
 
@@ -88,6 +91,11 @@ print(f'[controller] using {args.scheduler} scheduler')
 
 # start the task dispatcher
 task_dispatcher = TaskDispatcher(scheduler, executers, sl_tester)
+
+# start the lpo listener
+lpo_server_thread = None
+if args.enable_lpo_server == True:
+    lpo_server_thread = lpo_server.start_server(task_dispatcher)
 
 # start the http server to receive tasks from offloaders
 controller_server = ControllerServer(task_dispatcher)
