@@ -11,7 +11,6 @@ import numpy as np
 from chainer import serializers
 import queue
 import threading
-from joblib import load
 
 rewards_csv_file='reward_loss.csv'
 
@@ -49,7 +48,7 @@ class RLScheduler:
 
         self.total_executor = len(executers.keys())
 
-        self.Q = Q_Network(input_size=12, hidden_size=400, output_size=self.total_executor)
+        self.Q = Q_Network(input_size=42, hidden_size=400, output_size=self.total_executor)
         if os.path.exists('Q.model'):
             serializers.load_npz('Q.model', self.Q)
             print('[rl] loaded Q.model')
@@ -100,23 +99,22 @@ class RLScheduler:
         return task, state, act, deadline
 
     def process_state(self, before_state, task):
-        state = [int(task.task_id), task.deadline]
-        # task_id_vec = [int(x) for x in list('{:032b}'.format(int(task.task_id)))]
+        input_vec = [int(x) for x in list('{:032b}'.format(int(task.task_id)))]
 
         # Include only the stats named here.
         included_stats = ['cpu-load']
         for eid in before_state:
             executor_state = [v for (k, v) in before_state[eid].items() if k in included_stats]
-            state.extend(executor_state)
+            input_vec.extend(executor_state)
+        # print('[rls] input state: {}'.format(input_vec))
 
-        # print('[rls] input state: {}'.format(state))
-
+        from joblib import load
         path_to_scaler = os.path.join(os.getcwd(), 'controller', 'rl', 'std_scaler.bin')
-        scaler=load(path_to_scaler)
-        scaled_data = scaler.transform(np.array(state).reshape(1, -1))
-        # print('[rls] scaled state: {}'.format(scaled_data))
+        scaler = load(path_to_scaler)
+        scaled_input_vec = scaler.transform(np.array(input_vec).reshape(1, -1))
+        # print('[rls] scaled state: {}'.format(scaled_input_vec))
 
-        return scaled_data
+        return scaled_input_vec
 
     def generate_new_state(self, before_state, new_state_of_executor, exec_id):
 
