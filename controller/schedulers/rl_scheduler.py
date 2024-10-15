@@ -64,6 +64,7 @@ class RLScheduler:
         self.epsilon = 0.9
         self.epsilon_decrease = 1e-3
         self.epsilon_min = 0.0
+        self.temperature = 0.5
         self.start_reduce_epsilon = 500
         self.train_freq = 5
         self.gamma = 0.1
@@ -162,18 +163,19 @@ class RLScheduler:
         pact = np.random.randint(self.total_executor)
         explore = True
 
-        if np.random.rand() > self.epsilon:
-            self.q_lock.acquire()
+        self.q_lock.acquire()
+        pact_arr = self.Q(np.array(pobs, dtype=np.float32).reshape(1, -1))
+        self.q_lock.release()
 
-            pact_arr = self.Q(np.array(pobs, dtype=np.float32).reshape(1, -1))
-            pact = np.argmax(pact_arr.data).item()
-            pact_l = [round(x, 2) for x in pact_arr.data[0].tolist()]
-            print('[rls] p_act_arr = {}, p_act = {}'.format(pact_l, pact))
-            explore = False
+        exp_pact_arr = np.exp((pact_arr.data[0] - np.max(pact_arr.data[0])) / self.temperature)
+        probabilities = exp_pact_arr / np.sum(exp_pact_arr)
+        print('[rls] p_act_prb = {}'.format('[' + ', '.join(['{:.2f}'.format(x) for x in probabilities.data.tolist()]) + ']'))
+        pact = np.random.choice(self.total_executor, p=probabilities)
 
-            self.q_lock.release()
+        pact_l = [round(x, 2) for x in pact_arr.data[0].tolist()]
+        print('[rls] p_act_arr = {}, p_act = {} (p = {:.2f})'.format(pact_l, pact, probabilities[pact].item()))
 
-        print(f'[rls] scheduled task(offload_id={task.offload_id}, task_id={task.task_id}) on executer_id={pact}. (epsilon={self.epsilon}, total_step={self.total_step}, mode={"exploration" if explore else "exploitation"})')
+        print(f'[rls] scheduled task(offload_id={task.offload_id}, task_id={task.task_id}) on executer_id={pact}. (total_step={self.total_step})')
         self.save_state(task, before_state, pact)
 
         return pact
