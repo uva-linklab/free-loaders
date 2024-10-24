@@ -18,6 +18,8 @@ ap.add_argument('-f', '--initial-window', help='Assume a perfect initial DSR win
                 dest='initial_window', action='store_true', default=False)
 ap.add_argument('--x-limit', help='Max offload no. to plot',
                 dest='x_limit', type=int, action='store', default=None)
+ap.add_argument('--append-labels', help='Apply additional labeling to legend',
+                dest='append_labels', type=str, action='store', default=None)
 ap.add_argument('--date-runs', help='Append date labels to legends',
                 dest='date_runs', action='store_true', default=False)
 
@@ -56,9 +58,11 @@ def which_scheduler(log):
 
     return scheduler_name
 
-r = 'finished task.*offload_id=(?P<oid>\d+), task_id=(?P<tid>\d+).*time\(ms\)=(?P<t>\d+\.\d+).*deadline=(?P<dl>\d+\.\d+)'
+r_finish = 'finished task.*offload_id=(?P<oid>\d+), task_id=(?P<tid>\d+).*time\(ms\)=(?P<t>\d+\.\d+).*deadline=(?P<dl>\d+\.\d+)'
+r_failed = 'failed task.*offload_id=(?P<oid>\d+), task_id=(?P<tid>\d+)'
 x_limit = 0
 plotted = []
+add_labels = args.append_labels.split(',') if args.append_labels != None else None
 for (path, color) in zip(args.paths, range(0,10)):
     log_lines = ''
     with open(path, 'r') as fh:
@@ -72,17 +76,34 @@ for (path, color) in zip(args.paths, range(0,10)):
     offset = 0
     last_met = 0
     for line in log_lines:
-        m = re.search(r, line)
-        if m == None:
+        oid = None
+        t = None
+        dl = None
+
+        matched = False
+        m = re.search(r_finish, line)
+        if m != None:
+            matched = True
+            oid = int(m['oid'])
+            t = m['t']
+            dl = m['dl']
+
+        m = re.search(r_failed, line)
+        if m != None:
+            matched = True
+            oid = int(m['oid'])
+            dl = 1.0
+            t = 2.0
+
+        if matched != True:
             continue
 
-        oid = int(m['oid'])
         if args.start != None and oid < args.start:
             continue
         elif args.end != None and oid > args.end:
             continue
 
-        rwin.append(float(m['t']) < float(m['dl']))
+        rwin.append(float(t) < float(dl))
         while len(rwin) > args.window_size:
             rwin = rwin[1:]
         dsr = len(list(filter(lambda b: b, rwin))) / len(rwin)
@@ -91,6 +112,10 @@ for (path, color) in zip(args.paths, range(0,10)):
         y.append(dsr)
 
     plot_label = pretty_names[label]
+    if add_labels != None:
+        plot_label = '{}-{}'.format(plot_label, add_labels[0])
+        add_labels = add_labels[1:]
+
     if args.date_runs == True:
         date_r = '^[A-Za-z]+ \d+ [0-9:]+'
         timestamp = re.search(date_r, log_lines[1])[0]
