@@ -56,6 +56,7 @@ def which_scheduler(log):
 
 r = 'deadlines_met=(?P<met>\d+).*finished_tasks=(?P<finished>\d+).*failed_tasks=(?P<failed>\d+)'
 r2 = 'finished task.*offload_id=(?P<oid>\d+), task_id=(?P<tid>\d+).*time\(ms\)=(?P<t>\d+\.\d+)'
+r3 = 'failed task.*offload_id'
 x_limit = 0
 plotted = []
 for (path, color) in zip(args.paths, range(0,10)):
@@ -69,19 +70,24 @@ for (path, color) in zip(args.paths, range(0,10)):
     y = []
     offset = 0
     last_met = 0
+    failed = 0
     for line in log_lines:
         m = re.search(r, line)
         if m == None:
             m = re.search(r2, line)
 
             if m == None:
-                continue
+                m = re.search(r3, line)
+
+                if m == None:
+                    continue
+                failed += 1
 
             continue
 
         met = int(m['met'])
         finished = int(m['finished'])
-        failed = int(m['failed'])
+        # failed = int(m['failed'])
         processed = finished + failed
 
         x.append(processed)

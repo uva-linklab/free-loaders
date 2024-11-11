@@ -50,6 +50,26 @@ def which_scheduler(log):
 
     return scheduler_name
 
+common_completed_oids = set([x for x in range(99999)])
+# Find out which OIDs were successfully completed.
+for path in args.paths:
+    log_lines = ''
+    with open(path, 'r') as fh:
+        log_lines = fh.readlines()
+
+    r = 'finished task.+offload_id=(?P<oid>\d+).+energy=(?P<energy>\d+\.\d+)'
+    completed_oids = set()
+    for line in log_lines:
+        m = re.search(r, line)
+        if m == None:
+            continue
+
+        completed_oids.add(int(m['oid']))
+    common_completed_oids = common_completed_oids.intersection(completed_oids)
+
+print('Common completed offloads: {}'.format(len(common_completed_oids)))
+
+to_plot = []
 plotted = []
 x_lim = args.x_limit
 y_lim = 0
@@ -69,6 +89,9 @@ for path in args.paths:
             continue
 
         oid = int(m['oid'])
+
+        if oid not in common_completed_oids:
+            continue
 
         if args.start != None and oid < args.start:
             continue
