@@ -48,7 +48,7 @@ class RLScheduler:
 
         self.total_executor = len(executers.keys())
 
-        self.Q = Q_Network(input_size=42, hidden_size=400, output_size=self.total_executor)
+        self.Q = Q_Network(input_size=43, hidden_size=400, output_size=self.total_executor)
         if os.path.exists('Q.model'):
             serializers.load_npz('Q.model', self.Q)
             print('[rl] loaded Q.model')
@@ -99,7 +99,16 @@ class RLScheduler:
         return task, state, act, deadline
 
     def process_state(self, before_state, task):
-        input_vec = [int(x) for x in list('{:032b}'.format(int(task.task_id)))]
+        input_vec = []
+
+        # Task ID input as a vector.
+        import hashlib
+        tid_hash = hashlib.md5(str(task.task_id).encode()).hexdigest()
+        tid_hash_int = int(tid_hash[:8], 16)
+        input_vec.extend([int(x) for x in list('{:032b}'.format(tid_hash_int))])
+
+        # Deadline
+        input_vec.extend([task.deadline])
 
         # Include only the stats named here.
         included_stats = ['cpu-load']
