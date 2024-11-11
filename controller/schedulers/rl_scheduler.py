@@ -216,7 +216,7 @@ class RLScheduler:
 
         if self.total_step % self.train_freq == 0:
             # train or update q
-            if len(self.memory) == self.memory_size:
+            if len(self.memory) >= self.batch_size:
                 self.q_lock.acquire()
 
                 for epoch in range(self.epoch_num):
