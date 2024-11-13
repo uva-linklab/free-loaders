@@ -129,7 +129,7 @@ for (path, color) in zip(args.paths, range(0,10)):
 
 plt.legend(fancybox=True)
 plt.xlabel('Number of offloads')
-plt.ylabel('Deadline satisfaction ratio')
+plt.ylabel('Windowed deadline satisfaction ratio')
 
 if args.x_limit != None:
     x_limit = args.x_limit
