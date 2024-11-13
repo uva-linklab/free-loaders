@@ -18,6 +18,8 @@ ap.add_argument('--x-limit', help='Max offload no. to plot',
                 dest='x_limit', type=int, action='store', default=None)
 ap.add_argument('--date-runs', help='Append date labels to legends',
                 dest='date_runs', action='store_true', default=False)
+ap.add_argument('--override-labels', help='Force the labels in the plot',
+                dest='override_labels', action='store', default=None)
 
 ap.add_argument('paths', help='path to log file',
                 nargs='+', type=str)
@@ -42,6 +44,8 @@ pretty_names = {
     'time-wrr': 'performance-WRR',
     'heros': 'HEROS',
 }
+
+override_labels = args.override_labels.split(',')
 
 def which_scheduler(log):
     scheduler_name = None
@@ -95,16 +99,22 @@ for (path, color) in zip(args.paths, range(0,10)):
 
         last_met = met
 
-    plot_label = pretty_names[label]
-    if args.date_runs == True:
-        date_r = '^[A-Za-z]+ \d+ [0-9:]+'
-        timestamp = re.search(date_r, log_lines[1])[0]
-        plot_label = '{} ({})'.format(plot_label, timestamp)
+    plot_label = ''
+    if override_labels != None:
+        plot_label = override_labels[0]
+        plt.plot(x, y, label=plot_label)
+        override_labels = override_labels[1:]
+    else:
+        plot_label = pretty_names[label]
+        if args.date_runs == True:
+            date_r = '^[A-Za-z]+ \d+ [0-9:]+'
+            timestamp = re.search(date_r, log_lines[1])[0]
+            plot_label = '{} ({})'.format(plot_label, timestamp)
 
-    color2_idx = len(list(filter(lambda l: l == label, plotted)))
+        color2_idx = len(list(filter(lambda l: l == label, plotted)))
 
-    plt.plot(x, y, label=plot_label, color=colors[label][color2_idx])
-    plotted.append(label)
+        plt.plot(x, y, label=plot_label, color=colors[label][color2_idx])
+        plotted.append(label)
     x_limit = max(x_limit, len(y))
     print('{}\n    DSR: {:.2f}%'.format(plot_label, y[-1] * 100))
 
