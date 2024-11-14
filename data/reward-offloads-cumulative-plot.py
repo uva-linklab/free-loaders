@@ -92,7 +92,7 @@ for (path, color) in zip(args.paths, range(0,10)):
         plt.plot([i for i in range(0, len(y))], y, label=plot_label, color=colors[label][color2_idx])
         plotted.append(label)
     x_limit = max(x_limit, len(y))
-print('{}\n    total reward: {:.2f}'.format(plot_label, y[-1]))
+    print('{}\n    total reward: {:.2f}'.format(plot_label, y[-1]))
 
 plt.legend(fancybox=True)
 plt.xlabel('Number of offloads')
