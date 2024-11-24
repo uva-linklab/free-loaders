@@ -430,7 +430,7 @@ class HerosScheduler:
                 continue
 
             is_eligible = executor_is_eligible(eid, before_state[str(eid)], task)
-            print('{} is online? {}, is eligible? {}'.format(eid, is_online, is_eligible))
+            #print('{} is online? {}, is eligible? {}'.format(eid, is_online, is_eligible))
             if is_eligible:
                 eligible_executors.append(eid)
 
@@ -440,8 +440,10 @@ class HerosScheduler:
         best_h = -999999
         best_eid = 0
 
+        print('[heros] CPU load values:  {}'.format(
+            [(eid, '{:.2f}'.format(s['cpu-load']),) for (eid, s) in before_state.items()]))
         print('[heros] selection scores: {}'.format(
-            [(eid, '{}'.format(round(s['h'], 2)),) for (eid, s) in before_state.items()]))
+            [(eid, '{:.2f}'.format(s['h']),) for (eid, s) in before_state.items()]))
 
         # Use the executor with the greatest H.
         for (eid, state) in before_state.items():
@@ -481,18 +483,6 @@ def executor_is_eligible(eid, state, task):
 
     # Estimated required time in milliseconds.
     est_req_time = est_computation_time + est_network_time
-    # The math should not have given us a negative number, but with linear interpolation,
-    # it is possible.
-    if est_network_time < 0:
-        print('[heros] estimated network time is negative ({}); may be incorrect interpolation?'.format(
-            round(est_network_time, 2)))
-        print('[heros] est. computation time = {}, est. profile time = {}'.format(
-            est_computation_time, est_profile_time))
-    else:
-        print('[heros] net_time + comp_time = {} + {} = {}'.format(
-            round(est_network_time, 2), round(est_computation_time, 2), est_req_time))
-
-    print('[heros] est. completion time: {} ms'.format(round(est_req_time, 2)))
     cpu_good = est_req_time <= task.deadline
 
     # Memory usage
