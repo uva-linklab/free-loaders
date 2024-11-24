@@ -22,7 +22,7 @@ ap.add_argument('--override-labels', help='Force the labels in the plot',
                 dest='override_labels', action='store', default=None)
 
 ap.add_argument('paths', help='path to log file',
-                nargs='+', type=str)
+            nargs='+', type=str)
 
 args = ap.parse_args()
 
@@ -35,6 +35,8 @@ colors = {
     'time-wrr': [[252 / 255, 186 / 255,   3 / 255]],
     'heros': [[111 / 255, 166 / 255, 17 / 255],
               [170 / 255, 227 / 255, 73 / 255]],
+    'adpt-lb-v1': [[200 / 255, 200 / 255, 200 / 255]],
+    'adpt-lb-v3': [[25 / 255, 25 / 255, 25 / 255]],
 }
 
 pretty_names = {
@@ -43,9 +45,13 @@ pretty_names = {
     'random': 'random',
     'time-wrr': 'performance-WRR',
     'heros': 'HEROS',
+    'adpt-lb-v1': 'adaptive baseline, v1',
+    'adpt-lb-v3': 'adaptive baseline, v3',
 }
 
-override_labels = args.override_labels.split(',')
+override_labels = None
+if args.override_labels != None:
+    override_labels = args.override_labels.split(',')
 
 def which_scheduler(log):
     scheduler_name = None
@@ -124,8 +130,8 @@ plt.ylabel('Cumulative deadline satisfaction ratio')
 
 if args.x_limit != None:
     x_limit = args.x_limit
-plt.xlim(0, x_limit)
-plt.ylim(0, 1)
+    plt.xlim(-20, x_limit)
+plt.ylim(0, 1.05)
 
 plt.gca().spines['right'].set_visible(False)
 plt.gca().spines['top'].set_visible(False)

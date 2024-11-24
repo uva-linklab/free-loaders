@@ -29,6 +29,8 @@ colors = {
     'time-wrr': [[252 / 255, 186 / 255,   3 / 255]],
     'heros': [[111 / 255, 166 / 255, 17 / 255],
               [170 / 255, 227 / 255, 73 / 255]],
+    'adpt-lb-v1': [[200 / 255, 200 / 255, 200 / 255]],
+    'adpt-lb-v3': [[25 / 255, 25 / 255, 25 / 255]],
 }
 
 pretty_names = {
@@ -37,6 +39,8 @@ pretty_names = {
     'random': 'random',
     'time-wrr': 'performance-WRR',
     'heros': 'HEROS',
+    'adpt-lb-v1': 'adaptive baseline, v1',
+    'adpt-lb-v3': 'adaptive baseline, v3',
 }
 
 def which_scheduler(log):
