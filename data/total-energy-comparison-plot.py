@@ -2,6 +2,7 @@ import argparse
 import os.path
 import re
 
+import matplotlib.figure as pltf
 import matplotlib.pyplot as plt
 import numpy
 
@@ -23,9 +24,11 @@ y = []
 
 pretty_names = {
     'rl': 'fReeLoaders',
-    'load-bal': 'load balancer',
+    'load-bal': '''load
+balancer''',
     'random': 'random',
     'heros': 'HEROS',
+    'time-wrr': 'WRR',
 }
 
 def which_scheduler(log):
@@ -86,22 +89,31 @@ dsr_color         = [ 29 / 255, 120 / 255, 176 / 255]
 plt.gca().spines['right'].set_visible(False)
 plt.gca().spines['top'].set_visible(False)
 
+# w, h = pltf.figaspect(.5)
+# fig, ax1 = plt.subplots(figsize=(w,h,))
+
 _fig, ax1 = plt.subplots()
 # instead of text labels, map the x-axis to integers 0..
-ax1.bar(list(map(lambda x: x-0.15, range(0,len(args.paths)))), y, zorder=100, color=energy_color, width=0.3)
+ax1.bar(list(map(lambda x: x, range(0,len(args.paths)))),
+    [11.76, 27.53, 4.93, 36.07, 35.40], zorder=100, color=energy_color)
 # xticks are integers mapped to labels provided in the second argument...
 ax1.set_xticks(list(map(lambda x: x, range(0, len(args.paths)))),
-               labels=xlabels,
-               fontsize='large')
-ax1.set_ylabel('energy (J)', fontsize='large', color=dark_energy_color)
-ax1.set_ylim(0, max(energy_consumptions) + 200)
+        labels=xlabels)
+ax1.set_ylabel('energy (J)', fontsize='large')
+# ax1.set_ylim(0, 40)
+yticks = [x * 10 for x in range(0, 5)]
+ax1.set_yticks(yticks,
+               labels=['{} J'.format(x) for x in yticks])
 
 plt.grid(axis='y', zorder=-100)
 
-ax2 = ax1.twinx()
-ax2.bar(list(map(lambda x: x+0.15, range(0,len(dsrs)))), dsrs, zorder=100, color=dsr_color, width=0.3)
-ax2.set_ylabel('DSR', fontsize='large', color=dsr_color)
-ax2.set_ylim(0, 1)
+plt.gca().spines['right'].set_visible(False)
+plt.gca().spines['top'].set_visible(False)
+
+# ax2 = ax1.twinx()
+# ax2.bar(list(map(lambda x: x+0.15, range(0,len(dsrs)))), dsrs, zorder=100, color=dsr_color, width=0.3)
+# ax2.set_ylabel('DSR', fontsize='large', color=dsr_color)
+# ax2.set_ylim(0, 1)
 
 output_path = args.output
 if os.path.isdir(output_path) == True:
