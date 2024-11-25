@@ -29,6 +29,10 @@ balancer''',
     'random': 'random',
     'heros': 'HEROS',
     'time-wrr': 'WRR',
+    'adpt-lb-v1': '''energy-
+priority''',
+    'adpt-lb-v3': '''performance-
+priority''',
 }
 
 def which_scheduler(log):
@@ -89,21 +93,22 @@ dsr_color         = [ 29 / 255, 120 / 255, 176 / 255]
 plt.gca().spines['right'].set_visible(False)
 plt.gca().spines['top'].set_visible(False)
 
-# w, h = pltf.figaspect(.5)
-# fig, ax1 = plt.subplots(figsize=(w,h,))
+w, h = pltf.figaspect(.5)
+fig, ax1 = plt.subplots(figsize=(w,h,))
 
-_fig, ax1 = plt.subplots()
+# _fig, ax1 = plt.subplots()
 # instead of text labels, map the x-axis to integers 0..
 ax1.bar(list(map(lambda x: x, range(0,len(args.paths)))),
-    [11.76, 27.53, 4.93, 36.07, 35.40], zorder=100, color=energy_color)
+    [87.04, 88.25, 11.95, 23.72, 61.45, 76.77, 90.40], zorder=100, color=energy_color)
 # xticks are integers mapped to labels provided in the second argument...
 ax1.set_xticks(list(map(lambda x: x, range(0, len(args.paths)))),
         labels=xlabels)
 ax1.set_ylabel('energy (J)', fontsize='large')
 # ax1.set_ylim(0, 40)
-yticks = [x * 10 for x in range(0, 5)]
+yticks = [x * 10 for x in range(0, 10)]
 ax1.set_yticks(yticks,
                labels=['{} J'.format(x) for x in yticks])
+ax1.set_ylim(0, 95)
 
 plt.grid(axis='y', zorder=-100)
 

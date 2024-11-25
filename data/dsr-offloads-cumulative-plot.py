@@ -45,8 +45,8 @@ pretty_names = {
     'random': 'random',
     'time-wrr': 'performance-WRR',
     'heros': 'HEROS',
-    'adpt-lb-v1': 'adaptive baseline, v1',
-    'adpt-lb-v3': 'adaptive baseline, v3',
+    'adpt-lb-v1': 'energy-priority',
+    'adpt-lb-v3': 'performance-priority',
 }
 
 override_labels = None
@@ -124,13 +124,13 @@ for (path, color) in zip(args.paths, range(0,10)):
     x_limit = max(x_limit, len(y))
     print('{}\n    DSR: {:.2f}%'.format(plot_label, y[-1] * 100))
 
-plt.legend(fancybox=True)
+plt.legend(fancybox=True, reverse=True)
 plt.xlabel('Number of offloads')
 plt.ylabel('Cumulative deadline satisfaction ratio')
 
 if args.x_limit != None:
     x_limit = args.x_limit
-    plt.xlim(-20, x_limit)
+plt.xlim(-20, x_limit)
 plt.ylim(0, 1.05)
 
 plt.gca().spines['right'].set_visible(False)

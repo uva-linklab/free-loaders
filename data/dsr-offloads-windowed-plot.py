@@ -47,8 +47,8 @@ pretty_names = {
     'random': 'random',
     'time-wrr': 'performance-WRR',
     'heros': 'HEROS',
-    'adpt-lb-v1': 'adaptive baseline, v1',
-    'adpt-lb-v3': 'adaptive baseline, v3',
+    'adpt-lb-v1': 'energy-priority',
+    'adpt-lb-v3': 'performance-priority',
 }
 
 def which_scheduler(log):
@@ -137,9 +137,9 @@ plt.ylabel('Windowed deadline satisfaction ratio')
 
 if args.x_limit != None:
     x_limit = args.x_limit
-xstart = args.start if args.start != None else 0
-plt.xlim(xstart, x_limit)
-plt.ylim(0, 1)
+xstart = args.start if args.start != None else -20
+plt.xlim(-20, x_limit)
+plt.ylim(0, 1.05)
 
 plt.gca().spines['right'].set_visible(False)
 plt.gca().spines['top'].set_visible(False)
