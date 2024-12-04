@@ -3,6 +3,7 @@ import os.path
 import re
 
 import matplotlib.pyplot as plt
+import matplotlib.figure as pltf
 import numpy
 
 ap = argparse.ArgumentParser()
@@ -64,6 +65,10 @@ def which_scheduler(log):
 
     return scheduler_name
 
+w, h = pltf.figaspect(.6)
+fig, ax = plt.subplots(figsize=(w,h,))
+# fig.subplots_adjust(left=.1, right=0.98, top=0.97, bottom=0.12)
+
 r = 'deadlines_met=(?P<met>\d+).*finished_tasks=(?P<finished>\d+).*failed_tasks=(?P<failed>\d+)'
 r2 = 'finished task.*offload_id=(?P<oid>\d+), task_id=(?P<tid>\d+).*time\(ms\)=(?P<t>\d+\.\d+)'
 r3 = 'failed task.*offload_id'
@@ -108,7 +113,7 @@ for (path, color) in zip(args.paths, range(0,10)):
     plot_label = ''
     if override_labels != None:
         plot_label = override_labels[0]
-        plt.plot(x, y, label=plot_label)
+        ax.plot(x, y, label=plot_label)
         override_labels = override_labels[1:]
     else:
         plot_label = pretty_names[label]
@@ -119,19 +124,21 @@ for (path, color) in zip(args.paths, range(0,10)):
 
         color2_idx = len(list(filter(lambda l: l == label, plotted)))
 
-        plt.plot(x, y, label=plot_label, color=colors[label][color2_idx])
+        ax.plot(x, y, label=plot_label, color=colors[label][color2_idx])
         plotted.append(label)
     x_limit = max(x_limit, len(y))
     print('{}\n    DSR: {:.2f}%'.format(plot_label, y[-1] * 100))
 
-plt.legend(fancybox=True, reverse=True)
-plt.xlabel('Number of offloads')
-plt.ylabel('Cumulative deadline satisfaction ratio')
+ax.set_xlabel('Number of offloads', fontsize=16)
+ax.set_ylabel('Cumulative deadline satisfaction ratio', fontsize=16)
+ax.legend(fancybox=True, reverse=True)
+
+# plt.axvline(500, ymin=0, ymax=2.0, linestyle=':', color=[0.0, 0.0, 0.0], linewidth=3.0)
 
 if args.x_limit != None:
     x_limit = args.x_limit
-plt.xlim(-20, x_limit)
-plt.ylim(0, 1.05)
+ax.set_xlim(-20, x_limit)
+ax.set_ylim(0, 1.05)
 
 plt.gca().spines['right'].set_visible(False)
 plt.gca().spines['top'].set_visible(False)
