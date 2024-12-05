@@ -9,10 +9,12 @@ import numpy
 ap = argparse.ArgumentParser()
 ap.add_argument('-o', '--output', help='output path',
                 type=str, default='/tmp', dest='output')
-ap.add_argument('--dsr', help='manually-specified DSRs',
-                type=str, default=None, dest='dsrs')
-ap.add_argument('--offload-limit', help='number of offloads to stop counting at',
-                type=int, default=None, dest='limit')
+ap.add_argument('-s', '--starting-offload', help='ID of the first offload to count',
+                type=int, dest='start', default=None)
+ap.add_argument('-e', '--ending-offload', help='ID of the last offload to count',
+                type=int, dest='end', default=None)
+ap.add_argument('--manual-adjust', help="Apply manual adjustment to plot's T/B/L/R",
+                type=str, dest='manual_adjust', default=None)
 ap.add_argument('paths', help='paths to log files',
                 nargs='+', type=str)
 args = ap.parse_args()
@@ -50,75 +52,115 @@ xlabels = []
 dsrs = []
 energy_consumptions = []
 
-r = 'finished task.*energy=(?P<energy>\d+\.\d+)'
-r_dsr = 'dsr=(?P<dsr>\d+\.\d+)'
+w, h = pltf.figaspect(.5)
+fig, ax1 = plt.subplots(figsize=(w,h,))
+if args.manual_adjust != None:
+    d = [float(d) for d in args.manual_adjust.split(',')]
+    fig.subplots_adjust(top=d[0], bottom=d[1], left=d[2], right=d[3])
+
+common_completed_oids = set([x for x in range(99999)])
+# Find out which OIDs were successfully completed.
 for path in args.paths:
-    dsrs.append(0.0)
     log_lines = ''
     with open(path, 'r') as fh:
         log_lines = fh.readlines()
 
-    total_energy = 0
-    offload_no = 0
+    r = 'finished task.+offload_id=(?P<oid>\d+).+energy=(?P<energy>\d+\.\d+)'
+    completed_oids = set()
     for line in log_lines:
         m = re.search(r, line)
-        if m != None:
-            task_execution_energy = float(m['energy'])
-            total_energy += task_execution_energy
+        if m == None:
+            continue
 
-            offload_no += 1
-            if args.limit != None and offload_no >= args.limit:
-                print('Stopping counting excess offloads for scheduler {}.'.format(label))
-                break
-        else:
-            m = re.search(r_dsr, line)
-            if m != None:
-                dsrs[-1] = float(m['dsr'])
+        oid = int(m['oid'])
 
-    scheduler_name = which_scheduler(log_lines)
-    xlabels.append(pretty_names[scheduler_name])
-    total_energy = round(total_energy, 2)
-    print('{} used {:.2f} mJ of energy'.format(scheduler_name, total_energy))
-    x.append(pretty_names[scheduler_name])
-    y.append(total_energy / 1000)
-    energy_consumptions.append(total_energy / 1000)
+        if args.start != None and oid < args.start:
+            continue
+        if args.end != None and oid > args.end:
+            break
+
+        completed_oids.add(oid)
+    common_completed_oids = common_completed_oids.intersection(completed_oids)
+
+print('Common completed offloads: {}'.format(len(common_completed_oids)))
+
+to_plot = []
+plotted = []
+y_lim = 0
+for path in args.paths:
+    log_lines = ''
+    with open(path, 'r') as fh:
+        log_lines = fh.readlines()
+
+    sched_label = which_scheduler(log_lines)
+    r = 'finished task.+offload_id=(?P<oid>\d+).+energy=(?P<energy>\d+\.\d+)'
+    x = [0]
+    y = [0]
+    e = []
+    for line in log_lines:
+        m = re.search(r, line)
+        if m == None:
+            continue
+
+        oid = int(m['oid'])
+
+        if oid not in common_completed_oids:
+            continue
+
+        if args.start != None and oid < args.start:
+            continue
+        if args.end != None and oid >= args.end:
+            continue
+
+        energy = float(m['energy'])
+
+        x.append(x[-1]+1)
+        y.append(y[-1]+energy)
+        e.append(energy)
+
+    energy_consumptions.append(y[-1])
+    xlabels.append(pretty_names[sched_label])
+
+    print('Total energy consumed by {}: {:.2f} J; Avg. rate: {} J/offload'.format(
+        pretty_names[sched_label],
+        y[-1],
+        round(sum(e) / len(e), 2)))
+
+# Last is first, so most important shows up closer to the left.
+energy_consumptions.reverse()
+xlabels.reverse()
 
 energy_color      = [176 / 255, 222 / 255, 120 / 255]
 dark_energy_color = [139 / 255, 181 / 255,  88 / 255]
 dsr_color         = [ 29 / 255, 120 / 255, 176 / 255]
 
-# plt.ylim(0, 100)
-# plt.xlabel('scheduler', fontsize='large')
-# plt.ylabel('energy (J)')
+plt.grid(axis='y')
 plt.gca().spines['right'].set_visible(False)
 plt.gca().spines['top'].set_visible(False)
 
-w, h = pltf.figaspect(.5)
-fig, ax1 = plt.subplots(figsize=(w,h,))
-
-# _fig, ax1 = plt.subplots()
-# instead of text labels, map the x-axis to integers 0..
-ax1.bar(list(map(lambda x: x, range(0,len(args.paths)))),
-    [87.04, 88.25, 11.95, 23.72, 61.45, 76.77, 90.40], zorder=100, color=energy_color)
+# Instead of text labels, map the x-axis to integers 0..
+ax1.set_axisbelow(True)
+ax1.bar(list(map(lambda x: x, range(0, len(args.paths)))),
+    energy_consumptions, color=energy_color)
 # xticks are integers mapped to labels provided in the second argument...
 ax1.set_xticks(list(map(lambda x: x, range(0, len(args.paths)))),
         labels=xlabels)
 ax1.set_ylabel('energy (J)', fontsize='large')
-# ax1.set_ylim(0, 40)
-yticks = [x * 10 for x in range(0, 10)]
+
+# Small complexity to make the y-ticks scale correctly.
+# Discover what the order of magnitude of the greatest value we deal with is.
+oom = len(str(int(max(energy_consumptions)))) - 1
+# Use it to determine how many ticks we will need in counting up
+# in the same increment matching its order of magnitude.
+# Plus one for the 0 tick, plus one to exceed the greatest value.
+num_yticks = int(max(energy_consumptions) / pow(10, oom)) + 1 + 1
+yticks = [x * pow(10, oom) for x in range(0, num_yticks)]
+ax1.set_ylim(0, (max(energy_consumptions) + 10))
 ax1.set_yticks(yticks,
                labels=['{} J'.format(x) for x in yticks])
-ax1.set_ylim(0, 95)
-
-plt.grid(axis='y', zorder=-100)
 
 plt.gca().spines['right'].set_visible(False)
 plt.gca().spines['top'].set_visible(False)
-
-# ax2 = ax1.twinx()
-# ax2.bar(list(map(lambda x: x+0.15, range(0,len(dsrs)))), dsrs, zorder=100, color=dsr_color, width=0.3)
-# ax2.set_ylabel('DSR', fontsize='large', color=dsr_color)
-# ax2.set_ylim(0, 1)
 
 output_path = args.output
 if os.path.isdir(output_path) == True:
