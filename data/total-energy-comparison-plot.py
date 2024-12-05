@@ -13,6 +13,8 @@ ap.add_argument('-s', '--starting-offload', help='ID of the first offload to cou
                 type=int, dest='start', default=None)
 ap.add_argument('-e', '--ending-offload', help='ID of the last offload to count',
                 type=int, dest='end', default=None)
+ap.add_argument('--y-limit', help='Set the y-limit of the y-axis in joules.',
+                type=int, dest='y_limit', default=None)
 ap.add_argument('--manual-adjust', help="Apply manual adjustment to plot's T/B/L/R",
                 type=str, dest='manual_adjust', default=None)
 ap.add_argument('paths', help='paths to log files',
@@ -118,7 +120,7 @@ for path in args.paths:
         y.append(y[-1]+energy)
         e.append(energy)
 
-    energy_consumptions.append(y[-1])
+    energy_consumptions.append(y[-1] / 1000)
     xlabels.append(pretty_names[sched_label])
 
     print('Total energy consumed by {}: {:.2f} J; Avg. rate: {} J/offload'.format(
@@ -140,24 +142,35 @@ plt.gca().spines['top'].set_visible(False)
 
 # Instead of text labels, map the x-axis to integers 0..
 ax1.set_axisbelow(True)
-ax1.bar(list(map(lambda x: x, range(0, len(args.paths)))),
-    energy_consumptions, color=energy_color)
+# Set separation distance for ticks and bars.
+bar_dist = 0.7
+ax1.bar(list(map(lambda x: x * bar_dist, range(0, len(args.paths)))),
+        energy_consumptions,
+        width=0.5,
+    color=energy_color)
 # xticks are integers mapped to labels provided in the second argument...
-ax1.set_xticks(list(map(lambda x: x, range(0, len(args.paths)))),
-        labels=xlabels)
-ax1.set_ylabel('energy (J)', fontsize='large')
+ax1.set_xticks(list(map(lambda x: x * bar_dist, range(0, len(args.paths)))),
+               labels=xlabels)
+ax1.set_ylabel('energy (J)', fontsize=16)
 
-# Small complexity to make the y-ticks scale correctly.
-# Discover what the order of magnitude of the greatest value we deal with is.
-oom = len(str(int(max(energy_consumptions)))) - 1
-# Use it to determine how many ticks we will need in counting up
-# in the same increment matching its order of magnitude.
-# Plus one for the 0 tick, plus one to exceed the greatest value.
-num_yticks = int(max(energy_consumptions) / pow(10, oom)) + 1 + 1
-yticks = [x * pow(10, oom) for x in range(0, num_yticks)]
+yticks = None
+if args.y_limit == None:
+    # Small complexity to make the y-ticks scale correctly.
+    # Discover what the order of magnitude of the greatest value we deal with is.
+    oom = len(str(int(max(energy_consumptions)))) - 1
+    oom = 2
+    # Use it to determine how many ticks we will need in counting up
+    # in the same increment matching its order of magnitude.
+    # Plus one for the 0 tick, plus one to exceed the greatest value.
+    num_yticks = int(max(energy_consumptions) / pow(10, oom-1)) + 1 + 1
+    yticks = [x * pow(10, oom-1) for x in range(0, num_yticks)]
+else:
+    num_yticks = int(args.y_limit / 10000) + 1
+    yticks = [x * 10 for x in range(0, num_yticks)]
 ax1.set_ylim(0, (max(energy_consumptions) + 10))
 ax1.set_yticks(yticks,
-               labels=['{} J'.format(x) for x in yticks])
+               labels=['{} kJ'.format(x) for x in yticks],
+               fontsize=14)
 
 plt.gca().spines['right'].set_visible(False)
 plt.gca().spines['top'].set_visible(False)
