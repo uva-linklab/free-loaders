@@ -2,6 +2,7 @@ import argparse
 import re
 
 import matplotlib.pyplot as plt
+import matplotlib.figure as pltf
 import numpy
 
 ap = argparse.ArgumentParser()
@@ -68,11 +69,16 @@ for line in log_lines:
 
 print(y)
 
+w, h = pltf.figaspect(.6)
+fig, ax = plt.subplots(figsize=(w,h,))
 
-plt.bar(x, y, zorder=3)
+ax.bar(x, y, zorder=3)
 plt.xticks(rotation=45, ha='right', fontsize='xx-large')
-plt.xlabel('executor')
-plt.ylabel('No. of offloads')
+ax.set_xlabel('Executor', fontsize=16)
+ax.set_ylabel('No. of offloads', fontsize=16)
+
+plt.gca().spines['right'].set_visible(False)
+plt.gca().spines['top'].set_visible(False)
 
 if args.y_lim != None:
     plt.ylim(0, args.y_lim)

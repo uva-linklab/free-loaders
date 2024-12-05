@@ -3,6 +3,7 @@ import os.path
 import re
 
 import matplotlib.pyplot as plt
+import matplotlib.figure as pltf
 import numpy
 
 ap = argparse.ArgumentParser()
@@ -61,6 +62,9 @@ def which_scheduler(log):
             break
 
     return scheduler_name
+
+w, h = pltf.figaspect(.6)
+fig, ax = plt.subplots(figsize=(w,h,))
 
 r_finish = 'finished task.*offload_id=(?P<oid>\d+), task_id=(?P<tid>\d+).*time\(ms\)=(?P<t>\d+\.\d+).*deadline=(?P<dl>\d+\.\d+)'
 r_failed = 'failed task.*offload_id=(?P<oid>\d+), task_id=(?P<tid>\d+)'
@@ -131,20 +135,21 @@ for (path, color) in zip(args.paths, range(0,10)):
     x_limit = max(x_limit, len(y))
     plotted.append(label)
 
-plt.legend(fancybox=True)
-plt.xlabel('Number of offloads')
-plt.ylabel('Windowed deadline satisfaction ratio')
+# plt.axvline(500, ymin=0, ymax=2.0, linestyle=':', color=[0.0, 0.0, 0.0], linewidth=3.0)
+
+ax.set_xlabel('Number of offloads', fontsize=16)
+ax.set_ylabel('Windowed deadline satisfaction ratio', fontsize=16)
+ax.legend(fancybox=True)
 
 if args.x_limit != None:
     x_limit = args.x_limit
 xstart = args.start if args.start != None else -20
-plt.xlim(-20, x_limit)
-plt.ylim(0, 1.05)
+ax.set_xlim(-20, x_limit)
+ax.set_ylim(0, 1.05)
 
 plt.gca().spines['right'].set_visible(False)
 plt.gca().spines['top'].set_visible(False)
 plt.grid()
-
 
 output_path = args.output
 if os.path.isdir(output_path):
