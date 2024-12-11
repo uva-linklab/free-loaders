@@ -74,6 +74,9 @@ r2 = 'finished task.*offload_id=(?P<oid>\d+), task_id=(?P<tid>\d+).*time\(ms\)=(
 r3 = 'failed task.*offload_id'
 x_limit = 0
 plotted = []
+skipped = 0
+met_offset = 0
+proc_offset = 0
 for (path, color) in zip(args.paths, range(0,10)):
     log_lines = ''
     with open(path, 'r') as fh:
@@ -100,16 +103,28 @@ for (path, color) in zip(args.paths, range(0,10)):
 
             continue
 
-        met = int(m['met'])
+        if skipped < args.start:
+            skipped += 1
+            # print('skipped  {}'.format(skipped))
+            continue
+        elif skipped == args.start:
+            met_offset = int(m['met'])
+            proc_offset = int(m['finished']) + int(m['failed'])
+            skipped += 1
+
+        met = int(m['met']) - met_offset
         finished = int(m['finished'])
         # failed = int(m['failed'])
-        processed = finished + failed
+        processed = finished + failed - proc_offset
+
+        # print('{} / {}'.format(met, processed))
 
         x.append(processed)
-        y.append(met / processed)
+        y.append(1.0 if processed <= 0 else met / processed)
 
         last_met = met
 
+    skipped = 0
     plot_label = ''
     if override_labels != None:
         plot_label = override_labels[0]
@@ -124,21 +139,25 @@ for (path, color) in zip(args.paths, range(0,10)):
 
         color2_idx = len(list(filter(lambda l: l == label, plotted)))
 
-        ax.plot(x, y, label=plot_label, color=colors[label][color2_idx])
+        ax.plot(x, y,
+        label=plot_label,
+                color=colors[label][color2_idx],
+                )
         plotted.append(label)
     x_limit = max(x_limit, len(y))
     print('{}\n    DSR: {:.2f}%'.format(plot_label, y[-1] * 100))
 
 ax.set_xlabel('Number of offloads', fontsize=16)
 ax.set_ylabel('Cumulative deadline satisfaction ratio', fontsize=16)
-ax.legend(fancybox=True, reverse=True)
+ax.legend(fancybox=True, reverse=True, fontsize=12, ncols=2)
 
 # plt.axvline(500, ymin=0, ymax=2.0, linestyle=':', color=[0.0, 0.0, 0.0], linewidth=3.0)
 
 if args.x_limit != None:
     x_limit = args.x_limit
-ax.set_xlim(-20, x_limit)
-ax.set_ylim(0, 1.05)
+ax.set_xlim(0, x_limit)
+ax.set_ylim(0, 1.0)
+ax.tick_params(labelsize=12)
 
 plt.gca().spines['right'].set_visible(False)
 plt.gca().spines['top'].set_visible(False)
@@ -148,4 +167,4 @@ output_path = args.output
 if os.path.isdir(output_path):
     output_path = os.path.join(output_path, 'dsr-offloads-cumulative.pdf')
 
-plt.savefig(output_path, format='pdf', dpi='figure', pad_inches=0.1, metadata={'Producer': str(args.paths)})
+plt.savefig(output_path, format='pdf', dpi='figure', bbox_inches='tight', metadata={'Producer': str(args.paths)})

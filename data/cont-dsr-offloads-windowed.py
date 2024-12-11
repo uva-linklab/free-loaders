@@ -65,6 +65,7 @@ def which_scheduler(log):
 
 w, h = pltf.figaspect(.6)
 fig, ax = plt.subplots(figsize=(w,h,))
+fig.subplots_adjust(top=0.95)
 
 oid_offset = 0
 r_finish = 'finished task.*offload_id=(?P<oid>\d+), task_id=(?P<tid>\d+).*time\(ms\)=(?P<t>\d+\.\d+).*deadline=(?P<dl>\d+\.\d+)'
@@ -142,15 +143,29 @@ for (path, color) in zip(args.paths, range(0,10)):
 for i in [x * 2000 for x in range(1, 4)]:
           plt.axvline(i, ymin=0, ymax=2.0, linestyle=':', color=[0.0, 0.0, 0.0], linewidth=3.0)
 
+sects = [('1 × RPi4', 1000,),
+         ('5 × RPi4', 3000,),
+         ('All, except PC', 5000),
+         ('All', 7000,)]
+for (sl, pos) in sects:
+    plt.text(pos, 0.2, sl,
+             ha='center',
+             va='center',
+             fontsize=14,
+             bbox=dict(boxstyle='round',
+                       fc=(0.9, 0.9, 0.9,),
+                       ec=(0.0, 0.0, 0.0,)))
+
 ax.set_xlabel('Number of offloads', fontsize=16)
 ax.set_ylabel('Windowed deadline satisfaction ratio', fontsize=16)
-ax.legend(fancybox=True)
+# ax.legend(fancybox=True)
 
 if args.x_limit != None:
     x_limit = args.x_limit
 xstart = args.start if args.start != None else -20
-ax.set_xlim(-20, x_limit)
-ax.set_ylim(0, 1.05)
+ax.set_xlim(0.0, x_limit)
+ax.set_ylim(0.0, 1.0)
+ax.tick_params(labelsize=12)
 
 plt.gca().spines['right'].set_visible(False)
 plt.gca().spines['top'].set_visible(False)
@@ -158,6 +173,6 @@ plt.grid()
 
 output_path = args.output
 if os.path.isdir(output_path):
-    output_path = os.path.join(output_path, 'dsr-offloads-windowed.pdf')
+    output_path = os.path.join(output_path, 'dsr-offloads-windowed-cont.pdf')
 
-plt.savefig(output_path, format='pdf', dpi='figure', pad_inches=0.1, metadata={'Producer': str(args.paths)})
+    plt.savefig(output_path, format='pdf', dpi='figure', bbox_inches='tight', metadata={'Producer': str(args.paths)})

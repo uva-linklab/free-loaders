@@ -73,9 +73,9 @@ w, h = pltf.figaspect(.6)
 fig, ax = plt.subplots(figsize=(w,h,))
 
 ax.bar(x, y, zorder=3)
-plt.xticks(rotation=45, ha='right', fontsize='xx-large')
-ax.set_xlabel('Executor', fontsize=16)
-ax.set_ylabel('No. of offloads', fontsize=16)
+plt.xticks(rotation=45, ha='right', fontsize=18)
+ax.set_xlabel('Executor', fontsize=24)
+ax.set_ylabel('No. of offloads', fontsize=24)
 
 plt.gca().spines['right'].set_visible(False)
 plt.gca().spines['top'].set_visible(False)

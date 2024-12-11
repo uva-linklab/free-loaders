@@ -54,7 +54,7 @@ xlabels = []
 dsrs = []
 energy_consumptions = []
 
-w, h = pltf.figaspect(.5)
+w, h = pltf.figaspect(1)
 fig, ax1 = plt.subplots(figsize=(w,h,))
 if args.manual_adjust != None:
     d = [float(d) for d in args.manual_adjust.split(',')]
@@ -146,12 +146,13 @@ ax1.set_axisbelow(True)
 bar_dist = 0.7
 ax1.bar(list(map(lambda x: x * bar_dist, range(0, len(args.paths)))),
         energy_consumptions,
-        width=0.5,
+        width=0.4,
     color=energy_color)
 # xticks are integers mapped to labels provided in the second argument...
 ax1.set_xticks(list(map(lambda x: x * bar_dist, range(0, len(args.paths)))),
-               labels=xlabels)
-ax1.set_ylabel('energy (J)', fontsize=16)
+               labels=xlabels,
+               fontsize=12)
+ax1.set_ylabel('Energy usage (J)', fontsize=16)
 
 yticks = None
 if args.y_limit == None:
