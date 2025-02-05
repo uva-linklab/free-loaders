@@ -30,6 +30,7 @@ def main(args):
 
     cpu_monitor_thread = stats.start_cpu_monitor_thread()
     gpu_monitor_thread = stats.start_gpu_monitor_thread()
+    net_monitor_thread = stats.start_net_monitor_thread()
     state_http_server_thread = service.start_state_server(args.unavailable)
     loading_thread = load.start_loading_thread()
     __Children['executor'] = __start_executor(

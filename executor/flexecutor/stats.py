@@ -14,12 +14,31 @@ __ExecutorName = os.getenv('EXEC_NAME')
 if __ExecutorName == None:
     raise Exception('EXEC_NAME environment variable not set.')
 
+__NetworkInterfaceName = os.getenv('NET_IF')
+if __NetworkInterfaceName == None:
+    raise Exception('NET_IF environment variable not set.')
+
+__NetworkInterfaceCapacityMbits = int(os.getenv('NET_CAP'))
+if __NetworkInterfaceCapacityMbits == None:
+    raise Exception('NET_CAP environment variable not set.')
+
 def start_cpu_monitor_thread():
     '''Starts a CPU load-monitoring thread.
     '''
 
     t = threading.Thread(name='cpu-monitor',
                          target=__cpu_load_entry)
+    t.daemon = True
+    t.start()
+
+    return t
+
+def start_net_monitor_thread():
+    '''Starts a network monitoring thread.
+    '''
+
+    t = threading.Thread(name='net-monitor',
+                         target=__net_load_entry)
     t.daemon = True
     t.start()
 
@@ -69,6 +88,8 @@ def fetch():
         'gpu-load': gpu_stats['load'],
         'free-vram': gpu_stats['free-vram'],
         'total-vram': gpu_stats['total-vram'],
+        'link-load-bits': _get_net_load(),
+        'link-capacity-mbits': __NetworkInterfaceCapacityMbits,
         'process-count': proc_count,
         'thread-count': thread_count,
         'h': _selection_value(),
@@ -278,6 +299,43 @@ def _get_gpu_load():
     __GPULoadLock.release()
 
     return l
+
+_NetworkLoadsBits = [0, 0, 0, 0, 0]
+_NetworkLoadLock = multiprocessing.Lock()
+
+def __net_load_entry():
+    '''Network monitoring thread main.
+    '''
+
+    global _NetworkLoadsBits
+    global _NetworkLoadLock
+
+    prev_netif_stats = psutil.net_io_counters(pernic=True)[__NetworkInterfaceName]
+    time.sleep(1)
+
+    while True:
+        netif_stats = psutil.net_io_counters(pernic=True)[__NetworkInterfaceName]
+        current_load = 8 * ((netif_stats.bytes_recv - prev_netif_stats.bytes_recv) \
+                             + (netif_stats.bytes_sent - prev_netif_stats.bytes_sent))
+
+        _NetworkLoadLock.acquire(block=True)
+        _NetworkLoadsBits = _NetworkLoadsBits[1:]
+        _NetworkLoadsBits.append(current_load)
+        _NetworkLoadLock.release()
+
+        prev_netif_stats = netif_stats
+
+        time.sleep(1)
+
+def _get_net_load():
+    '''Return average network link load over the past five seconds.
+    '''
+
+    _NetworkLoadLock.acquire(block=True)
+    net_load_avg = sum(_NetworkLoadsBits) / len(_NetworkLoadsBits)
+    _NetworkLoadLock.release()
+
+    return net_load_avg
 
 MIPSTable = {
     'rpi3':    1137.11,
