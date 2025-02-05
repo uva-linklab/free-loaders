@@ -430,8 +430,9 @@ def _selection_value():
     # print('max_load = {}'.format(max_load))
 
     h = ppw_at_l * (1 - (g / (1 + pow(math.e, -(a / max_load) * (current_load - (b * max_load))))))
+    q = pow(math.e, -pow(2 * _get_net_load() / __NetworkInterfaceCapacityMbits * 1000000, 2))
 
-    return h
+    return h * q
 
 def __selection_power_value(current_load):
     ptab = PowerTables[__ExecutorName]
