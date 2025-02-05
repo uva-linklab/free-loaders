@@ -80,18 +80,11 @@ def fetch():
 
     state = {
         'cpu-count': os.cpu_count(),
-        # 'cpu-load': psutil.getloadavg()[0],
         'cpu-load': round(_cpu_stload(), 2),
         'free-ram': mem.available,
         'total-ram': mem.total,
-        'has-gpu': gpu_stats['has-gpu'],
-        'gpu-load': gpu_stats['load'],
-        'free-vram': gpu_stats['free-vram'],
-        'total-vram': gpu_stats['total-vram'],
         'link-load-bits': _get_net_load(),
         'link-capacity-mbits': __NetworkInterfaceCapacityMbits,
-        'process-count': proc_count,
-        'thread-count': thread_count,
         'h': _selection_value(),
     }
 
