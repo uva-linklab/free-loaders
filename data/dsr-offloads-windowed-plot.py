@@ -8,7 +8,7 @@ import numpy
 
 ap = argparse.ArgumentParser()
 ap.add_argument('-o', '--output', help='Output file path.',
-                type=str, dest='output', default='dsr-offloads-windowed.pdf')
+                type=str, dest='output', default='/tmp/dsr-offloads-windowed.pdf')
 ap.add_argument('-s', '--starting-offload', help='ID of the first offload to count',
                 type=int, dest='start', default=0)
 ap.add_argument('-e', '--ending-offload', help='ID of the last offload to count',
@@ -23,6 +23,8 @@ ap.add_argument('--append-labels', help='Apply additional labeling to legend',
                 dest='append_labels', type=str, action='store', default=None)
 ap.add_argument('--date-runs', help='Append date labels to legends',
                 dest='date_runs', action='store_true', default=False)
+ap.add_argument('--dir-name-runs', help='Append containing directory names to legend',
+                dest='dir_name_runs', action='store_true', default=False)
 
 ap.add_argument('paths', help='path to log file',
                 nargs='+', type=str)
@@ -37,7 +39,8 @@ colors = {
     'random': [[217 / 255, 28 / 255, 44 / 255]],
     'time-wrr': [[252 / 255, 186 / 255,   3 / 255]],
     'heros': [[111 / 255, 166 / 255, 17 / 255],
-              [170 / 255, 227 / 255, 73 / 255]],
+              [170 / 255, 227 / 255, 73 / 255],
+              [208 / 255, 242 / 255, 150 / 255]],
     'adpt-lb-v1': [[200 / 255, 200 / 255, 200 / 255]],
     'adpt-lb-v3': [[25 / 255, 25 / 255, 25 / 255]],
 }
@@ -129,6 +132,10 @@ for (path, color) in zip(args.paths, range(0,10)):
         date_r = '^[A-Za-z]+ \d+ [0-9:]+'
         timestamp = re.search(date_r, log_lines[1])[0]
         plot_label = '{} ({})'.format(plot_label, timestamp)
+
+    if args.dir_name_runs == True:
+        (_p1, containing_dir_name) = os.path.split(os.path.split(path)[0])
+        plot_label = '{} ({})'.format(plot_label, containing_dir_name)
 
     color2_idx = len(list(filter(lambda l: l == label, plotted)))
 
