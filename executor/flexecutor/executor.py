@@ -53,7 +53,6 @@ def __executor_entry(controller_addr, executor_id, power, log_level, unavailable
     signal.signal(signal.SIGALRM, __signal_handler)
 
     stats.start_cpu_monitor_thread()
-    stats.start_gpu_monitor_thread()
 
     log.i('started')
 
