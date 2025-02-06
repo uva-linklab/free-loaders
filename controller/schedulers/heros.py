@@ -528,18 +528,6 @@ _TaskDataSizes = [
     2543170,
 ]
 
-_ExecutorLinkSpeed = [
-    2900000,
-    7500000,
-    7500000,
-    5700000,
-    6000000,
-    8700000,
-    5600000,
-    8200000,
-    11200000,
-]
-
 _ExecutorLatency = [
     3.65,
 
@@ -567,7 +555,8 @@ def executor_is_eligible(eid, state, task):
     est_computation_time = task_m_ins / _ExecutorData[eid].max_mips * 1000
 
     # Estimate network time.
-    est_network_time = (_TaskDataSizes[task.task_id] / _ExecutorLinkSpeed[eid]) + _ExecutorLatency[eid]
+    net_available_bw_Bps = ((state['link-capacity-mbits'] * 1000000) - state['link-load-bits']) / 8
+    est_network_time = (len(task.input_data) / net_available_bw_Bps * 1000) + _ExecutorLatency[eid]
 
     # Estimated required time in milliseconds.
     est_req_time = est_computation_time + est_network_time
@@ -576,5 +565,10 @@ def executor_is_eligible(eid, state, task):
     # Memory usage
     free_ram_kb = state['free-ram'] / 1024
     memory_good = free_ram_kb > __TaskData[executor_data.device][task.task_id].memory
+
+    print('Estimated time for EID {}: {} + {} = {} ms; CPU OK? {}, MEM OK? {}'.format(
+        eid, est_computation_time, est_network_time, est_req_time, cpu_good, memory_good))
+    print('  input size: {} B, available BW: {} Bps, latency: {} ms, est_net_time: {} ms'.format(
+        len(task.input_data), net_available_bw_Bps, _ExecutorLatency[eid], est_network_time))
 
     return cpu_good and memory_good
