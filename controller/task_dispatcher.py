@@ -168,14 +168,14 @@ class TaskDispatcher:
             network_bytes = tx_payload_len + rx_payload_len
             network_time = exec_time_ms - compute_time
             apparent_bandwidth_Mbps = network_bytes / (network_time / 1000.0) \
-                / 1000000.0 \
+                / 1000.0 \
                 * 8.0
 
             print('[td] task net info (offload_id={}, task_id={}): TX: {}, RX: {}, total: {}'.format(
                 offload_id, task_id, tx_payload_len, rx_payload_len, network_bytes))
             print(f"[td] finished task(offload_id={offload_id}, task_id={task_id}) on executer_id={executor_id}."
                   f" time(ms)={exec_time_ms}, deadline={deadline}, deadline_met={exec_time_ms <= deadline},"
-                  f" energy={energy}, compute_time={compute_time}, apparent_bw={round(apparent_bandwidth_Mbps, 2)} Mbps")
+                  f" energy={energy}, compute_time={compute_time}, apparent_bw={round(apparent_bandwidth_Kbps, 2)} Kbps")
             self.finished_tasks += 1
             deadline_met = exec_time_ms <= deadline
             self.deadlines_met += (1 if deadline_met else 0)
