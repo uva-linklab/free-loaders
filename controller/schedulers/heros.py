@@ -1,3 +1,5 @@
+import queue
+
 class Task:
     def __init__(self, ins, memory):
         self.ins = ins
@@ -21,7 +23,7 @@ _ExecutorData = {
     9: ExecutorSpecification(15274.47, 'x86_64-pc'),
 }
 
-__TaskData = {
+_TaskData = {
     'aarch64-nano': {
         0: Task(83951653, 8776),
         1: Task(686149436, 8712),
@@ -369,20 +371,21 @@ class HerosScheduler:
         self.executors = executors
         self.total_executor = len(executors.keys())
         self.needs_before_state = True
-        self.needs_feedback = True
-        self._oid_estimated_times = {}
+        self.needs_feedback = False
 
     def schedule(self, before_state, task):
         # Filter to only those that can handle the task.
         eligible_executors = []
+        est_runtimes_ms = {}
         for (eid, exec_spec) in _ExecutorData.items():
             # See if the executor is defined in the dictionary in controller.py.
             is_online = str(eid) in before_state.keys()
             if not is_online:
                 continue
 
-            is_eligible = executor_is_eligible(eid, before_state[str(eid)], task)
+            (is_eligible, est_time_ms,) = self.executor_is_eligible(eid, before_state[str(eid)], task)
             #print('{} is online? {}, is eligible? {}'.format(eid, is_online, is_eligible))
+            est_runtimes_ms[eid] = est_time_ms
             if is_eligible:
                 eligible_executors.append(eid)
 
@@ -409,39 +412,34 @@ class HerosScheduler:
                 best_h = state['h']
 
         print(f'[heros] scheduled task(offload_id={task.offload_id}, task_id={task.task_id}) ' +
-              f'on executer_id={best_eid}, h={round(best_h, 2)}.')
+              f'on executer_id={best_eid}, h={round(best_h, 2)}, est_time={est_runtimes_ms[best_eid]}.')
 
         return best_eid
 
     # status = 0 => successful task, status != 0 => failed task
-    def task_finished(self, offload_id, exec_id, status, exec_time, energy, new_state_of_executor):
-        (est_computation_time_ms, est_network_time_ms,) = self._oid_estimated_times[offload_id]
-        print('[heros] slack time = {} (offload_id={})'.format(
-            exec_time - (est_computation_time_ms + est_network_time_ms),
-            offload_id)
+    def task_finished(self, offload_id, exec_id, task_id, status, exec_time, energy, new_state_of_executor):
+        pass
 
-def executor_is_eligible(eid, state, task):
-    executor_data = _ExecutorData[eid]
+    def executor_is_eligible(self, eid, state, task):
+        executor_data = _ExecutorData[eid]
 
-    task_type_id = int(task.task_id / 10) # 0 = loop, 1 = matrix mult., 2 = FFT, ...
+        task_type_id = int(task.task_id / 10) # 0 = loop, 1 = matrix mult., 2 = FFT, ...
 
-    task_m_ins = __TaskData[executor_data.device][task.task_id].ins / 1000000
-    est_computation_time_ms = task_m_ins / _ExecutorData[eid].max_mips * 1000
+        task_m_ins = _TaskData[executor_data.device][task.task_id].ins / 1000000
+        est_computation_time_ms = task_m_ins / _ExecutorData[eid].max_mips * 1000
 
-    # Estimate network time.
-    link_capacity_free_Bps = (state['link-capacity-mbits'] * 1000000 / 8) - (state['link-load-bits'] / 8)
-    est_network_time_ms = (len(task.input_data) / link_capacity_free_Bps) * 1000
+        # Estimate network time.
+        link_capacity_free_Bps = (state['link-capacity-mbits'] * 1000000 / 8) - (state['link-load-bits'] / 8)
+        est_network_time_ms = (len(task.input_data) / link_capacity_free_Bps) * 1000
 
-    # Estimated required time in milliseconds.
-    est_time_ms = est_computation_time_ms + est_network_time_ms
+        # Estimated required time in milliseconds.
+        est_time_ms = est_computation_time_ms + est_network_time_ms
 
-    # Computation
-    cpu_good = est_time_ms <= task.deadline
+        # Computation
+        cpu_good = est_time_ms <= task.deadline
 
-    # Memory usage
-    free_ram_kb = state['free-ram'] / 1024
-    memory_good = free_ram_kb > __TaskData[executor_data.device][task.task_id].memory
+        # Memory usage
+        free_ram_kb = state['free-ram'] / 1024
+        memory_good = free_ram_kb > _TaskData[executor_data.device][task.task_id].memory
 
-    self._oid_estimated_times[task.offload_id] = (est_computation_time_ms, est_network_time_ms,)
-
-    return cpu_good and memory_good
+        return (cpu_good and memory_good, est_time_ms,)
