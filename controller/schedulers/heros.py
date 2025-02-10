@@ -363,55 +363,6 @@ __TaskData = {
     }
 }
 
-# Running times for tasks (including networking) on each machine.
-# Used to calculate network transfer time for each task.
-__ProfilingTotalTime = {
-    'aarch64-nano': [
-        (416.35, 2353.61),
-        (2634.29, 12217.47),
-        (2484.60, 9850.85),
-        (1521.56, 7913.33),
-        (7307.04, 8671.28),
-        (716.47, 1835.27),
-    ],
-
-    'aarch64-rpi3': [
-        (605.63, 4283.46),
-        (3309.31, 30257.08),
-        (560.20,  5814.92),
-        (1338.50, 14474.55),
-        (43654, 89494),
-        (2824.89, 4314.94),
-    ],
-
-    'aarch64-rpi4': [
-        (306.4, 1931.6),
-        (1252.40, 7972.51),
-        (1187.99, 4833.20),
-        (802.45, 5879.98),
-        (7533.64, 9288.47),
-        (940.83, 1637.64),
-    ],
-
-    'aarch64-tx2': [
-        (353.61, 1703.08),
-        (1203.36, 6625.46),
-        (1235.00, 2839.78),
-        (1390.03, 5053.32),
-        (10385.06, 11316.44),
-        (1499.69, 2075.76),
-    ],
-
-    'x86_64-pc': [
-        (186.69, 517.77),
-        (464.90, 1856.82),
-        (417.84, 3724.11),
-        (362.65, 1990.57),
-        (3597.15, 4089.90),
-        (403.27, 662.02),
-    ],
-}
-
 class HerosScheduler:
 
     def __init__(self, executors):
@@ -419,6 +370,7 @@ class HerosScheduler:
         self.total_executor = len(executors.keys())
         self.needs_before_state = True
         self.needs_feedback = False
+        self._oid_estimated_times = {}
 
     def schedule(self, before_state, task):
         # Filter to only those that can handle the task.
@@ -465,116 +417,28 @@ class HerosScheduler:
     def task_finished(self, offload_id, exec_id, status, exec_time, energy, new_state_of_executor):
         pass
 
-_TaskDataSizes = [
-    92,
-    4842374,
-    3175299,
-    9200099,
-    400623,
-    817055,
-    104,
-    104,
-    92,
-    93,
-    2000093,
-    2473181,
-    2986672,
-    3559215,
-    4170365,
-    4842374,
-    5551216,
-    6322662,
-    7129181,
-    8000093,
-    1058489,
-    2116889,
-    3175299,
-    4233700,
-    5292100,
-    6350489,
-    7408889,
-    8467289,
-    9525688,
-    10584090,
-    920101,
-    1840102,
-    2760101,
-    3680112,
-    4600101,
-    5520112,
-    6440101,
-    7360112,
-    8280101,
-    9200099,
-    123557,
-    400623,
-    752563,
-    1156546,
-    1648748,
-    2149111,
-    2712002,
-    3301515,
-    3957935,
-    2330095,
-    44756,
-    152971,
-    318041,
-    540841,
-    817055,
-    1126395,
-    1459883,
-    1813871,
-    2172588,
-    2543170,
-]
-
-_ExecutorLinkSpeed = [
-    2900000,
-    7500000,
-    7500000,
-    5700000,
-    6000000,
-    8700000,
-    5600000,
-    8200000,
-    11200000,
-]
-
-_ExecutorLatency = [
-    3.65,
-
-    3.13,
-    2.58,
-
-    2.47,
-    2.47,
-    2.46,
-    2.47,
-    3.39,
-
-    15.36,
-
-    3.54,
-]
-
 def executor_is_eligible(eid, state, task):
     executor_data = _ExecutorData[eid]
 
     task_type_id = int(task.task_id / 10) # 0 = loop, 1 = matrix mult., 2 = FFT, ...
-    task_type_level = task.task_id % 10 # 0 = MM 500x500, 1 = MM 556x556, ...
 
     task_m_ins = __TaskData[executor_data.device][task.task_id].ins / 1000000
-    est_computation_time = task_m_ins / _ExecutorData[eid].max_mips * 1000
+    est_computation_time_ms = task_m_ins / _ExecutorData[eid].max_mips * 1000
 
     # Estimate network time.
-    est_network_time = (_TaskDataSizes[task.task_id] / _ExecutorLinkSpeed[eid]) + _ExecutorLatency[eid]
+    link_capacity_free_Bps = (state['link-capacity-mbits'] * 1000000 / 8) - (state['link-load-bits'] / 8)
+    est_network_time_ms = (len(task.input_data) / link_capacity_free_Bps) * 1000
 
     # Estimated required time in milliseconds.
-    est_req_time = est_computation_time + est_network_time
-    cpu_good = est_req_time <= task.deadline
+    est_time_ms = est_computation_time_ms + est_network_time_ms
+
+    # Computation
+    cpu_good = est_time_ms <= task.deadline
 
     # Memory usage
     free_ram_kb = state['free-ram'] / 1024
     memory_good = free_ram_kb > __TaskData[executor_data.device][task.task_id].memory
+
+    self._oid_estimated_times[task.offload_id] = (est_computation_time_ms, est_network_time_ms,)
 
     return cpu_good and memory_good
