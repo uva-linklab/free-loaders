@@ -115,7 +115,8 @@ class TaskDispatcher:
                                           message_json["task_id"],
                                           message_json["job_id"],
                                           message_json["status"],
-                                          message_json["energy"])
+                                          message_json["energy"],
+                                          message_json["compute_time"])
 
 
     def on_disconnect(self, client, userdata, rc=0):
@@ -140,7 +141,8 @@ class TaskDispatcher:
                              task_id,
                              job_id,
                              status,
-                             energy):
+                             energy,
+                             compute_time):
         if offload_id not in self.execution_times.keys():
             # ignore a response if we're not expecting it
             print(f"[td] ignored response for task (offload_id={offload_id}, task_id={task_id}) from executer_id={executor_id}")
@@ -150,7 +152,7 @@ class TaskDispatcher:
         self.timers[offload_id].cancel()
         print(f"[td] canceled timer for task (offload_id={offload_id}, task_id={task_id}) from executer_id={executor_id}")
 
-        # compute execution time
+        # compute total time
         exec_time_ms = (time.time() - self.execution_times[offload_id]) * 1000
         deadline = self.deadlines[offload_id]
 
@@ -161,7 +163,7 @@ class TaskDispatcher:
         else:
             print(f"[td] finished task(offload_id={offload_id}, task_id={task_id}) on executer_id={executor_id}."
                   f" time(ms)={exec_time_ms}, deadline={deadline}, deadline_met={exec_time_ms <= deadline},"
-                  f" energy={energy}")
+                  f" energy={energy}, compute_time={compute_time}")
             self.finished_tasks += 1
             deadline_met = exec_time_ms <= deadline
             self.deadlines_met += (1 if deadline_met else 0)
@@ -288,6 +290,7 @@ class TaskDispatcher:
                                                    task.task_id,
                                                    task.job_id,
                                                    -1000,  # indicate failure
+                                                   0.0,
                                                    0.0])
         self.timers[task.offload_id].start()
         self.total_tasks += 1
