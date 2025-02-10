@@ -136,6 +136,7 @@ def __mqtt_message_received(client, data, msg):
                 'job_id': task_request['job_id'],
                 'state': current_state,
                 'energy': 0,
+                'compute_time': 0,
                 'status': -5  # inform the controller that we failed
             }
             client.publish(MQTTTopicTaskResponse,
@@ -179,6 +180,7 @@ def __executor_task_entry(mqtt_client, executor_id, power, task_request, additio
             'offload_id': task_request['offload_id'],
             'state': current_state,
             'energy': power * deadline_sec,
+            'compute_time': deadline_sec * 2,
             'status': process.exitcode  # inform the controller that we failed
         }
         mqtt_client.publish(MQTTTopicTaskResponse,
@@ -391,6 +393,7 @@ def __process_task_entry(pipe, executor_id, power, task_request, additional_data
         'offload_id': task_request['offload_id'],
         'state': None,
         'energy': power * (end_time - start_time),
+        'compute_time': end_time - start_time,
         'status': 0
     }
     response = (response_json, res_data,)
