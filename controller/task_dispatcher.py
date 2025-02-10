@@ -24,10 +24,11 @@ executer_controller_task_response_topic = "exec-ctrl-task-response"  # sub
 
 Assignments = {}
 
+_OffloadPayloadLengths = {}
+
 # TODO update
 def request_feedback(self, task_id, feedback):
     pass
-
 
 async def fetch_json(executer_id: int, url: str, session: ClientSession, **kwargs) -> tuple:
     resp = None
@@ -116,7 +117,8 @@ class TaskDispatcher:
                                           message_json["job_id"],
                                           message_json["status"],
                                           message_json["energy"],
-                                          message_json["compute_time"])
+                                          message_json["compute_time"],
+                                          len(payload))
 
 
     def on_disconnect(self, client, userdata, rc=0):
@@ -142,7 +144,8 @@ class TaskDispatcher:
                              job_id,
                              status,
                              energy,
-                             compute_time):
+                             compute_time,
+                             rx_payload_len):
         if offload_id not in self.execution_times.keys():
             # ignore a response if we're not expecting it
             print(f"[td] ignored response for task (offload_id={offload_id}, task_id={task_id}) from executer_id={executor_id}")
@@ -161,9 +164,18 @@ class TaskDispatcher:
             print(f"[td] failed task(offload_id={offload_id}, task_id={task_id}) on executer_id={executor_id}, status={status}. deadline={deadline}, deadline_met={False}")
             self.failed_tasks += 1
         else:
+            tx_payload_len = _OffloadPayloadLengths[offload_id]
+            network_bytes = tx_payload_len + rx_payload_len
+            network_time = exec_time_ms - compute_time
+            apparent_bandwidth_Mbps = network_bytes / (network_time / 1000.0) \
+                / 1000000.0 \
+                * 8.0
+
+            print('[td] task net info (offload_id={}, task_id={}): TX: {}, RX: {}, total: {}'.format(
+                offload_id, task_id, tx_payload_len, rx_payload_len, network_bytes))
             print(f"[td] finished task(offload_id={offload_id}, task_id={task_id}) on executer_id={executor_id}."
                   f" time(ms)={exec_time_ms}, deadline={deadline}, deadline_met={exec_time_ms <= deadline},"
-                  f" energy={energy}, compute_time={compute_time}")
+                  f" energy={energy}, compute_time={compute_time}, apparent_bw={round(apparent_bandwidth_Mbps, 2)} Mbps")
             self.finished_tasks += 1
             deadline_met = exec_time_ms <= deadline
             self.deadlines_met += (1 if deadline_met else 0)
@@ -229,6 +241,8 @@ class TaskDispatcher:
         print('[td] sending {} B (input size: {} B) for task {}'.format(len(mqtt_message), len(task.input_data), task.task_id))
         executor_topic = f'{controller_executer_task_execute_topic}-{executer_id}'
 
+        _OffloadPayloadLengths[task.offload_id] = len(mqtt_message)
+
         self.mqtt_client.publish(executor_topic,
                                  mqtt_message,
                                  qos=2)
@@ -291,6 +305,7 @@ class TaskDispatcher:
                                                    task.job_id,
                                                    -1000,  # indicate failure
                                                    0.0,
-                                                   0.0])
+                                                   0.0,
+                                                   0])
         self.timers[task.offload_id].start()
         self.total_tasks += 1
