@@ -369,7 +369,7 @@ class HerosScheduler:
         self.executors = executors
         self.total_executor = len(executors.keys())
         self.needs_before_state = True
-        self.needs_feedback = False
+        self.needs_feedback = True
         self._oid_estimated_times = {}
 
     def schedule(self, before_state, task):
@@ -415,7 +415,10 @@ class HerosScheduler:
 
     # status = 0 => successful task, status != 0 => failed task
     def task_finished(self, offload_id, exec_id, status, exec_time, energy, new_state_of_executor):
-        pass
+        (est_computation_time_ms, est_network_time_ms,) = self._oid_estimated_times[offload_id]
+        print('[heros] slack time = {} (offload_id={})'.format(
+            exec_time - (est_computation_time_ms + est_network_time_ms),
+            offload_id)
 
 def executor_is_eligible(eid, state, task):
     executor_data = _ExecutorData[eid]
