@@ -496,11 +496,13 @@ _TaskSizeData = {
 
 class HerosScheduler:
 
-    def __init__(self, executors):
+    def __init__(self, executors, per_task_executor_bandwidth=True):
         self.executors = executors
         self.total_executor = len(executors.keys())
         self.needs_before_state = True
         self.needs_feedback = False
+
+        self._use_per_executor_task_bandwidth = per_task_executor_bandwidth
 
     def schedule(self, before_state, task):
         # Filter to only those that can handle the task.
@@ -558,11 +560,15 @@ class HerosScheduler:
         est_computation_time_ms = task_m_ins / _ExecutorData[eid].max_mips * 1000
 
         # Estimate network time.
-        # link_capacity_free_Bps = (state['link-capacity-mbits'] * 1000000 / 8) - (state['link-load-bits'] / 8)
-        task_bw = _TaskBandwidthData[task.task_id][eid]
-        if task_bw == 0: # Task has never successfully completed on the executor.
-            return (False, 99999.9)
-        est_network_time_ms = (_TaskSizeData[task.task_id] / 1000.0 * 8.0 / task_bw) * 1000
+        est_network_time_ms = None
+        if self._use_per_executor_task_bandwidth:
+            task_bw = _TaskBandwidthData[task.task_id][eid]
+            if task_bw == 0: # Task has never successfully completed on the executor.
+                return (False, 99999.9)
+            est_network_time_ms = (_TaskSizeData[task.task_id] / 1000.0 * 8.0 / task_bw) * 1000
+        else:
+            link_capacity_free_Bps = (state['link-capacity-mbits'] * 1000000 / 8) - (state['link-load-bits'] / 8)
+            est_network_time_ms = (len(task.input_data) / link_capacity_free_Bps)
 
         # Estimated required time in milliseconds.
         est_time_ms = est_computation_time_ms + est_network_time_ms
