@@ -10,6 +10,94 @@ class ExecutorSpecification:
         self.max_mips = max_mips
         self.device = device
 
+class HerosScheduler:
+
+    def __init__(self, executors, per_task_executor_bandwidth=True):
+        self.executors = executors
+        self.total_executor = len(executors.keys())
+        self.needs_before_state = True
+        self.needs_feedback = False
+
+        self._use_per_executor_task_bandwidth = per_task_executor_bandwidth
+
+    def schedule(self, before_state, task):
+        # Filter to only those that can handle the task.
+        eligible_executors = []
+        est_runtimes_ms = {}
+        for (eid, exec_spec) in _ExecutorData.items():
+            # See if the executor is defined in the dictionary in controller.py.
+            is_online = str(eid) in before_state.keys()
+            if not is_online:
+                continue
+
+            (is_eligible, est_time_ms,) = self.executor_is_eligible(eid, before_state[str(eid)], task)
+            #print('{} is online? {}, is eligible? {}'.format(eid, is_online, is_eligible))
+            est_runtimes_ms[eid] = est_time_ms
+            if is_eligible:
+                eligible_executors.append(eid)
+
+        print('[heros] executors eligible for task_id={}: {}'.format(
+            task.task_id, eligible_executors))
+
+        best_h = -999999
+        best_eid = 0
+
+        print('[heros] CPU load values:  {}'.format(
+            [(eid, '{:.2f}'.format(s['cpu-load']),) for (eid, s) in before_state.items()]))
+        print('[heros] selection scores: {}'.format(
+            [(eid, '{:.2f}'.format(s['h']),) for (eid, s) in before_state.items()]))
+
+        # Use the executor with the greatest H.
+        for (eid, state) in before_state.items():
+            eid = int(eid)
+            # Executor must be eligible.
+            if eid not in eligible_executors:
+                continue
+
+            if state['h'] > best_h:
+                best_eid = eid
+                best_h = state['h']
+
+        print(f'[heros] scheduled task(offload_id={task.offload_id}, task_id={task.task_id}) ' +
+              f'on executer_id={best_eid}, h={round(best_h, 2)}, est_time={est_runtimes_ms[best_eid]}.')
+
+        return best_eid
+
+    # status = 0 => successful task, status != 0 => failed task
+    def task_finished(self, offload_id, exec_id, task_id, status, exec_time, energy, new_state_of_executor):
+        pass
+
+    def executor_is_eligible(self, eid, state, task):
+        executor_data = _ExecutorData[eid]
+
+        task_type_id = int(task.task_id / 10) # 0 = loop, 1 = matrix mult., 2 = FFT, ...
+
+        task_m_ins = _TaskData[executor_data.device][task.task_id].ins / 1000000
+        est_computation_time_ms = task_m_ins / _ExecutorData[eid].max_mips * 1000
+
+        # Estimate network time.
+        est_network_time_ms = None
+        if self._use_per_executor_task_bandwidth:
+            task_bw = _TaskBandwidthData[task.task_id][eid]
+            if task_bw == 0: # Task has never successfully completed on the executor.
+                return (False, 99999.9)
+            est_network_time_ms = (_TaskSizeData[task.task_id] / 1000.0 * 8.0 / task_bw) * 1000
+        else:
+            link_capacity_free_Bps = (state['link-capacity-mbits'] * 1000000 / 8) - (state['link-load-bits'] / 8)
+            est_network_time_ms = (len(task.input_data) / link_capacity_free_Bps)
+
+        # Estimated required time in milliseconds.
+        est_time_ms = est_computation_time_ms + est_network_time_ms
+
+        # Computation
+        cpu_good = est_time_ms <= task.deadline
+
+        # Memory usage
+        free_ram_kb = state['free-ram'] / 1024
+        memory_good = free_ram_kb > _TaskData[executor_data.device][task.task_id].memory
+
+        return (cpu_good and memory_good, est_time_ms,)
+
 _ExecutorData = {
     0: ExecutorSpecification(3085.06, 'aarch64-nano'),
     1: ExecutorSpecification(1137.11, 'aarch64-rpi3'),
@@ -493,91 +581,3 @@ _TaskSizeData = {
     58: 2172920,
     59: 2543514,
 }
-
-class HerosScheduler:
-
-    def __init__(self, executors, per_task_executor_bandwidth=True):
-        self.executors = executors
-        self.total_executor = len(executors.keys())
-        self.needs_before_state = True
-        self.needs_feedback = False
-
-        self._use_per_executor_task_bandwidth = per_task_executor_bandwidth
-
-    def schedule(self, before_state, task):
-        # Filter to only those that can handle the task.
-        eligible_executors = []
-        est_runtimes_ms = {}
-        for (eid, exec_spec) in _ExecutorData.items():
-            # See if the executor is defined in the dictionary in controller.py.
-            is_online = str(eid) in before_state.keys()
-            if not is_online:
-                continue
-
-            (is_eligible, est_time_ms,) = self.executor_is_eligible(eid, before_state[str(eid)], task)
-            #print('{} is online? {}, is eligible? {}'.format(eid, is_online, is_eligible))
-            est_runtimes_ms[eid] = est_time_ms
-            if is_eligible:
-                eligible_executors.append(eid)
-
-        print('[heros] executors eligible for task_id={}: {}'.format(
-            task.task_id, eligible_executors))
-
-        best_h = -999999
-        best_eid = 0
-
-        print('[heros] CPU load values:  {}'.format(
-            [(eid, '{:.2f}'.format(s['cpu-load']),) for (eid, s) in before_state.items()]))
-        print('[heros] selection scores: {}'.format(
-            [(eid, '{:.2f}'.format(s['h']),) for (eid, s) in before_state.items()]))
-
-        # Use the executor with the greatest H.
-        for (eid, state) in before_state.items():
-            eid = int(eid)
-            # Executor must be eligible.
-            if eid not in eligible_executors:
-                continue
-
-            if state['h'] > best_h:
-                best_eid = eid
-                best_h = state['h']
-
-        print(f'[heros] scheduled task(offload_id={task.offload_id}, task_id={task.task_id}) ' +
-              f'on executer_id={best_eid}, h={round(best_h, 2)}, est_time={est_runtimes_ms[best_eid]}.')
-
-        return best_eid
-
-    # status = 0 => successful task, status != 0 => failed task
-    def task_finished(self, offload_id, exec_id, task_id, status, exec_time, energy, new_state_of_executor):
-        pass
-
-    def executor_is_eligible(self, eid, state, task):
-        executor_data = _ExecutorData[eid]
-
-        task_type_id = int(task.task_id / 10) # 0 = loop, 1 = matrix mult., 2 = FFT, ...
-
-        task_m_ins = _TaskData[executor_data.device][task.task_id].ins / 1000000
-        est_computation_time_ms = task_m_ins / _ExecutorData[eid].max_mips * 1000
-
-        # Estimate network time.
-        est_network_time_ms = None
-        if self._use_per_executor_task_bandwidth:
-            task_bw = _TaskBandwidthData[task.task_id][eid]
-            if task_bw == 0: # Task has never successfully completed on the executor.
-                return (False, 99999.9)
-            est_network_time_ms = (_TaskSizeData[task.task_id] / 1000.0 * 8.0 / task_bw) * 1000
-        else:
-            link_capacity_free_Bps = (state['link-capacity-mbits'] * 1000000 / 8) - (state['link-load-bits'] / 8)
-            est_network_time_ms = (len(task.input_data) / link_capacity_free_Bps)
-
-        # Estimated required time in milliseconds.
-        est_time_ms = est_computation_time_ms + est_network_time_ms
-
-        # Computation
-        cpu_good = est_time_ms <= task.deadline
-
-        # Memory usage
-        free_ram_kb = state['free-ram'] / 1024
-        memory_good = free_ram_kb > _TaskData[executor_data.device][task.task_id].memory
-
-        return (cpu_good and memory_good, est_time_ms,)
