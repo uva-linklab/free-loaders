@@ -125,6 +125,12 @@ for (path, color) in zip(args.paths, range(0,10)):
         x.append(oid)
         y.append(dsr)
 
+    # Order the points.
+    points = [(x,y,) for (x,y,) in zip(x,y)]
+    points.sort()
+    x = [x for (x,y,) in points]
+    y = [y for (x,y,) in points]
+
     plot_label = pretty_names[label]
     if add_labels != None:
         plot_label = '{}-{}'.format(plot_label, add_labels[0])

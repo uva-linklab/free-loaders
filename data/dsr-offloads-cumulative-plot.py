@@ -127,6 +127,12 @@ for (path, color) in zip(args.paths, range(0,10)):
 
         last_met = met
 
+    # Order the points.
+    points = [(x,y,) for (x,y,) in zip(x,y)]
+    points.sort()
+    x = [x for (x,y,) in points]
+    y = [y for (x,y,) in points]
+
     skipped = 0
     plot_label = ''
     if override_labels != None:
