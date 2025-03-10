@@ -113,7 +113,8 @@ def _profile_task_entry(task_id):
         script_args.extend([input_path])
 
     import subprocess
-    cli = [_PerfPath, 'stat',
+    cli = ['pipenv', 'run',
+           _PerfPath, 'stat',
            python_path,
            script_path]
     cli.extend(script_args)
@@ -141,7 +142,7 @@ def _extract_perf_stats(output):
     ins_line = None
     time_line = None
     for ol in lines:
-        if 'instructions:u' in ol:
+        if 'instructions' in ol:
             ins_line = ol
         elif 'seconds time elapsed' in ol:
             time_line = ol
