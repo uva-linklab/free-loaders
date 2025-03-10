@@ -6,6 +6,7 @@ import stats
 import threading
 
 import load
+import profiling
 
 HTTPServerPort = 8088
 
@@ -18,6 +19,21 @@ class ExecutorHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
 
         if self.path == '/state':
             self.get_state()
+        elif self.path.startswith('/profile/'):
+            task_id = int(self.path.split('/')[-1])
+            (profile_state, profile_data) = profiling.get_profiling_data(task_id)
+
+            if profile_state == profiling.ProfilingState.PEND:
+                self.send_response(102)
+            else:
+                j = json.dumps({
+                    'ins_count': profile_data[0],
+                    'mips': profile_data[1],
+                })
+                self.wfile.write(j.encode('utf-8'))
+                self.send_header('Content-Type', 'application/json')
+                self.send_response(200)
+
         else:
             self.send_response(404)
 
