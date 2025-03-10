@@ -39,6 +39,10 @@ def profile(task_id):
 
     import threading
 
+    global _TaskProfilingData
+
+    _TaskProfilingData[task_id] = (ProfilingState.PEND, None,)
+
     t = threading.Thread(name='profiler-task-{}'.format(task_id),
                          target=_profile_task_entry,
                          args=(task_id,))
@@ -51,6 +55,7 @@ def clear_profiling_data():
     global _TaskProfilingData
 
     _TaskProfilingData = {}
+    log.i('Cleared all profiling data.')
 
     return
 
@@ -62,14 +67,18 @@ def _profile_task_entry(task_id):
 
     log.i('Profiling task {}'.format(task_id))
 
+    fl_path = os.path.join(os.getenv('HOME'), 'free-loaders')
+    python_path = os.path.join(os.getenv('VIRTUAL_ENV'), 'bin/python')
     script_path = os.path.join(os.getenv('HOME'), 'free-loaders')
     script_args = []
+
     if task_id < 10:
         script_path = os.path.join(
             script_path,
             'executor/flexecutor/tasker/loop.py')
         script_args.extend([str((task_id + 1) * 1000000)])
     elif task_id < 20:
+        import math
         script_path = os.path.join(
             script_path,
             'executor/flexecutor/tasker/mm.py')
@@ -96,7 +105,7 @@ def _profile_task_entry(task_id):
     elif task_id < 60:
         input_path = os.path.join(
             script_path,
-            'mock-offloader/moffloaders/room_classification_input_files',
+            'mock-offloader/moffloader/room_classification_input_files',
             'room{}.jpg'.format(task_id - 50))
         script_path = os.path.join(
             script_path,
@@ -105,11 +114,11 @@ def _profile_task_entry(task_id):
 
     import subprocess
     cli = [_PerfPath, 'stat',
-           'python',
+           python_path,
            script_path]
     cli.extend(script_args)
     log.i('Launching: {}'.format(cli))
-    r = subprocess.run(cli, capture_output=True)
+    r = subprocess.run(cli, capture_output=True, cwd=fl_path)
 
     if r.returncode != 0:
         log.e('Profiling task {} failed.\nSTDOUT: {}\nSTDERR: {}'.format(
@@ -129,8 +138,13 @@ def _extract_perf_stats(output):
     import re
 
     lines = output.decode().strip().split('\n')
-    ins_line = lines[7]
-    time_line = lines[11]
+    ins_line = None
+    time_line = None
+    for ol in lines:
+        if 'instructions:u' in ol:
+            ins_line = ol
+        elif 'seconds time elapsed' in ol:
+            time_line = ol
 
     # Extract instruction count from output.
     m = re.search('(?P<ins>[0-9,]+) +instructions', ins_line)
