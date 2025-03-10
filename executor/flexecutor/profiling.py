@@ -44,6 +44,16 @@ def profile(task_id):
                          args=(task_id,))
     t.start()
 
+def clear_profiling_data():
+    '''Clear all profiling data.
+    '''
+
+    global _TaskProfilingData
+
+    _TaskProfilingData = {}
+
+    return
+
 def _profile_task_entry(task_id):
     '''Profile a task and store results.
     '''

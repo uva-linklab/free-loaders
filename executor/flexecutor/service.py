@@ -42,6 +42,7 @@ class ExecutorHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
             log.i('clearing load profile')
             load.clear()
             self.send_response(204)
+            log.i('done setting load')
         elif self.path == '/load/set/constant':
             content = self.rfile.read(int(self.headers['content-length']))
             conf_json = json.loads(content)
@@ -49,6 +50,7 @@ class ExecutorHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
 
             log.i('setting load target of {}'.format(target_load))
             load.set_constant_load(target_load)
+            log.i('done setting load')
 
             self.send_response(204)
         elif self.path == '/load/set/intermittent':
@@ -64,7 +66,12 @@ class ExecutorHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
                 load.set_intermittent_load(freq, d_spike)
                 self.send_response(204)
 
-        log.i('done setting load')
+            log.i('done setting load')
+
+        elif self.path == '/profile/clear':
+            profiling.clear_profiling_data()
+
+            self.send_response(204)
 
     def log_message(self, format, *args):
         pass
