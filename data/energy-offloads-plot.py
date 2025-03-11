@@ -17,6 +17,8 @@ ap.add_argument('--x-limit', help='x-axis max value',
                 type=int, dest='x_limit', default=None)
 ap.add_argument('--date-runs', help='Append date labels to legends',
                 dest='date_runs', action='store_true', default=False)
+ap.add_argument('--dir-name-runs', help='Append containing directory names to legend',
+                dest='dir_name_runs', action='store_true', default=False)
 ap.add_argument('paths', help='path to log files',
                 nargs='+', type=str)
 args = ap.parse_args()
@@ -28,8 +30,11 @@ colors = {
     'load-bal': [[199 / 255, 157 / 255, 250 / 255]],
     'random': [[217 / 255, 28 / 255, 44 / 255]],
     'time-wrr': [[252 / 255, 186 / 255,   3 / 255]],
-    'heros': [[111 / 255, 166 / 255, 17 / 255],
-              [170 / 255, 227 / 255, 73 / 255]],
+    'heros': [[40 / 255, 100 / 255, 20 / 255],
+              [80 / 255, 150 / 255, 40 / 255],
+              [120 / 255, 200 / 255, 60 / 255],
+              [170 / 255, 227 / 255, 90 / 255],
+              [200 / 255, 255 / 255, 120 / 255]],
     'adpt-lb-v1': [[200 / 255, 200 / 255, 200 / 255]],
     'adpt-lb-v3': [[25 / 255, 25 / 255, 25 / 255]],
 }
@@ -126,6 +131,10 @@ for path in args.paths:
         date_r = '^[A-Za-z]+ \d+ [0-9:]+'
         timestamp = re.search(date_r, log_lines[1])[0]
         plot_label = '{} ({})'.format(plot_label, timestamp)
+
+    if args.dir_name_runs == True:
+        (_p1, containing_dir_name) = os.path.split(os.path.split(path)[0])
+        plot_label = '{} ({})'.format(plot_label, containing_dir_name)
 
     color2_idx = len(list(filter(lambda l: l == sched_label, plotted)))
     y_lim = max(y_lim, y[-1])
