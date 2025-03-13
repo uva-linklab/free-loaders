@@ -94,21 +94,110 @@ class HerosScheduler:
 
         # Memory usage
         free_ram_kb = state['free-ram'] / 1024
-        memory_good = free_ram_kb > _TaskData[executor_data.device][task.task_id].memory
+        memory_good = free_ram_kb > self._task_data[executor_data.device][task.task_id].memory
 
         return (cpu_good and memory_good, est_time_ms,)
 
+class HerosInSituScheduler:
+
+    def __init__(self, executors, per_task_executor_bandwidth=True):
+
+        # Get task data set up like the pre-filled dictionary.
+        self._task_data = { arch: {} for arch in _TaskData.keys() }
+        self._profile_requests = queue.Queue()
+        self._profiling_thread = threading.Thread(name='heros-ondemand-profiler',
+                                                  target=HerosInSituScheduler._on_demand_profiler_entry,
+                                                  args(executors, self._task_data, self._profile_requests,))
+
+        self._heros = HerosScheduler(executors, per_task_executor_bandwidth, self._task_data)
+
+    def schedule(self, before_state, task):
+
+        # Check internal task data for the task ID being requested.
+        # If it does not exist, it must be profiled.
+        if task.task_id in self._task_data.keys():
+            print('[heros-is] task ID {} is profiled; invoking HEROS'.format(task.task_id))
+            return self._heros.schedule(before_state, task)
+        else:
+            # Schedule to the most powerful executor (EID 9).
+            # Send a profiling request to the profiler.
+            print('[heros-is] task ID {} not yet profiled; enqueueing...'.format(task.task_id))
+            self._profile_requests.put(task.task_id)
+
+            return 9
+
+    def _on_demand_profiler_entry(executors, task_data, profile_requests):
+        '''Entry for on-demand profiling thread.
+        '''
+
+        import requests
+
+        print('[heros-is-profiler] started')
+
+        # Only need one executor of each type.
+        executors = [executors[0],
+                     executors[1],
+                     executors[3],
+                     executors[8],
+                     executors[9]]
+
+        # Which tasks have been profiled.
+        profiled_task_ids = []
+
+        # Clear profiling data on all executors.
+        for e in executors:
+            url = 'http://{}:8088/profile/clear'.format(e.executer_ip)
+            resp = requests.post(url)
+            print('[heros-is-profiler] {} says {}'.format(resp.status_code))
+
+        while True:
+            task_id = profile_requests.get()
+            if task_id in profiled_task_ids:
+                continue
+
+            print('[heros-is-profiler] starting profiling for task {}'.format(task_id))
+
+            # Launch profiling on each executor.
+            profile_url = 'http://{}:8088/profile/{}'.format(e.executer_ip, task_id)
+            for e in executors:
+                resp = requests.get(profile_url)
+
+            time.sleep(1000)
+
+            # Get data back from each executor.
+            # Continue this loop until we have data for all architectures.
+            profiled = []
+            while True:
+                print('[heros-is-profiler] fetching profiling for task {}'.format(task_id))
+                print('[heros-is-profiler] done: {}'.format(profile_ins))
+
+                for (e, arch) in zip(executors, archs):
+                    if arch in profiled:
+                        continue
+
+                    resp = requests.get(profile_url)
+                    if resp.status_code == 200:
+                        rjd = resp.json()
+                        _task_data[arch][task_id] = Task(rjd['ins_count'], 0) # Don't care about memory usage.
+                        profile_ins.append(arch)
+
+                if len(profiled) == len(_task_data.keys()):
+                    break
+
+            # Track profiled task IDs.
+            profiled_task_ids.append(task_id)
+
 _ExecutorData = {
-    0: ExecutorSpecification(3085.06, 'aarch64-nano'),
-    1: ExecutorSpecification(1137.11, 'aarch64-rpi3'),
-    2: ExecutorSpecification(1137.11, 'aarch64-rpi3'),
-    3: ExecutorSpecification(2422.04, 'aarch64-rpi4'),
-    4: ExecutorSpecification(2422.04, 'aarch64-rpi4'),
-    5: ExecutorSpecification(2422.04, 'aarch64-rpi4'),
-    6: ExecutorSpecification(2422.04, 'aarch64-rpi4'),
-    7: ExecutorSpecification(2422.04, 'aarch64-rpi4'),
-    8: ExecutorSpecification(4140.84, 'aarch64-tx2'),
-    9: ExecutorSpecification(15274.47, 'x86_64-pc'),
+    0: ExecutorSpecification(2560.35, 'aarch64-nano'),
+    1: ExecutorSpecification(1140.61, 'aarch64-rpi3'),
+    2: ExecutorSpecification(1140.61, 'aarch64-rpi3'),
+    3: ExecutorSpecification(4059.44, 'aarch64-rpi4'),
+    4: ExecutorSpecification(4059.44, 'aarch64-rpi4'),
+    5: ExecutorSpecification(4059.44, 'aarch64-rpi4'),
+    6: ExecutorSpecification(4059.44, 'aarch64-rpi4'),
+    7: ExecutorSpecification(4059.44, 'aarch64-rpi4'),
+    8: ExecutorSpecification(3876.54, 'aarch64-tx2'),
+    9: ExecutorSpecification(13187.94, 'x86_64-pc'),
 }
 
 _TaskData = {
