@@ -1,4 +1,6 @@
 import queue
+import threading
+import time
 
 class Task:
     def __init__(self, ins, memory):
@@ -12,11 +14,16 @@ class ExecutorSpecification:
 
 class HerosScheduler:
 
-    def __init__(self, executors, per_task_executor_bandwidth=True):
+    def __init__(self, executors, per_task_executor_bandwidth=False, task_data=None):
         self.executors = executors
         self.total_executor = len(executors.keys())
         self.needs_before_state = True
         self.needs_feedback = False
+
+        if task_data == None:
+            self._task_data = _TaskData
+        else:
+            self._task_data = task_data
 
         self._use_per_executor_task_bandwidth = per_task_executor_bandwidth
 
@@ -72,7 +79,7 @@ class HerosScheduler:
 
         task_type_id = int(task.task_id / 10) # 0 = loop, 1 = matrix mult., 2 = FFT, ...
 
-        task_m_ins = _TaskData[executor_data.device][task.task_id].ins / 1000000
+        task_m_ins = self._task_data[executor_data.device][task.task_id].ins / 1000000
         est_computation_time_ms = task_m_ins / _ExecutorData[eid].max_mips * 1000
 
         # Estimate network time.
