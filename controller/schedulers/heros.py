@@ -114,7 +114,7 @@ class HerosInSituScheduler:
         self._profile_requests = queue.Queue()
         self._profiling_thread = threading.Thread(name='heros-ondemand-profiler',
                                                   target=HerosInSituScheduler._on_demand_profiler_entry,
-                                                  args(executors, self._task_data, self._profile_requests,))
+                                                  args=(executors, self._task_data, self._profile_requests,))
 
         self._heros = HerosScheduler(executors, per_task_executor_bandwidth, self._task_data)
 
