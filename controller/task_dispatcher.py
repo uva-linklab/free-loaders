@@ -170,6 +170,7 @@ class TaskDispatcher:
             apparent_bandwidth_Mbps = network_bytes / (network_time / 1000.0) \
                 / 1000.0 \
                 * 8.0
+            apparent_bandwidth_Kbps = apparent_bandwidth_Mbps * 1000
 
             print('[td] task net info (offload_id={}, task_id={}): TX: {}, RX: {}, total: {}'.format(
                 offload_id, task_id, tx_payload_len, rx_payload_len, network_bytes))
