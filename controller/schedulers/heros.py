@@ -1,4 +1,5 @@
 import queue
+import random
 import threading
 import time
 
@@ -130,12 +131,12 @@ class HerosInSituScheduler:
             print('[heros-is] task ID {} is profiled; invoking HEROS'.format(task.task_id))
             return self._heros.schedule(before_state, task)
         else:
-            # Schedule to the most powerful executor (EID 9).
+            # Schedule a random executor that is not used for profiling.
             # Send a profiling request to the profiler.
             print('[heros-is] task ID {} not yet profiled; enqueueing...'.format(task.task_id))
             self._profile_requests.put(task.task_id)
 
-            return 9
+            return random.choice([2, 4, 5, 6, 7])
 
     def _on_demand_profiler_entry(executors, task_data, profile_requests):
         '''Entry for on-demand profiling thread.
