@@ -176,13 +176,13 @@ class HerosInSituScheduler:
 
         print('[heros-is-profiler] done clearing profiling data')
 
-        profiling_waits = 0
         while True:
             task_id = profile_requests.get()
             if task_id in profiled_task_ids:
                 continue
 
             print('[heros-is-profiler] starting profiling for task {}'.format(task_id))
+            profiling_waits = 0
 
             # Launch profiling on each executor.
             profile_url = 'http://{}:8088/profile/{}'.format(e.executer_ip, task_id)
