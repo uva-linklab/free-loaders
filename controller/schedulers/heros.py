@@ -127,7 +127,7 @@ class HerosInSituScheduler:
 
         # Check internal task data for the task ID being requested.
         # If it does not exist, it must be profiled.
-        if task.task_id in self._task_data.keys():
+        if self._is_profiled(task.task_id):
             print('[heros-is] task ID {} is profiled; invoking HEROS'.format(task.task_id))
             return self._heros.schedule(before_state, task)
         else:
@@ -137,6 +137,16 @@ class HerosInSituScheduler:
             self._profile_requests.put(task.task_id)
 
             return random.choice([2, 4, 5, 6, 7])
+
+    def _is_profiled(self, task_id):
+        '''Returns true if profiling data for a task is available.
+        '''
+
+        for arch in self._task_data.keys():
+            if task_id not in self._task_data[arch].keys():
+                return False
+
+        return True
 
     def _on_demand_profiler_entry(executors, task_data, profile_requests):
         '''Entry for on-demand profiling thread.
@@ -179,6 +189,7 @@ class HerosInSituScheduler:
         while True:
             task_id = profile_requests.get()
             if task_id in profiled_task_ids:
+                print('[heros-is-profiler] profiling for task {} already done'.format(task_id))
                 continue
 
             print('[heros-is-profiler] starting profiling for task {}'.format(task_id))
