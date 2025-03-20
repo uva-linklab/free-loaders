@@ -30,9 +30,10 @@ class ExecutorHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
                     'ins_count': profile_data[0],
                     'mips': profile_data[1],
                 })
-                self.wfile.write(j.encode('utf-8'))
-                self.send_header('Content-Type', 'application/json')
                 self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(j.encode('utf-8'))
 
         else:
             self.send_response(404)
@@ -72,6 +73,7 @@ class ExecutorHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
             profiling.clear_profiling_data()
 
             self.send_response(204)
+            log.i('cleared profiling data')
 
     def log_message(self, format, *args):
         pass
