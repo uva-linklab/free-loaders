@@ -107,7 +107,10 @@ class HerosScheduler:
 
 class HerosInSituScheduler:
 
-    def __init__(self, executors, per_task_executor_bandwidth=True):
+    def __init__(self, executors, per_task_executor_bandwidth=False):
+
+        self.needs_before_state = True
+        self.needs_feedback = False
 
         # Get task data set up like the pre-filled dictionary.
         self._task_data = { arch: {} for arch in _TaskData.keys() }
@@ -115,6 +118,7 @@ class HerosInSituScheduler:
         self._profiling_thread = threading.Thread(name='heros-ondemand-profiler',
                                                   target=HerosInSituScheduler._on_demand_profiler_entry,
                                                   args=(executors, self._task_data, self._profile_requests,))
+        self._profiling_thread.start()
 
         self._heros = HerosScheduler(executors, per_task_executor_bandwidth, self._task_data)
 
@@ -138,6 +142,7 @@ class HerosInSituScheduler:
         '''
 
         import requests
+        import requests.exceptions
 
         print('[heros-is-profiler] started')
 
@@ -147,16 +152,30 @@ class HerosInSituScheduler:
                      executors[3],
                      executors[8],
                      executors[9]]
+        archs = [
+            'aarch64-nano',
+            'aarch64-rpi3',
+            'aarch64-rpi4',
+            'aarch64-tx2',
+            'x86_64-pc',
+        ]
 
         # Which tasks have been profiled.
         profiled_task_ids = []
 
         # Clear profiling data on all executors.
+        print('[heros-is-profiler] clearing profiling data')
         for e in executors:
             url = 'http://{}:8088/profile/clear'.format(e.executer_ip)
-            resp = requests.post(url)
-            print('[heros-is-profiler] {} says {}'.format(resp.status_code))
+            try:
+                resp = requests.post(url)
+                print('[heros-is-profiler] {} says {}'.format(resp.status_code))
+            except requests.exceptions.ConnectionError:
+                pass
 
+        print('[heros-is-profiler] done clearing profiling data')
+
+        profiling_waits = 0
         while True:
             task_id = profile_requests.get()
             if task_id in profiled_task_ids:
@@ -167,29 +186,45 @@ class HerosInSituScheduler:
             # Launch profiling on each executor.
             profile_url = 'http://{}:8088/profile/{}'.format(e.executer_ip, task_id)
             for e in executors:
-                resp = requests.get(profile_url)
+                try:
+                    resp = requests.get(profile_url)
+                except requests.exceptions.ConnectionError:
+                    pass
 
-            time.sleep(1000)
+            time.sleep(1)
 
             # Get data back from each executor.
             # Continue this loop until we have data for all architectures.
             profiled = []
             while True:
                 print('[heros-is-profiler] fetching profiling for task {}'.format(task_id))
-                print('[heros-is-profiler] done: {}'.format(profile_ins))
+                print('[heros-is-profiler] done: {}'.format(profiled))
 
                 for (e, arch) in zip(executors, archs):
                     if arch in profiled:
                         continue
 
-                    resp = requests.get(profile_url)
-                    if resp.status_code == 200:
-                        rjd = resp.json()
-                        _task_data[arch][task_id] = Task(rjd['ins_count'], 0) # Don't care about memory usage.
-                        profile_ins.append(arch)
+                    profile_url = 'http://{}:8088/profile/{}'.format(e.executer_ip, task_id)
+                    try:
+                        resp = requests.get(profile_url)
+                        if resp.status_code == 200:
+                            print('[heros-is-profiler] got profile for arch. {}'.format(arch))
+                            rjd = resp.json()
+                            task_data[arch][task_id] = Task(rjd['ins_count'], 0) # Don't care about memory usage.
+                            profiled.append(arch)
+                    except requests.exceptions.ConnectionError:
+                        print('[heros-is-profiler] arch. {} not done'.format(arch))
+                        # Don't try profiling forever.
+                        if profiling_waits >= 15:
+                            print('[heros-is-profiler] task {} not possible for {}'.format(task_id, arch))
+                            task_data[arch][task_id] = Task(999999999999, 999999999999)
+                            profiled.append(arch)
 
-                if len(profiled) == len(_task_data.keys()):
+                if len(profiled) == len(task_data.keys()):
                     break
+
+                time.sleep(1)
+                profiling_waits += 1
 
             # Track profiled task IDs.
             profiled_task_ids.append(task_id)
