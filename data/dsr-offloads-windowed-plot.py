@@ -66,6 +66,9 @@ def which_scheduler(log):
             scheduler_name = m['sched']
             break
 
+    if scheduler_name == 'heros-is':
+        scheduler_name = 'heros'
+
     return scheduler_name
 
 w, h = pltf.figaspect(.6)
