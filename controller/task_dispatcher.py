@@ -59,7 +59,7 @@ async def make_requests(url_tuples: list, **kwargs) -> None:
 
 
 class TaskDispatcher:
-    def __init__(self, scheduler, executers, load_tester):
+    def __init__(self, scheduler, executers, load_tester, broker_ip='localhost'):
         self.scheduler = scheduler
         self.executers = executers
         self.mqtt_client = mqtt.Client(client_id="fl-controller", clean_session=False)
@@ -71,6 +71,7 @@ class TaskDispatcher:
         self.failed_tasks = 0
         self.total_tasks = 0
         self.load_tester = load_tester
+        self.broker_ip = broker_ip
 
         # The callback for when the client receives a CONNACK response from the server.
         clientloop_thread = Thread(target=self.connect, args=(self.mqtt_client,))
@@ -127,7 +128,7 @@ class TaskDispatcher:
         mqtt_client.on_message = self.on_message
         mqtt_client.on_disconnect = self.on_disconnect
 
-        mqtt_client.connect("localhost", 1883, 60)
+        mqtt_client.connect(self.broker_ip, 1883, 60)
         mqtt_client.loop_forever()
 
     def on_publish(self, client,userdata,result):

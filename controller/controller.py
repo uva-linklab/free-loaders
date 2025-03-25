@@ -27,6 +27,8 @@ ap.add_argument('-s', '--scheduler', help='Set the scheduler.',
                 choices=['rl', 'random', 'time-greedy', 'energy-greedy', 'time-wrr', 'energy-wrr', 'load-bal',
                          'heteroedge', 'heros', 'adpt-lb-v1', 'adpt-lb-v2', 'adpt-lb-v3'],
                 dest='scheduler', default='rl')
+ap.add_argument('--mqtt-broker-ip', help='IP address of the MQTT broker',
+                dest='broker_ip', default='localhost')
 ap.add_argument('-l', '--enable-load-testing', help='Enable synthetic load testing',
                 dest='slt', action='store_true', default=False)
 ap.add_argument('--test-load-spec', help='Parse and verify synthetic load specification',
@@ -87,7 +89,7 @@ elif args.scheduler == "adpt-lb-v3":
 print(f'[controller] using {args.scheduler} scheduler')
 
 # start the task dispatcher
-task_dispatcher = TaskDispatcher(scheduler, executers, sl_tester)
+task_dispatcher = TaskDispatcher(scheduler, executers, sl_tester, broker_ip=args.broker_ip)
 
 # start the http server to receive tasks from offloaders
 controller_server = ControllerServer(task_dispatcher)

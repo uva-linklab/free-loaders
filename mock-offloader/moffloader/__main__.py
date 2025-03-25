@@ -271,6 +271,8 @@ if __name__ == '__main__':
                     metavar='ID', type=int, dest='task_id')
     ap.add_argument('-n', '--task-count', help='Total number of tasks to send.',
                     metavar='COUNT', type=int, default=1000, dest='task_count')
+    ap.add_argument('-p', '--port', help='Specify destination port',
+                    metavar='PORT', type=int, default=8001)
     ap.add_argument('-r', '--rate', help='Rate to send tasks at (per min.).',
                     metavar='RATE', type=int, default=1000, dest='rate')
     # ap.add_argument('-e', '--extended', help='Use task IDs > 29',
@@ -291,6 +293,7 @@ if __name__ == '__main__':
 
     SkipTasks = args.skip
     DeadlineMod = args.deadline_mod
+    ControllerHTTPPort = args.port
 
     random.seed(args.seed)
 

@@ -13,6 +13,8 @@ import log
 __ExecutorName = os.getenv('EXEC_NAME')
 if __ExecutorName == None:
     raise Exception('EXEC_NAME environment variable not set.')
+elif __ExecutorName == 'container':
+    __ExecutorName = 'dellxps'
 
 __NetworkInterfaceName = os.getenv('NET_IF')
 if __NetworkInterfaceName == None:
@@ -149,6 +151,11 @@ def __net_load_entry():
 
     global _NetworkLoadsBits
     global _NetworkLoadLock
+
+    if __NetworkInterfaceName == 'container':
+        log.i('no network information because running in container')
+        while True:
+            time.sleep(1)
 
     prev_netif_stats = psutil.net_io_counters(pernic=True)[__NetworkInterfaceName]
     time.sleep(1)
