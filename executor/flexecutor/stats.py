@@ -13,6 +13,16 @@ import log
 __ExecutorName = os.getenv('EXEC_NAME')
 if __ExecutorName == None:
     raise Exception('EXEC_NAME environment variable not set.')
+elif __ExecutorName == 'container':
+    __ExecutorName = 'dellxps'
+
+__NetworkInterfaceName = os.getenv('NET_IF')
+if __NetworkInterfaceName == None:
+    raise Exception('NET_IF environment variable not set.')
+
+__NetworkInterfaceCapacityMbits = int(os.getenv('NET_CAP'))
+if __NetworkInterfaceCapacityMbits == None:
+    raise Exception('NET_CAP environment variable not set.')
 
 def start_cpu_monitor_thread():
     '''Starts a CPU load-monitoring thread.
@@ -25,12 +35,12 @@ def start_cpu_monitor_thread():
 
     return t
 
-def start_gpu_monitor_thread():
-    '''Starts a GPU-monitoring thread.
+def start_net_monitor_thread():
+    '''Starts a network monitoring thread.
     '''
 
-    t = threading.Thread(name='gpu-monitor',
-                         target=__gpu_load_entry)
+    t = threading.Thread(name='net-monitor',
+                         target=__net_load_entry)
     t.daemon = True
     t.start()
 
@@ -52,25 +62,14 @@ def fetch():
     # Get consistent views of these once.
     mem = psutil.virtual_memory()
     (proc_count, thread_count) = _process_thread_count()
-    gpu_stats = _gpu_stats()
-
-    # Fill in the VRAM stats if it is shared.
-    if gpu_stats['free-vram'] == None:
-        gpu_stats['free-vram'] = mem.available
-        gpu_stats['total-vram'] = mem.total
 
     state = {
         'cpu-count': os.cpu_count(),
-        # 'cpu-load': psutil.getloadavg()[0],
         'cpu-load': round(_cpu_stload(), 2),
         'free-ram': mem.available,
         'total-ram': mem.total,
-        'has-gpu': gpu_stats['has-gpu'],
-        'gpu-load': gpu_stats['load'],
-        'free-vram': gpu_stats['free-vram'],
-        'total-vram': gpu_stats['total-vram'],
-        'process-count': proc_count,
-        'thread-count': thread_count,
+        'link-load-bits': _get_net_load(),
+        'link-capacity-mbits': __NetworkInterfaceCapacityMbits,
         'h': _selection_value(),
     }
 
@@ -120,41 +119,6 @@ __NVIDIASMIPath = '/usr/bin/nvidia-smi'
 # Path to the tegrastats binary.
 __TegraStatsPath = '/usr/bin/tegrastats'
 
-def _gpu_stats():
-    '''Fetch GPU usage information, if available.
-
-    Has special handling for NVIDIA Jetson SBCs.
-    '''
-
-    stats = {
-        'has-gpu': 0,
-        'load': 0,
-        'free-vram': 0,
-        'total-vram': 0,
-    }
-
-    # Look at the kernel build to tell if this is a Jetson SBC.
-    if os.uname().release.endswith('-tegra'):
-        stats['has-gpu'] = 1
-        stats['load'] = _get_gpu_load()
-        # Note: SoC shares RAM between CPU and GPU.
-        # Use None to tell the caller that this is the same as RAM.
-        stats['free-vram'] = None
-        stats['total-vram'] = None
-    elif os.path.exists(__NVIDIASMIPath):
-        cp = subprocess.run([__NVIDIASMIPath], capture_output=True)
-        m = re.search('(?P<free>[0-9]+)MiB */ * (?P<total>[0-9]+)MiB',
-                      cp.stdout.decode('utf-8'),
-                      re.MULTILINE)
-
-        if m != None:
-            stats['has-gpu'] = 1
-            stats['load'] = _get_gpu_load()
-            stats['total-vram'] = int(m['total']) * 1024 * 1024
-            stats['free-vram'] = stats['total-vram'] - (int(m['free']) * 1024 * 1024)
-
-    return stats
-
 def __cpu_load_entry():
     '''Entry point for CPU monitoring thread.
     '''
@@ -178,106 +142,47 @@ def __cpu_load_entry():
         __CPULoadLock.release()
         time.sleep(sample_interval)
 
-__GPULoad = 0
-__GPULoadCollectInterval = .25
-__GPULoadHistory = 60 / __GPULoadCollectInterval
-__GPUUsagesCollected = 0.0
-__GPULoadLock = multiprocessing.Lock()
+_NetworkLoadsBits = [0, 0, 0, 0, 0]
+_NetworkLoadLock = multiprocessing.Lock()
 
-def __gpu_load_entry():
-    '''Entry point for GPU monitoring thread.
+def __net_load_entry():
+    '''Network monitoring thread main.
     '''
 
-    global __GPULoad
-    global __GPULoadHistory
-    global __GPUUsagesCollected
-    global __GPULoadLock
+    global _NetworkLoadsBits
+    global _NetworkLoadLock
 
-    log.i('started')
-
-    # Jetson SBCs
-    if os.uname().release.endswith('-tegra'):
-        counter = 0
-        max_util = 0
-        # Start tegrastats as a subprocess.
-        cmd = [__TegraStatsPath, '--interval', str(100)]
-        with subprocess.Popen(cmd, stdout=subprocess.PIPE, encoding='utf-8') as tegrastats_proc:
-            # Collect load information.
-            while True:
-                output_line = tegrastats_proc.stdout.readline()
-                m = re.search('GR3D_FREQ (?P<utilization>[0-9]{1,2})%', output_line)
-                if m != None:
-                    if max_util < int(m['utilization']):
-                        max_util = int(m['utilization'])
-                    counter = counter + 100
-                    if counter / 1000.0 > __GPULoadCollectInterval:
-                        counter = 0
-                    else:
-                        continue
-
-                    current_gpu_usage = max_util / 100
-                    max_util = 0
-
-                    if __GPUUsagesCollected < __GPULoadHistory:
-                        __GPUUsagesCollected = __GPUUsagesCollected + 1
-
-                    if __GPULoadLock.acquire(block=True, timeout=2) == True:
-                        if __GPUUsagesCollected == 1:
-                            __GPULoad = current_gpu_usage
-                        else:
-                            __GPULoad = (__GPULoad * (__GPUUsagesCollected - 1) / __GPUUsagesCollected) + (current_gpu_usage * (1.0 / __GPULoadHistory))
-                        __GPULoadLock.release()
-                    else:
-                        log.e('unable to acquire GPU load lock; continuing')
-                else:
-                    log.e('unable to collect GPU load data (line: "{}")'.format(output_line))
-                    return
-
-    # NVIDIA GPU-equipped computers
-    elif os.path.exists(__NVIDIASMIPath):
-        # Use NVIDIA SMI utility to get GPU information.
-        log.i('Using nvidia-smi to get GPU information')
-        nvidia_smi_args = [__NVIDIASMIPath, '-q', '-d', 'UTILIZATION']
-
+    if __NetworkInterfaceName == 'container':
+        log.i('no network information because running in container')
         while True:
-            cp = subprocess.run(nvidia_smi_args, capture_output=True)
-            m = re.search('Gpu *: *(?P<utilization>[0-9][0-9]*) %', cp.stdout.decode('utf-8'), re.MULTILINE)
-            if m == None:
-                log.e('could not parse nvidia-smi output')
-                # print(cp.stdout.decode('utf-8'))
-            else:
-                current_load = int(m['utilization']) / 100
-                # log.d('current GPU load: {}'.format(current_load))
-                if __GPUUsagesCollected < __GPULoadHistory / 4:
-                    __GPUUsagesCollected = __GPUUsagesCollected + 1
+            time.sleep(1)
 
-                __GPULoadLock.acquire()
-                if __GPUUsagesCollected == 1:
-                    __GPULoad = current_load
-                else:
-                    __GPULoad = (__GPULoad * (__GPUUsagesCollected - 1) / __GPUUsagesCollected) + (current_load * (1.0 / __GPULoadHistory))
-                    if __GPULoad < 0.0001:
-                        __GPULoad = 0.0
-                    # log.d('updated GPU load')
+    prev_netif_stats = psutil.net_io_counters(pernic=True)[__NetworkInterfaceName]
+    time.sleep(1)
 
-                # log.d('load: {}'.format(__GPULoad))
-                __GPULoadLock.release()
-            time.sleep(__GPULoadCollectInterval * 4)
-    else:
-        log.i('GPU monitor exiting because nothing to monitor')
-        return
+    while True:
+        netif_stats = psutil.net_io_counters(pernic=True)[__NetworkInterfaceName]
+        current_load = 8 * ((netif_stats.bytes_recv - prev_netif_stats.bytes_recv) \
+                             + (netif_stats.bytes_sent - prev_netif_stats.bytes_sent))
 
-def _get_gpu_load():
-    '''Returns the value for GPU load.
+        _NetworkLoadLock.acquire(block=True)
+        _NetworkLoadsBits = _NetworkLoadsBits[1:]
+        _NetworkLoadsBits.append(current_load)
+        _NetworkLoadLock.release()
+
+        prev_netif_stats = netif_stats
+
+        time.sleep(1)
+
+def _get_net_load():
+    '''Return average network link load over the past five seconds.
     '''
 
-    global __GPULoad
-    global __GPULoadLock
-    __GPULoadLock.acquire()
-    l = __GPULoad
-    __GPULoadLock.release()
+    _NetworkLoadLock.acquire(block=True)
+    net_load_avg = sum(_NetworkLoadsBits) / len(_NetworkLoadsBits)
+    _NetworkLoadLock.release()
 
-    return l
+    return net_load_avg
 
 MIPSTable = {
     'rpi3':    1137.11,
@@ -359,12 +264,7 @@ def _selection_value():
     '''Return the selection value for the given (non-unit) load.
     '''
 
-    cpu_count = psutil.cpu_count(logical=False)
-    is_hyperthreading = (psutil.cpu_count(logical=True) != psutil.cpu_count(logical=False))
-    ht_factor = 2 if is_hyperthreading else 1
-    # print('ht_factor = {}'.format(ht_factor))
-    # print('cpu_count = {}'.format(cpu_count))
-    current_load = psutil.cpu_percent(interval=0.1) * ht_factor * cpu_count / 100
+    current_load = _cpu_stload()
     # print('current_load = {}'.format(round(current_load, 2)))
 
     max_mips = MIPSTable[__ExecutorName]
@@ -384,8 +284,9 @@ def _selection_value():
     # print('max_load = {}'.format(max_load))
 
     h = ppw_at_l * (1 - (g / (1 + pow(math.e, -(a / max_load) * (current_load - (b * max_load))))))
+    q = pow(math.e, -pow(2 * _get_net_load() / __NetworkInterfaceCapacityMbits / 1000000, 2))
 
-    return h
+    return h * q
 
 def __selection_power_value(current_load):
     ptab = PowerTables[__ExecutorName]

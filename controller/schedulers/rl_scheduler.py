@@ -11,7 +11,6 @@ import numpy as np
 from chainer import serializers
 import queue
 import threading
-from joblib import load
 
 rewards_csv_file='reward_loss.csv'
 
@@ -49,7 +48,7 @@ class RLScheduler:
 
         self.total_executor = len(executers.keys())
 
-        self.Q = Q_Network(input_size=12, hidden_size=400, output_size=self.total_executor)
+        self.Q = Q_Network(input_size=43, hidden_size=400, output_size=self.total_executor)
         if os.path.exists('Q.model'):
             serializers.load_npz('Q.model', self.Q)
             print('[rl] loaded Q.model')
@@ -64,10 +63,15 @@ class RLScheduler:
         self.epsilon = 0.9
         self.epsilon_decrease = 1e-3
         self.epsilon_min = 0.0
+        self.temperature = 0.5
         self.start_reduce_epsilon = 500
         self.train_freq = 5
         self.gamma = 0.1
         self.show_log_freq = 1
+
+        # Energy consumption extremes per-task ID.
+        # task ID -> (min energy, max_energy)
+        self.energy_usage_per_task = {}
 
         self.memory = []
         self.total_step = 0
@@ -95,23 +99,31 @@ class RLScheduler:
         return task, state, act, deadline
 
     def process_state(self, before_state, task):
-        state = [int(task.task_id), task.deadline]
-        # task_id_vec = [int(x) for x in list('{:032b}'.format(int(task.task_id)))]
+        input_vec = []
+
+        # Task ID input as a vector.
+        import hashlib
+        tid_hash = hashlib.md5(str(task.task_id).encode()).hexdigest()
+        tid_hash_int = int(tid_hash[:8], 16)
+        input_vec.extend([int(x) for x in list('{:032b}'.format(tid_hash_int))])
+
+        # Deadline
+        input_vec.extend([task.deadline])
 
         # Include only the stats named here.
         included_stats = ['cpu-load']
         for eid in before_state:
             executor_state = [v for (k, v) in before_state[eid].items() if k in included_stats]
-            state.extend(executor_state)
+            input_vec.extend(executor_state)
+        # print('[rls] input state: {}'.format(input_vec))
 
-        # print('[rls] input state: {}'.format(state))
-
+        from joblib import load
         path_to_scaler = os.path.join(os.getcwd(), 'controller', 'rl', 'std_scaler.bin')
-        scaler=load(path_to_scaler)
-        scaled_data = scaler.transform(np.array(state).reshape(1, -1))
-        # print('[rls] scaled state: {}'.format(scaled_data))
+        scaler = load(path_to_scaler)
+        scaled_input_vec = scaler.transform(np.array(input_vec).reshape(1, -1))
+        # print('[rls] scaled state: {}'.format(scaled_input_vec))
 
-        return scaled_data
+        return scaled_input_vec
 
     def generate_new_state(self, before_state, new_state_of_executor, exec_id):
 
@@ -122,17 +134,26 @@ class RLScheduler:
 
         return new_state
 
-    def generate_reward(self, deadline, exec_time, status, energy):
+    def generate_reward(self, task_id, deadline, exec_time, status, energy):
 
-        if status !=0:
+        if status != 0 or exec_time > deadline:
             return -1
 
-        if exec_time > deadline:
-            reward = self.alpha*(-np.tanh(exec_time/deadline)) + (1-self.alpha)*(-(energy/self.threshold))
-        else:
-            reward = self.alpha*(1-np.tanh(exec_time/(deadline+exec_time))) + (1-self.alpha)*(1-(energy/self.threshold))
+        # Track energy usage of the task.
+        # Just successful executions that meet the deadline.
+        # We don't want to penalize the agent for being unable to do the impossible.
+        # E.g., cannot get a high reward because it can't get a compute-intensive task to run on RPi3.
+        (energy_min, energy_max,) = self.energy_usage_per_task.get(task_id, (energy, energy,))
+        print('[rls] energy range for task_id={}: {:.2f} - {:.2f}'.format(task_id, energy_min, energy_max))
+        energy_min = min(energy, energy_min)
+        energy_max = max(energy, energy_max)
+        self.energy_usage_per_task[task_id] = (energy_min, energy_max,)
+        energy_range = energy_max - energy_min
 
-        return reward
+        if energy_range == 0:
+            return 1.0
+        else:
+            return (energy_max - energy) / energy_range
 
     # TODO: When to stop? Optional for now
     def done_with_learning(self, reward):
@@ -149,18 +170,19 @@ class RLScheduler:
         pact = np.random.randint(self.total_executor)
         explore = True
 
-        if np.random.rand() > self.epsilon:
-            self.q_lock.acquire()
+        self.q_lock.acquire()
+        pact_arr = self.Q(np.array(pobs, dtype=np.float32).reshape(1, -1))
+        self.q_lock.release()
 
-            pact_arr = self.Q(np.array(pobs, dtype=np.float32).reshape(1, -1))
-            pact = np.argmax(pact_arr.data).item()
-            pact_l = [round(x, 2) for x in pact_arr.data[0].tolist()]
-            print('[rls] p_act_arr = {}, p_act = {}'.format(pact_l, pact))
-            explore = False
+        exp_pact_arr = np.exp((pact_arr.data[0] - np.max(pact_arr.data[0])) / self.temperature)
+        probabilities = exp_pact_arr / np.sum(exp_pact_arr)
+        print('[rls] p_act_prb = {}'.format('[' + ', '.join(['{:.2f}'.format(x) for x in probabilities.data.tolist()]) + ']'))
+        pact = np.random.choice(self.total_executor, p=probabilities)
 
-            self.q_lock.release()
+        pact_l = [round(x, 2) for x in pact_arr.data[0].tolist()]
+        print('[rls] p_act_arr = {}, p_act = {} (p = {:.2f})'.format(pact_l, pact, probabilities[pact].item()))
 
-        print(f'[rls] scheduled task(offload_id={task.offload_id}, task_id={task.task_id}) on executer_id={pact}. (epsilon={self.epsilon}, total_step={self.total_step}, mode={"exploration" if explore else "exploitation"})')
+        print(f'[rls] scheduled task(offload_id={task.offload_id}, task_id={task.task_id}) on executer_id={pact}. (total_step={self.total_step})')
         self.save_state(task, before_state, pact)
 
         return pact
@@ -180,7 +202,7 @@ class RLScheduler:
         pobs = self.process_state(before_state, task)
         obs =  self.process_state(new_state, task)
 
-        reward = self.generate_reward(deadline, exec_time, status, energy)
+        reward = self.generate_reward(task_id, deadline, exec_time, status, energy)
         self.total_reward += reward
 
         done = self.done_with_learning(reward)
@@ -194,7 +216,7 @@ class RLScheduler:
 
         if self.total_step % self.train_freq == 0:
             # train or update q
-            if len(self.memory) == self.memory_size:
+            if len(self.memory) >= self.batch_size:
                 self.q_lock.acquire()
 
                 for epoch in range(self.epoch_num):
@@ -209,12 +231,27 @@ class RLScheduler:
                         b_obs = np.array(batch[:, 3].tolist(), dtype=np.float32)
                         b_done = np.array(batch[:, 4].tolist(), dtype=np.bool)
 
+                        # Calculate (rather, re-calculate) the Q-values for taking actions in the before-state.
+                        # Output is a 2D array: (step x action's Q-value)
                         q = self.Q(b_pobs)
 
                         maxq = np.max(self.Q_ast(b_obs).data, axis=1)
                         target = copy.deepcopy(q.data)
 
+                        # For each step we want to train on...
                         for j in range(target.shape[0]):
+                            # Recall, target is 2D array of (step x Q-values).
+                            # We fix j here as the first index because we only want to access that particular step.
+                            # We use b_pact[j] because we only want to update the Q-value for the action we took
+                            # (i.e., the executor we selected).
+                            #
+                            # We want to incorporate some measure of:
+                            # "how well did the action set us up for future success?"
+                            # So we find the maximum Q-value of the next state
+                            # and use that in the calculation as well.
+                            # The target puts the reward for the action taken in the before state
+                            # together with some regard to the maximum Q-value attainable from the after state
+                            # (it is scaled by gamma; lower gamma -> short-sighted agent).
                             target[j, b_pact[j]] = b_reward[j] + self.gamma * maxq[j] * (not b_done[j])
 
                         self.Q.reset()

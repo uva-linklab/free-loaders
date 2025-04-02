@@ -430,7 +430,7 @@ class HerosScheduler:
                 continue
 
             is_eligible = executor_is_eligible(eid, before_state[str(eid)], task)
-            print('{} is online? {}, is eligible? {}'.format(eid, is_online, is_eligible))
+            #print('{} is online? {}, is eligible? {}'.format(eid, is_online, is_eligible))
             if is_eligible:
                 eligible_executors.append(eid)
 
@@ -440,8 +440,10 @@ class HerosScheduler:
         best_h = -999999
         best_eid = 0
 
+        print('[heros] CPU load values:  {}'.format(
+            [(eid, '{:.2f}'.format(s['cpu-load']),) for (eid, s) in before_state.items()]))
         print('[heros] selection scores: {}'.format(
-            [(eid, '{}'.format(round(s['h'], 2)),) for (eid, s) in before_state.items()]))
+            [(eid, '{:.2f}'.format(s['h']),) for (eid, s) in before_state.items()]))
 
         # Use the executor with the greatest H.
         for (eid, state) in before_state.items():
@@ -463,6 +465,98 @@ class HerosScheduler:
     def task_finished(self, offload_id, exec_id, status, exec_time, energy, new_state_of_executor):
         pass
 
+_TaskDataSizes = [
+    92,
+    4842374,
+    3175299,
+    9200099,
+    400623,
+    817055,
+    104,
+    104,
+    92,
+    93,
+    2000093,
+    2473181,
+    2986672,
+    3559215,
+    4170365,
+    4842374,
+    5551216,
+    6322662,
+    7129181,
+    8000093,
+    1058489,
+    2116889,
+    3175299,
+    4233700,
+    5292100,
+    6350489,
+    7408889,
+    8467289,
+    9525688,
+    10584090,
+    920101,
+    1840102,
+    2760101,
+    3680112,
+    4600101,
+    5520112,
+    6440101,
+    7360112,
+    8280101,
+    9200099,
+    123557,
+    400623,
+    752563,
+    1156546,
+    1648748,
+    2149111,
+    2712002,
+    3301515,
+    3957935,
+    2330095,
+    44756,
+    152971,
+    318041,
+    540841,
+    817055,
+    1126395,
+    1459883,
+    1813871,
+    2172588,
+    2543170,
+]
+
+_ExecutorLinkSpeed = [
+    2900000,
+    7500000,
+    7500000,
+    5700000,
+    6000000,
+    8700000,
+    5600000,
+    8200000,
+    11200000,
+]
+
+_ExecutorLatency = [
+    3.65,
+
+    3.13,
+    2.58,
+
+    2.47,
+    2.47,
+    2.46,
+    2.47,
+    3.39,
+
+    15.36,
+
+    3.54,
+]
+
 def executor_is_eligible(eid, state, task):
     executor_data = _ExecutorData[eid]
 
@@ -472,27 +566,11 @@ def executor_is_eligible(eid, state, task):
     task_m_ins = __TaskData[executor_data.device][task.task_id].ins / 1000000
     est_computation_time = task_m_ins / _ExecutorData[eid].max_mips * 1000
 
-    min_profile_time = __ProfilingTotalTime[executor_data.device][task_type_id][0]
-    max_profile_time = __ProfilingTotalTime[executor_data.device][task_type_id][1]
-    # There are nine "steps" between the smallest task of the type and the largest task of the type.
-    # Add to the minimum profile time the number of steps needed to interpolate the task time.
-    est_profile_time = min_profile_time + ((max_profile_time - min_profile_time) / 9) * task_type_level
-    est_network_time = est_profile_time - est_computation_time
+    # Estimate network time.
+    est_network_time = (_TaskDataSizes[task.task_id] / _ExecutorLinkSpeed[eid]) + _ExecutorLatency[eid]
 
     # Estimated required time in milliseconds.
     est_req_time = est_computation_time + est_network_time
-    # The math should not have given us a negative number, but with linear interpolation,
-    # it is possible.
-    if est_network_time < 0:
-        print('[heros] estimated network time is negative ({}); may be incorrect interpolation?'.format(
-            round(est_network_time, 2)))
-        print('[heros] est. computation time = {}, est. profile time = {}'.format(
-            est_computation_time, est_profile_time))
-    else:
-        print('[heros] net_time + comp_time = {} + {} = {}'.format(
-            round(est_network_time, 2), round(est_computation_time, 2), est_req_time))
-
-    print('[heros] est. completion time: {} ms'.format(round(est_req_time, 2)))
     cpu_good = est_req_time <= task.deadline
 
     # Memory usage

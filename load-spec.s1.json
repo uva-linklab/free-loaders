@@ -1,0 +1,242 @@
+{
+  "total_offload_count": 2000,
+  "represented_duration_hrs": 24,
+  "tasks_per_minute": 15,
+
+  "executor_load_specs": {
+    "0": [
+      {
+        "t_start_min": 0,
+        "t_duration_mins": 1440,
+        "load_definition": {
+          "type": "constant",
+          "parameters": {
+            "load": 0.25
+          }
+        }
+      },
+
+      {
+        "t_start_min": 0,
+        "t_duration_mins": 1440,
+        "load_definition": {
+          "type": "intermittent",
+          "parameters": {
+            "load": 1.0,
+            "d_period_mins": 5,
+            "d_load_mins": 0.25
+          }
+        }
+      }
+    ],
+
+    "1": [
+      {
+        "t_start_min": 0,
+        "t_duration_mins": 1440,
+        "load_definition": {
+          "type": "constant",
+          "parameters": {
+            "load": 0.25
+          }
+        }
+      }
+    ],
+
+    "2": [
+      {
+        "t_start_min": 0,
+        "t_duration_mins": 1440,
+        "load_definition": {
+          "type": "constant",
+          "parameters": {
+            "load": 0.5
+          }
+        }
+      }
+    ],
+
+    "3": [
+      {
+        "t_start_min": 0,
+        "t_duration_mins": 1440,
+        "load_definition": {
+          "type": "constant",
+          "parameters": {
+            "load": 0.05
+          }
+        }
+      },
+
+      {
+        "t_start_min": 480,
+        "t_duration_mins": 120,
+        "load_definition": {
+          "type": "constant",
+          "parameters": {
+            "load": 0.7
+          }
+        }
+      },
+
+      {
+        "t_start_min": 1080,
+        "t_duration_mins": 120,
+        "load_definition": {
+          "type": "constant",
+          "parameters": {
+            "load": 0.7
+          }
+        }
+      }
+    ],
+
+    "4": [
+      {
+        "t_start_min": 0,
+        "t_duration_mins": 1440,
+        "load_definition": {
+          "type": "constant",
+          "parameters": {
+            "load": 0.05
+          }
+        }
+      },
+
+      {
+        "t_start_min": 900,
+        "t_duration_mins": 90,
+        "load_definition": {
+          "type": "constant",
+          "parameters": {
+            "load": 1.0
+          }
+        }
+      }
+    ],
+
+    "5": [
+      {
+        "t_start_min": 0,
+        "t_duration_mins": 1440,
+        "load_definition": {
+          "type": "constant",
+          "parameters": {
+            "load": 0.75
+          }
+        }
+      }
+    ],
+
+    "6": [
+      {
+        "t_start_min": 0,
+        "t_duration_mins": 1440,
+        "load_definition": {
+          "type": "constant",
+          "parameters": {
+            "load": 0.5
+          }
+        }
+      },
+
+      {
+        "t_start_min": 0,
+        "t_duration_mins": 1440,
+        "load_definition": {
+          "type": "intermittent",
+          "parameters": {
+            "load": 1.0,
+            "d_period_mins": 7,
+            "d_load_mins": 1
+          }
+        }
+      }
+    ],
+
+    "7": [
+      {
+        "t_start_min": 0,
+        "t_duration_mins": 1440,
+        "load_definition": {
+          "type": "constant",
+          "parameters": {
+            "load": 0.05
+          }
+        }
+      },
+
+      {
+        "t_start_min": 1020,
+        "t_duration_mins": 120,
+        "load_definition": {
+          "type": "constant",
+          "parameters": {
+            "load": 0.7
+          }
+        }
+      },
+
+      {
+        "t_start_min": 1260,
+        "t_duration_mins": 120,
+        "load_definition": {
+          "type": "constant",
+          "parameters": {
+            "load": 0.7
+          }
+        }
+      }
+    ],
+
+    "8": [
+      {
+        "t_start_min": 0,
+        "t_duration_mins": 1440,
+        "load_definition": {
+          "type": "constant",
+          "parameters": {
+            "load": 0.25
+          }
+        }
+      },
+
+      {
+        "t_start_min": 0,
+        "t_duration_mins": 1440,
+        "load_definition": {
+          "type": "intermittent",
+          "parameters": {
+            "load": 1.0,
+            "d_period_mins": 16,
+            "d_load_mins": 0.5
+          }
+        }
+      }
+    ],
+
+    "9": [
+      {
+        "t_start_min": 0,
+        "t_duration_mins": 1440,
+        "load_definition": {
+          "type": "constant",
+          "parameters": {
+            "load": 0.05
+          }
+        }
+      },
+
+      {
+        "t_start_min": 960,
+        "t_duration_mins": 120,
+        "load_definition": {
+          "type": "constant",
+          "parameters": {
+            "load": 1.0
+          }
+        }
+      }
+    ]
+  }
+}

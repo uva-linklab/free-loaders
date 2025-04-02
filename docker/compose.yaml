@@ -1,0 +1,36 @@
+services:
+  controller:
+    image: free-loaders:latest
+    ports:
+      - "18001:8001/tcp"
+    networks:
+      default:
+        ipv4_address: 10.1.1.2
+    depends_on:
+      - mqtt
+      - executor
+
+  executor:
+    image: flexecutor:latest
+    ports:
+      - "18088:8088/tcp"
+    networks:
+      default:
+        ipv4_address: 10.1.1.5
+    depends_on:
+      - mqtt
+
+  mqtt:
+    image: eclipse-mosquitto:2.0.21
+    networks:
+      default:
+        ipv4_address: 10.1.1.3
+    volumes:
+      - ./mosquitto-config:/mosquitto/config
+
+networks:
+  default:
+    ipam:
+      driver: default
+      config:
+        - subnet: "10.1.1.0/24"

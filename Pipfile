@@ -4,13 +4,25 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-aiohttp = "*"
 paho-mqtt = "~=1.6"
 psutil = "~=5.9"
-jetson-stats = { version = "~=3.1", markers = "'tegra' in platform_release" }
-numpy = "*"
+numpy = "==1.23.4"
 requests = "~=2.28"
-torch = "*"
+aiohttp = "==3.8.3"
+aiosignal = "==1.2.0"
+urllib3 = "==1.26.12"
+yarl = "==1.8.1"
+multidict = "==6.0.2"
+filelock = "==3.8.0"
+pandas = "==1.5.1"
+chainer = "==7.8.1"
+protobuf = "==4.21.8"
+pillow = "==10.1.0"
+torchvision = "==0.13.0"
+torch = "==1.12.0"
+pytorch-lightning = "==2.1.1"
+torchmetrics = "==1.2.0"
+lightning-utilities = "==0.9.0"
 
 [dev-packages]
 
