@@ -1,0 +1,100 @@
+#!/bin/env python
+
+import argparse
+import csv
+import os
+import os.path
+
+import librosa
+import numpy as np
+
+_SampleRate = 11025
+_SampleBufferLength = 16384
+
+def main(args):
+
+    all_features = []
+    for file_name in _list_wav_files(args.path):
+        # print('Processing {}...'.format(file_name))
+
+        path = os.path.join(args.path, file_name)
+
+        samples, sample_rate = librosa.load(path, sr=_SampleRate, mono=True)
+        if len(samples) < _SampleBufferLength:
+            samples = np.pad(samples, (0, _SampleBufferLength - len(samples)), 'constant')
+        else:
+            samples = samples[:_SampleBufferLength]
+
+        rmse = librosa.feature.rms(y=samples)
+        rmse_mean = np.mean(rmse)
+        rmse_stdev = np.std(rmse)
+        # print('  - RMSE mean = {:.4f}'.format(rmse_mean))
+        # print('  - RMSE stdev = {:.4f}'.format(rmse_stdev))
+
+        spectral_centroid = librosa.feature.spectral_centroid(
+            y=samples,
+            sr=sample_rate,
+            n_fft=_SampleBufferLength,
+            hop_length=_SampleBufferLength)
+        spectral_centroid_mean = np.mean(spectral_centroid)
+        spectral_centroid_stdev = np.std(spectral_centroid)
+
+        spectral_bandwidth = librosa.feature.spectral_bandwidth(
+            y=samples,
+            sr=sample_rate,
+            n_fft=_SampleBufferLength,
+            hop_length=_SampleBufferLength)
+        spectral_bandwidth_mean = np.mean(spectral_bandwidth)
+        spectral_bandwidth_stdev = np.std(spectral_bandwidth)
+
+        # print('  - centroid mean = {:.4f}'.format(spectral_centroid_mean))
+        # print('  - bandwidth mean = {:.4f}'.format(spectral_bandwidth_mean))
+        # print('  - centroid stdev = {:.4f}'.format(spectral_centroid_stdev))
+        # print('  - bandwidth stdev = {:.4f}'.format(spectral_bandwidth_stdev))
+
+        # MFCCs
+        mfccs = librosa.feature.mfcc(
+            y=samples,
+            sr=sample_rate,
+            n_mfcc=13,
+            n_fft=_SampleBufferLength,
+            hop_length=_SampleBufferLength)
+        mfccs_mean = np.mean(mfccs, axis=1)
+        mfccs_stdev = np.std(mfccs, axis=1)
+
+        # print('  - MFCCs mean: {}'.format(mfccs_mean))
+        # print('  - MFCCs stdev: {}'.format(mfccs_stdev))
+
+        features = np.concatenate(
+            (np.array([rmse_mean,
+                       rmse_stdev,
+                       spectral_centroid_mean,
+                       spectral_centroid_stdev,
+                       spectral_bandwidth_mean,
+                       spectral_bandwidth_stdev]),
+             mfccs_mean,
+             mfccs_stdev),)
+        all_features.append((args.path, file_name, features.tolist(),))
+
+    with open(args.output, 'w', newline='') as fh:
+        csvw = csv.writer(fh)
+        rows = ['path', 'file_name', 'rmse_mean', 'rmse_stdev', 'spectral_centroid_mean', 'spectral_centroid_stdev', 'spectral_bandwidth_mean', 'spectral_bandwidth_stdev']
+        rows.extend(['mfcc_mean_{}'.format(x) for x in range(0, len(mfccs_mean))])
+        csvw.writerow(rows)
+        for (file_path, file_name, features,) in all_features:
+            csvw.writerow([path, file_name] + features)
+
+def _list_wav_files(dir_path):
+    for path in os.listdir(dir_path):
+        if path.endswith('.wav'):
+            yield path
+
+if __name__ == '__main__':
+
+    ap = argparse.ArgumentParser(description='Extract features from audio samples.')
+
+    ap.add_argument('path', help='Path to audio sample WAV files')
+    ap.add_argument('output', help='Path to output CSV')
+    args = ap.parse_args()
+
+    main(args)
