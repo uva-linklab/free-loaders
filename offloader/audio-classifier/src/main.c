@@ -20,6 +20,8 @@
 #include <libtock/services/alarm.h>
 #include <libtock/tock.h>
 
+#include "acls.h"
+#include "acls-config.h"
 #include "svm.h"
 
 // helper utility demonstrating network config setup
@@ -49,6 +51,8 @@ void button_press_cb(returncode_t rtc,
 static void print_ip_addr(otInstance* instance);
 
 otInstance* _g_instance = NULL;
+
+uint16_t AUDIO_SAMPLES[ACLS_SAMPLE_LEN];
 
 int main(__attribute__((unused)) int argc, __attribute__((unused)) char* argv[]) {
 	/* float scaler[] = { */
@@ -156,6 +160,7 @@ int main(__attribute__((unused)) int argc, __attribute__((unused)) char* argv[])
 	////////////////////////////////////////////////////
 
 	// OpenThread main loop.
+	bool done_once = false;
 	for (;;) {
 		// Execute any pending OpenThread related work.
 		otTaskletsProcess(instance);
@@ -170,6 +175,8 @@ int main(__attribute__((unused)) int argc, __attribute__((unused)) char* argv[])
 			!openthread_platform_pending_work()) {
 			yield();
 			/* send_tpm_packet(instance); */
+			if (_g_ready && !done_once)
+				capture();
 		}
 
 	}
