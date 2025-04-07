@@ -5,20 +5,21 @@
 
 #include "acls-config.h"
 
-#define FFT_OUT_LEN (ACLS_SAMPLE_LEN)
-
-extern float __fft_out_real[ACLS_SAMPLE_LEN];
-extern float __fft_out_imag[ACLS_SAMPLE_LEN];
-
-inline const float* fft_result_real(void) { return __fft_out_real; }
-inline const float* fft_result_imag(void) { return __fft_out_imag; }
-
 void fft(
 	const uint16_t* const samples,
-	const uint16_t samples_len);
+	const uint32_t samples_len,
+	float* const out_real,
+	float* const out_imag);
 
 /** Compute the power spectrum of the FFT.
+ *
+ * Places the result in out_psd.
+ * It is possible to alias real to out_psd.
  */
-void psd(void);
+void psd(
+	const float* const real,
+	const float* const imag,
+	float* const out_psd,
+	const uint32_t arr_len);
 
 #endif

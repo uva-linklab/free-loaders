@@ -33,7 +33,8 @@ def main(args):
                 continue
 
             file_name = row[1]
-            features = row[2:-18]
+            feature_count = 11
+            features = row[2:2+feature_count]
             # print(features)
 
             training_labels.append(labels[file_name])

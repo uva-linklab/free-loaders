@@ -5,15 +5,14 @@
 
 #include "acls-config.h"
 
-extern uint16_t ACLS_SAMPLES[ACLS_SAMPLE_LEN];
+/** Perform setup checks and initialization.
+ */
+void check_initialize(void);
 
 /** Capture audio.
  */
-void capture(void);
-
-#define ACLS_RMSE_FRAME_SAMPLE_LEN ((uint32_t) 2048)
-#define ACLS_RMSE_TOTAL_FRAMES ((uint32_t) ((ACLS_SAMPLE_LEN / ACLS_RMSE_FRAME_SAMPLE_LEN)) \
-								+ (ACLS_SAMPLE_LEN % ACLS_RMSE_FRAME_SAMPLE_LEN == 0 ? 0 : 1))
+void capture(
+	uint16_t* const sample_buffer);
 
 /** Calculate RMSE statistics for audio samples.
  *

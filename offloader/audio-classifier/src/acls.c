@@ -37,18 +37,42 @@ void __dct(
 	const uint16_t input_size,
 	const uint16_t output_size);
 
-uint16_t ACLS_SAMPLES[ACLS_SAMPLE_LEN];
+float __acls_buffer_a[ACLS_SAMPLE_LEN];
+float __acls_buffer_b[ACLS_SAMPLE_LEN];
 
-void capture(void)
+void check_initialize(void)
+{
+	// Write to the audio sample buffer to make sure the entire buffer is writeable.
+	for (uint32_t i = 0; i < ACLS_SAMPLE_LEN; i++)
+	{
+		__acls_buffer_a[i] = 0xACFE;
+		__acls_buffer_b[i] = 0xACFE;
+	}
+
+	return;
+}
+
+void capture(
+	uint16_t* const sample_buffer)
 {
 	float rmse_stats[2];
 	float cent_stats[2];
 	float band_stats[2];
 
-	libtocksync_adc_sample_buffer(0, ACLS_SAMPLE_FREQ, ACLS_SAMPLES, ACLS_SAMPLE_LEN);
+	libtocksync_adc_sample_buffer(
+		0,
+		ACLS_SAMPLE_FREQ,
+		sample_buffer,
+		/* ACLS_SAMPLE_LEN */
+		128
+		);
 
 	return;
 }
+
+#define ACLS_RMSE_FRAME_SAMPLE_LEN ((uint32_t) 2048)
+#define ACLS_RMSE_TOTAL_FRAMES ((uint32_t) ((ACLS_SAMPLE_LEN / ACLS_RMSE_FRAME_SAMPLE_LEN)) \
+								+ (ACLS_SAMPLE_LEN % ACLS_RMSE_FRAME_SAMPLE_LEN == 0 ? 0 : 1))
 
 void rmse_statistics(
 	const uint16_t* const samples,
@@ -79,11 +103,11 @@ void centroid_statistics(
 	const uint16_t* const samples,
 	float* statistics_out)
 {
-    fft(samples, ACLS_SAMPLE_LEN);
-	const float* const fdm = fft_result_real();
+    fft(samples, ACLS_SAMPLE_LEN, __acls_buffer_a, __acls_buffer_b);
+	const float* const fdm = __acls_buffer_a;
 
 	float total_energy = 0.0;
-	for (uint16_t i = 0; i < FFT_OUT_LEN / 2; i++)
+	for (uint16_t i = 0; i < ACLS_SAMPLE_LEN / 2; i++)
 	{
 		total_energy += fdm[i];
 	}
@@ -96,7 +120,7 @@ void centroid_statistics(
 	}
 	statistics_out[0] = fdm[centroid_idx];
 
-	statistics_out[1] = __stddev(fdm, FFT_OUT_LEN, total_energy / FFT_OUT_LEN);
+	statistics_out[1] = __stddev(fdm, ACLS_SAMPLE_LEN, total_energy / ACLS_SAMPLE_LEN);
 
 	return;
 }
@@ -151,8 +175,8 @@ float __spectral_bandwidth_frame(
 	//
 	// For the case of a single frame of audio:
 	// (sum_k: S[k] * (freq[k] - centroid)^p)^(1/p)
-    fft(samples, ACLS_SB_FRAME_SAMPLE_LEN);
-	const float* const fdm = fft_result_real();
+    fft(samples, ACLS_SB_FRAME_SAMPLE_LEN, __acls_buffer_a, __acls_buffer_b);
+	const float* const fdm = __acls_buffer_a;
 	// e = sum_k S[k] * (freq[k] - centroid)^2
 	float e = 0.0;
 	for (uint32_t i = 0; i < ACLS_SB_FRAME_SAMPLE_LEN / 2; i++)
@@ -178,13 +202,13 @@ float* mfccs(
 {
 	// This implementation treats the entire input as a frame.
 
-    fft(samples, ACLS_SAMPLE_LEN);
-	psd();
-	const float* const psd = fft_result_real();
+    fft(samples, ACLS_SAMPLE_LEN, __acls_buffer_a, __acls_buffer_b);
+	psd(__acls_buffer_a, __acls_buffer_b, __acls_buffer_a, ACLS_SAMPLE_LEN);
+	const float* const psd = __acls_buffer_a;
 
 	__apply_filterbank(
 		psd,
-		FFT_OUT_LEN,
+		ACLS_SAMPLE_LEN,
 		ACLS_SAMPLE_FREQ,
 		__acls_mfcc_filterbank_output,
 		20);

@@ -2,9 +2,6 @@
 
 #include <math.h>
 
-float __fft_out_real[ACLS_SAMPLE_LEN];
-float __fft_out_imag[ACLS_SAMPLE_LEN];
-
 // Function to perform bit reversal of an index
 static uint16_t __bit_reverse(uint16_t x, uint16_t n) {
   uint16_t result = 0;
@@ -19,10 +16,12 @@ static uint16_t __bit_reverse(uint16_t x, uint16_t n) {
 // Function to compute the FFT
 void fft(
 	const uint16_t* const samples,
-	const uint16_t samples_len)
+	const uint32_t samples_len,
+	float* const out_real,
+	float* const out_imag)
 {
-	float* const real = __fft_out_real;
-	float* const imag = __fft_out_imag;
+	float* const real = out_real;
+	float* const imag = out_imag;
 
 	// Convert 16-bit unsigned integer samples to floating-point and
 	// scale to the range -1.0 to 1.0
@@ -71,11 +70,15 @@ void fft(
 	}
 }
 
-void psd(void)
+void psd(
+	const float* const real,
+	const float* const imag,
+	float* const out_psd,
+	const uint32_t arr_len)
 {
-	for (uint32_t i = 0; i < FFT_OUT_LEN; i++)
+	for (uint32_t i = 0; i < arr_len; i++)
 	{
-		__fft_out_real[i] = powf(__fft_out_real[i], 2) + powf(__fft_out_real[i], 2);
+		out_psd[i] = powf(real[i], 2) + powf(imag[i], 2);
 	}
 
 	return;

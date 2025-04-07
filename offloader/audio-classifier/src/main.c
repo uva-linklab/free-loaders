@@ -1,8 +1,14 @@
+#include <assert.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 
-#include <assert.h>
+
+#include <libtock-sync/services/alarm.h>
+#include <libtock/interface/button.h>
+#include <libtock/kernel/ipc.h>
+#include <libtock/services/alarm.h>
+#include <libtock/tock.h>
 
 #include <libopenthread/platform/openthread-system.h>
 #include <libopenthread/platform/plat.h>
@@ -13,12 +19,6 @@
 #include <openthread/tasklet.h>
 #include <openthread/thread.h>
 #include <openthread/udp.h>
-
-#include <libtock-sync/services/alarm.h>
-#include <libtock/interface/button.h>
-#include <libtock/kernel/ipc.h>
-#include <libtock/services/alarm.h>
-#include <libtock/tock.h>
 
 #include "acls.h"
 #include "acls-config.h"
@@ -52,9 +52,24 @@ static void print_ip_addr(otInstance* instance);
 
 otInstance* _g_instance = NULL;
 
-uint16_t AUDIO_SAMPLES[ACLS_SAMPLE_LEN];
+// OPTIONS:
+// 1. Use prepared audio. ==============
+#include "sample-data.h"
+uint16_t* _g_audio_samples = MDL_SampleAudio;
+// 2. Capture audio with the ADC. ======
+/* uint16_t _g_audio_samples[ACLS_SAMPLE_LEN]; */
+// =====================================
 
 int main(__attribute__((unused)) int argc, __attribute__((unused)) char* argv[]) {
+	// Write to the audio sample buffer to make sure the entire buffer is writeable.
+	for (uint32_t i = 0; i < ACLS_SAMPLE_LEN; i++)
+	{
+		_g_audio_samples[i] = 0xACFE;
+	}
+
+	// Let ACLS check its buffers.
+	check_initialize();
+
 	/* float scaler[] = { */
 	/* 	+0000.0643, +0000.0577, */
 	/* 	+0000.0184, +0000.0233, */
@@ -176,7 +191,10 @@ int main(__attribute__((unused)) int argc, __attribute__((unused)) char* argv[])
 			yield();
 			/* send_tpm_packet(instance); */
 			if (_g_ready && !done_once)
-				capture();
+			{
+				done_once = true;
+				capture(_g_audio_samples);
+			}
 		}
 
 	}
