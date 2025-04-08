@@ -55,9 +55,7 @@ void check_initialize(void)
 void capture(
 	uint16_t* const sample_buffer)
 {
-	float rmse_stats[2];
-	float cent_stats[2];
-	float band_stats[2];
+	float features[11];
 
 	libtocksync_adc_sample_buffer(
 		0,
@@ -87,7 +85,8 @@ void rmse_statistics(
 			frame_offset + ACLS_RMSE_FRAME_SAMPLE_LEN : ACLS_SAMPLE_LEN;
 		for (uint16_t sample_no = frame_offset; sample_no < frame_boundary; sample_no++)
 		{
-			frame_rmse[frame_no] += samples[sample_no] * samples[sample_no];
+			const float fsmp = (((float) samples[sample_no]) / 32767.0) - 1.0;
+			frame_rmse[frame_no] += fsmp * fsmp;
 		}
 
 		frame_rmse[frame_no] = sqrtf(frame_rmse[frame_no] / ACLS_RMSE_FRAME_SAMPLE_LEN);
