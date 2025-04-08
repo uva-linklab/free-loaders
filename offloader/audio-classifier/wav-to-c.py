@@ -52,30 +52,22 @@ def convert_wav_to_c(wav_filename, c_filename, header_filename, max_samples=None
             else:
                 raise ValueError("Only mono and stereo WAV files are supported.  The input file has {} channels.".format(num_channels))
 
-            # Scale the samples to the range of 0 to 65535 (16-bit unsigned integer)
-            max_sample_val = max(samples)
-            min_sample_val = min(samples)
-            if max_sample_val == min_sample_val:
-                scale = 1.0
-                offset = 32768
-            else:
-                scale = 65535.0 / (max_sample_val - min_sample_val)
-                offset = -min_sample_val * scale
+            # Convert signed samples to unsigned samples (0 to 65535)
+            unsigned_samples = [(sample + 32768) & 0xFFFF for sample in samples]
 
-            scaled_samples = [int(sample * scale + offset) for sample in samples]
             # Truncate samples if max_samples is provided
             if max_samples is not None:
-                scaled_samples = scaled_samples[:max_samples]
+                unsigned_samples = unsigned_samples[:max_samples]
 
             # Generate C source code
             array_name = 'MDL_SampleAudio'
             with open(c_filename, 'w') as c_file:
                 c_file.write("const unsigned short {}[] = {{\n    ".format(array_name))
-                for i, sample in enumerate(scaled_samples):
+                for i, sample in enumerate(unsigned_samples):
                     c_file.write(f"{sample}")
-                    if i < len(scaled_samples) - 1:
+                    if i < len(unsigned_samples) - 1:
                         c_file.write(", ")
-                    if (i + 1) % 16 == 0 and i + 1 != len(scaled_samples):  # Add newlines for readability
+                    if (i + 1) % 16 == 0 and i + 1 != len(unsigned_samples):  # Add newlines for readability
                         c_file.write("\n    ")
                 c_file.write("\n};\n")
 
@@ -84,7 +76,7 @@ def convert_wav_to_c(wav_filename, c_filename, header_filename, max_samples=None
                 header_file.write("#ifndef MDL_WAVTOC_{}_H\n".format(array_name.upper()))
                 header_file.write("#define MDL_WAVTOC_{}_H\n\n".format(array_name.upper()))
 
-                header_file.write("#define MDL_WAVTOC_SAMPLE_AUDIO_LEN ((uint32_t) {})\n\n".format(len(scaled_samples)))
+                header_file.write("#define MDL_WAVTOC_SAMPLE_AUDIO_LEN ((uint32_t) {})\n\n".format(len(unsigned_samples)))
 
                 header_file.write("extern const uint16_t {}[];\n\n".format(array_name))
 
