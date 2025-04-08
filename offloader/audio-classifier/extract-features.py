@@ -9,7 +9,7 @@ import librosa
 import numpy as np
 
 _SampleRate = 11025
-_SampleBufferLength = 16384
+_SampleBufferLength = 4096
 
 def main(args):
 
