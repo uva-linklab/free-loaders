@@ -59,7 +59,7 @@ def main(args):
     svm.fit(scaler.transform(training_features), training_labels)
 
     # Try a prediction.
-    # test_features = [0.03490791842341423,0.0172351635992527,2388.5721182472616,9.927971078438304,1593.426823329794,0.1586858984163655,46.78857421875,24.624492645263672,-1.86753511428833,1.6860706806182861,8.638815879821777,8.193831443786621,-3.1101269721984863,8.174623489379883,-5.257374286651611,10.82955551147461,3.18623948097229,9.704151153564453,-10.545510292053223,52.6614990234375,1.1996994018554688,1.398658275604248,1.354843258857727,0.04547595977783203,0.6796162128448486,0.24237525463104248,1.5520834922790527,0.9913158416748047,3.759599208831787,0.41292500495910645,0.26824235916137695,0.16008472442626953]
+    test_features = []
 
     # print(svm.predict(scaler.transform([test_features])))
 
@@ -70,7 +70,7 @@ def main(args):
 
 if __name__ == '__main__':
 
-    ap = argparse.ArgumentParser(description='Build SVM model from features')
+    ap = argparse.ArgumentParser(description='Build embedded SVM model from features')
     ap.add_argument('labels', help='path to CSV containing labels')
     ap.add_argument('input', help='path to input CSV containing data')
 

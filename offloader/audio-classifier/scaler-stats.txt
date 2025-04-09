@@ -1,0 +1,12 @@
+feature count: 11
+Feature 0: 0.0663, 0.0681
+Feature 1: 0.0161, 0.0249
+Feature 2: 1.42e+03, 5.27e+02
+Feature 3: 81.4, 1.12e+02
+Feature 4: 1.22e+03, 2.38e+02
+Feature 5: 48.1, 64.7
+Feature 6: -1.32e+02, 1.29e+02
+Feature 7: 75.9, 41.7
+Feature 8: -13.5, 30.4
+Feature 9: 9.81, 17.8
+Feature 10: -2.33, 16.2
