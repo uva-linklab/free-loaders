@@ -14,12 +14,18 @@ _SampleBufferLength = 4096
 def main(args):
 
     all_features = []
-    for file_name in _list_wav_files(args.path):
-        # print('Processing {}...'.format(file_name))
+    for file_name in _list_audio_files(args.path):
+        print('Processing {}...'.format(file_name))
 
         path = os.path.join(args.path, file_name)
 
-        samples, sample_rate = librosa.load(path, sr=_SampleRate, mono=True)
+        samples = None
+        sample_rate = None
+        try:
+            samples, sample_rate = librosa.load(path, sr=_SampleRate, mono=True)
+        except ValueError:
+            continue
+
         if len(samples) < _SampleBufferLength:
             samples = np.pad(samples, (0, _SampleBufferLength - len(samples)), 'constant')
         else:
@@ -30,6 +36,8 @@ def main(args):
         rmse_stdev = np.std(rmse)
         # print('  - RMSE mean = {:.4f}'.format(rmse_mean))
         # print('  - RMSE stdev = {:.4f}'.format(rmse_stdev))
+        # print(np.max(samples))
+        # return
 
         spectral_centroid = librosa.feature.spectral_centroid(
             y=samples,
@@ -84,16 +92,16 @@ def main(args):
         for (file_path, file_name, features,) in all_features:
             csvw.writerow([path, file_name] + features)
 
-def _list_wav_files(dir_path):
+def _list_audio_files(dir_path):
     for path in os.listdir(dir_path):
-        if path.endswith('.wav'):
+        if path.endswith('.wav') or path.endswith('.flac'):
             yield path
 
 if __name__ == '__main__':
 
     ap = argparse.ArgumentParser(description='Extract features from audio samples.')
 
-    ap.add_argument('path', help='Path to audio sample WAV files')
+    ap.add_argument('path', help='Path to audio sample audio files')
     ap.add_argument('output', help='Path to output CSV')
     args = ap.parse_args()
 
