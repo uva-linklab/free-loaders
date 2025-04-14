@@ -2,6 +2,8 @@
 
 import argparse
 import csv
+import os
+import os.path
 import pickle
 
 import numpy as np
@@ -63,6 +65,12 @@ def main(args):
 
     with open(args.output_path, 'wb') as fh:
         pickle.dump(svm, fh)
+
+    # Output the scaler.
+    (output_path_no_ext, _ext) = os.path.splitext(args.output_path)
+    scaler_output_path = output_path_no_ext + '.stdscaler'
+    with open(scaler_output_path, 'wb') as fh:
+        pickle.dump(scaler, fh)
 
 if __name__ == '__main__':
 
