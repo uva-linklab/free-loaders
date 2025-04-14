@@ -12,9 +12,6 @@ import sklearn.preprocessing
 import sklearn.svm
 import tqdm
 
-_SampleRate = 11025
-_SampleBufferLength = 4096
-
 def main(args):
 
     # Load the model and scaler.
@@ -53,14 +50,14 @@ def main(args):
         samples = None
         sample_rate = None
         try:
-            samples, sample_rate = librosa.load(path, sr=_SampleRate, mono=True)
+            samples, sample_rate = librosa.load(path, sr=args.sample_rate, mono=True)
         except ValueError:
             continue
 
-        if len(samples) < _SampleBufferLength:
-            samples = np.pad(samples, (0, _SampleBufferLength - len(samples)), 'constant')
+        if len(samples) < args.sample_buffer_len:
+            samples = np.pad(samples, (0, args.sample_buffer_len - len(samples)), 'constant')
         else:
-            samples = samples[:_SampleBufferLength]
+            samples = samples[:args.sample_buffer_len]
 
         rmse = librosa.feature.rms(y=samples)
         rmse_mean = np.mean(rmse)
@@ -69,16 +66,16 @@ def main(args):
         spectral_centroid = librosa.feature.spectral_centroid(
             y=samples,
             sr=sample_rate,
-            n_fft=_SampleBufferLength,
-            hop_length=_SampleBufferLength)
+            n_fft=args.sample_buffer_len,
+            hop_length=args.sample_buffer_len)
         spectral_centroid_mean = np.mean(spectral_centroid)
         spectral_centroid_stdev = np.std(spectral_centroid)
 
         spectral_bandwidth = librosa.feature.spectral_bandwidth(
             y=samples,
             sr=sample_rate,
-            n_fft=_SampleBufferLength,
-            hop_length=_SampleBufferLength)
+            n_fft=args.sample_buffer_len,
+            hop_length=args.sample_buffer_len)
         spectral_bandwidth_mean = np.mean(spectral_bandwidth)
         spectral_bandwidth_stdev = np.std(spectral_bandwidth)
 
@@ -87,8 +84,8 @@ def main(args):
             y=samples,
             sr=sample_rate,
             n_mfcc=13,
-            n_fft=_SampleBufferLength,
-            hop_length=_SampleBufferLength)
+            n_fft=args.sample_buffer_len,
+            hop_length=args.sample_buffer_len)
         mfccs_mean = np.mean(mfccs, axis=1)
         mfccs_stdev = np.std(mfccs, axis=1)
 
@@ -135,6 +132,10 @@ if __name__ == '__main__':
     ap.add_argument('labels', help='Path to CSV containing labels.',
                     type=str)
 
+    ap.add_argument('-r', '--sample-rate', help='Specify sample rate.',
+                    dest='sample_rate', type=int, default=11025)
+    ap.add_argument('-b', '--sample-buffer-length', help='Specify sample buffer length.',
+                    dest='sample_buffer_len', type=int, default=4096)
     ap.add_argument('-e', '--embedded-model', help='Indicate the model is the embedded one.',
                     dest='embedded', action='store_true', default=False)
     ap.add_argument('-l', '--limit', help='Limit to N predictions.', metavar='N',

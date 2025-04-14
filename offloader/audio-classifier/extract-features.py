@@ -7,29 +7,30 @@ import os.path
 
 import librosa
 import numpy as np
-
-_SampleRate = 11025
-_SampleBufferLength = 4096
+import tqdm
 
 def main(args):
 
     all_features = []
-    for file_name in _list_audio_files(args.path):
-        print('Processing {}...'.format(file_name))
+    it = tqdm.tqdm(
+        _list_audio_files(args.path),
+        total=len(list(_list_audio_files(args.path))),
+        unit=' files')
+    for file_name in it:
 
         path = os.path.join(args.path, file_name)
 
         samples = None
         sample_rate = None
         try:
-            samples, sample_rate = librosa.load(path, sr=_SampleRate, mono=True)
+            samples, sample_rate = librosa.load(path, sr=args.sample_rate, mono=True)
         except ValueError:
             continue
 
-        if len(samples) < _SampleBufferLength:
-            samples = np.pad(samples, (0, _SampleBufferLength - len(samples)), 'constant')
+        if len(samples) < args.sample_buffer_len:
+            samples = np.pad(samples, (0, args.sample_buffer_len - len(samples)), 'constant')
         else:
-            samples = samples[:_SampleBufferLength]
+            samples = samples[:args.sample_buffer_len]
 
         rmse = librosa.feature.rms(y=samples)
         rmse_mean = np.mean(rmse)
@@ -42,16 +43,16 @@ def main(args):
         spectral_centroid = librosa.feature.spectral_centroid(
             y=samples,
             sr=sample_rate,
-            n_fft=_SampleBufferLength,
-            hop_length=_SampleBufferLength)
+            n_fft=args.sample_buffer_len,
+            hop_length=args.sample_buffer_len)
         spectral_centroid_mean = np.mean(spectral_centroid)
         spectral_centroid_stdev = np.std(spectral_centroid)
 
         spectral_bandwidth = librosa.feature.spectral_bandwidth(
             y=samples,
             sr=sample_rate,
-            n_fft=_SampleBufferLength,
-            hop_length=_SampleBufferLength)
+            n_fft=args.sample_buffer_len,
+            hop_length=args.sample_buffer_len)
         spectral_bandwidth_mean = np.mean(spectral_bandwidth)
         spectral_bandwidth_stdev = np.std(spectral_bandwidth)
 
@@ -65,8 +66,8 @@ def main(args):
             y=samples,
             sr=sample_rate,
             n_mfcc=13,
-            n_fft=_SampleBufferLength,
-            hop_length=_SampleBufferLength)
+            n_fft=args.sample_buffer_len,
+            hop_length=args.sample_buffer_len)
         mfccs_mean = np.mean(mfccs, axis=1)
         mfccs_stdev = np.std(mfccs, axis=1)
 
@@ -103,6 +104,12 @@ if __name__ == '__main__':
 
     ap.add_argument('path', help='Path to audio sample audio files')
     ap.add_argument('output', help='Path to output CSV')
+
+    ap.add_argument('-r', '--sample-rate', help='Specify sample rate.',
+                    dest='sample_rate', type=int, default=11025)
+    ap.add_argument('-b', '--sample-buffer-length', help='Specify sample buffer length.',
+                    dest='sample_buffer_len', type=int, default=4096)
+
     args = ap.parse_args()
 
     main(args)
