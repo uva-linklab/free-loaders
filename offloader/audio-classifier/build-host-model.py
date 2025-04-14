@@ -57,7 +57,7 @@ def main(args):
     # print(scaler.transform(training_features))
 
     # Build the SVM.
-    svm = sklearn.svm.SVC(gamma=0.1)
+    svm = sklearn.svm.SVC(C=1000.0, gamma=0.1)
     svm.fit(scaler.transform(training_features), training_labels)
 
     # Try a prediction.
@@ -67,8 +67,7 @@ def main(args):
         pickle.dump(svm, fh)
 
     # Output the scaler.
-    (output_path_no_ext, _ext) = os.path.splitext(args.output_path)
-    scaler_output_path = output_path_no_ext + '.stdscaler' + '.pkl'
+    scaler_output_path = os.path.join(os.path.split(args.output_path)[0], 'aec.stdscaler.pkl')
     with open(scaler_output_path, 'wb') as fh:
         pickle.dump(scaler, fh)
 
@@ -76,7 +75,7 @@ if __name__ == '__main__':
 
     ap = argparse.ArgumentParser(description='Build host SVM model from features.')
     ap.add_argument('-o', '--output', help='Path to output model.',
-                    dest='output_path', type=str, default='/tmp/aec-svm.pkl')
+                    dest='output_path', type=str, default='./aec.svc.pkl')
     ap.add_argument('labels', help='Path to CSV containing labels.')
     ap.add_argument('input', help='Path to input CSV containing data.')
 

@@ -37,10 +37,14 @@ def main(args):
 
     # Make a prediction for each audio file.
     accuracy = [0, 0]
+    audio_file_names = list(_list_audio_files(args.dataset))
+    if args.classes != None:
+        included_classes = args.classes.split(',')
+        audio_file_names = [f for f in audio_file_names if labels[f] in included_classes]
     it = tqdm.tqdm(
-        enumerate(_list_audio_files(args.dataset)),
+        enumerate(audio_file_names),
         unit=' files',
-        total=len(list(_list_audio_files(args.dataset))))
+        total=len(audio_file_names))
     for (sample_no, audio_file_name) in it:
         if args.limit != None and sample_no >= args.limit:
             break
@@ -140,6 +144,8 @@ if __name__ == '__main__':
                     dest='embedded', action='store_true', default=False)
     ap.add_argument('-l', '--limit', help='Limit to N predictions.', metavar='N',
                     dest='limit', type=int, default=None)
+    ap.add_argument('--classes', help='Restrict testing to classes in a comma-separated list.', metavar='CLASSES',
+                    type=str, dest='classes', default=None)
 
     args = ap.parse_args()
 

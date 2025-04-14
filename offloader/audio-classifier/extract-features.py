@@ -67,12 +67,13 @@ def main(args):
             sr=sample_rate,
             n_mfcc=13,
             n_fft=args.sample_buffer_len,
-            hop_length=args.sample_buffer_len)
+            hop_length=512)
         mfccs_mean = np.mean(mfccs, axis=1)
         mfccs_stdev = np.std(mfccs, axis=1)
 
         # print('  - MFCCs mean: {}'.format(mfccs_mean))
         # print('  - MFCCs stdev: {}'.format(mfccs_stdev))
+        # return
 
         features = np.concatenate(
             (np.array([rmse_mean,
@@ -89,6 +90,7 @@ def main(args):
         csvw = csv.writer(fh)
         rows = ['path', 'file_name', 'rmse_mean', 'rmse_stdev', 'spectral_centroid_mean', 'spectral_centroid_stdev', 'spectral_bandwidth_mean', 'spectral_bandwidth_stdev']
         rows.extend(['mfcc_mean_{}'.format(x) for x in range(0, len(mfccs_mean))])
+        rows.extend(['mfcc_stdev_{}'.format(x) for x in range(0, len(mfccs_stdev))])
         csvw.writerow(rows)
         for (file_path, file_name, features,) in all_features:
             csvw.writerow([path, file_name] + features)

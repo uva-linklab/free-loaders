@@ -11,7 +11,7 @@ import sklearn.svm
 
 def main(args):
 
-    # Build label dictionary.
+    # Build label dictionary (audio file name -> class).
     labels = {}
     with open(args.labels, 'r') as csv_fh:
         csvr = csv.reader(csv_fh)
@@ -22,6 +22,12 @@ def main(args):
                 continue
 
             labels[row[0]] = row[7]
+
+        # Remove those that are not specified by --classes, if given.
+        if args.classes != None:
+            included_classes = args.classes.split(',')
+            labels = { k: v for (k, v) in labels.items() if v in included_classes}
+            print('Filtered labels to {} items.'.format(len(labels)))
 
     # Match labels to the computed features.
     training_labels = []
@@ -39,6 +45,9 @@ def main(args):
             features = row[2:2+feature_count]
             # print(features)
 
+            if file_name not in labels.keys():
+                continue
+
             training_labels.append(labels[file_name])
             training_features.append(features)
 
@@ -49,7 +58,7 @@ def main(args):
         # print(feature_arr[:,i])
         mean = np.mean(feature_arr[:,i])
         stdev = np.std(feature_arr[:,i])
-        print('Feature {}: {:.3}, {:.3}'.format(i, mean, stdev))
+        # print('Feature {}: {:.3}, {:.3}'.format(i, mean, stdev))
 
     # Scale the training data.
     scaler = sklearn.preprocessing.StandardScaler()
@@ -74,7 +83,7 @@ def main(args):
         import pickle
 
         model_path = os.path.join(args.serialize, 'aec-emb.svc.pkl')
-        scaler_path = os.path.join(args.serialize, 'aec-emb-svm.stdscaler.pkl')
+        scaler_path = os.path.join(args.serialize, 'aec-emb.stdscaler.pkl')
         with open(model_path, 'wb') as fh:
             pickle.dump(svm, fh)
         with open(scaler_path, 'wb') as fh:
@@ -88,6 +97,8 @@ if __name__ == '__main__':
 
     ap.add_argument('--serialize-to', help='Output serialized model and scaler to path.', metavar='PATH',
                     type=str, dest='serialize', default=None)
+    ap.add_argument('--classes', help='Restrict model to classes in a comma-separated list.', metavar='CLASSES',
+                    type=str, dest='classes', default=None)
 
     args = ap.parse_args()
 
