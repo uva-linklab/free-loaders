@@ -10,6 +10,7 @@ import librosa
 import numpy as np
 import sklearn.preprocessing
 import sklearn.svm
+import tqdm
 
 _SampleRate = 11025
 _SampleBufferLength = 4096
@@ -39,7 +40,11 @@ def main(args):
 
     # Make a prediction for each audio file.
     accuracy = [0, 0]
-    for (sample_no, audio_file_name) in enumerate(_list_audio_files(args.dataset)):
+    it = tqdm.tqdm(
+        enumerate(_list_audio_files(args.dataset)),
+        unit=' files',
+        total=len(list(_list_audio_files(args.dataset))))
+    for (sample_no, audio_file_name) in it:
         if args.limit != None and sample_no >= args.limit:
             break
 
@@ -96,6 +101,9 @@ def main(args):
                        spectral_bandwidth_stdev]),
              mfccs_mean,
              mfccs_stdev),)
+
+        if args.embedded == True:
+            features = features[:11]
         features = features.reshape(1, -1)
 
         pred = aec_svm.predict(aec_scaler.transform(features))
@@ -106,7 +114,7 @@ def main(args):
         accuracy[0] += (1 if pred == actual else 0)
         accuracy[1] += 1
 
-        print(f'{mark} {audio_file_name} -> {pred} (actual: {labels[audio_file_name]})')
+        # print(f'{mark} {audio_file_name} -> {pred} (actual: {labels[audio_file_name]})')
 
     print(f'Accuracy: {accuracy[0] / accuracy[1] * 100:.2f}%')
 
@@ -127,6 +135,8 @@ if __name__ == '__main__':
     ap.add_argument('labels', help='Path to CSV containing labels.',
                     type=str)
 
+    ap.add_argument('-e', '--embedded-model', help='Indicate the model is the embedded one.',
+                    dest='embedded', action='store_true', default=False)
     ap.add_argument('-l', '--limit', help='Limit to N predictions.', metavar='N',
                     dest='limit', type=int, default=None)
 
