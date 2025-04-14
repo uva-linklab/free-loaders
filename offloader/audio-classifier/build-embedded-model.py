@@ -55,7 +55,7 @@ def main(args):
     # print(scaler.transform(training_features))
 
     # Build the SVM.
-    svm = sklearn.svm.SVC(gamma=0.1)
+    svm = sklearn.svm.SVC(kernel='linear', gamma=0.1)
     svm.fit(scaler.transform(training_features), training_labels)
 
     # Try a prediction.
