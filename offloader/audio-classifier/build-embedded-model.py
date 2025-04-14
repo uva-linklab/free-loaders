@@ -2,6 +2,8 @@
 
 import argparse
 import csv
+import os
+import os.path
 
 import numpy as np
 import sklearn.preprocessing
@@ -68,12 +70,30 @@ def main(args):
     with open('/tmp/svm.h', 'w') as fh:
         fh.write(c_code)
 
+    if args.serialize != None:
+        import pickle
+
+        model_path = os.path.join(args.serialize, 'aec-emb.svc.pkl')
+        scaler_path = os.path.join(args.serialize, 'aec-emb-svm.stdscaler.pkl')
+        with open(model_path, 'wb') as fh:
+            pickle.dump(svm, fh)
+        with open(scaler_path, 'wb') as fh:
+            pickle.dump(scaler, fh)
+
 if __name__ == '__main__':
 
     ap = argparse.ArgumentParser(description='Build embedded SVM model from features')
     ap.add_argument('labels', help='path to CSV containing labels')
     ap.add_argument('input', help='path to input CSV containing data')
 
+    ap.add_argument('--serialize-to', help='Output serialized model and scaler to path.', metavar='PATH',
+                    type=str, dest='serialize', default=None)
+
     args = ap.parse_args()
+
+    if args.serialize != None and not os.path.isdir(args.serialize):
+        print('Must supply directory path with --serialize-to.')
+        import sys
+        sys.exit(1)
 
     main(args)

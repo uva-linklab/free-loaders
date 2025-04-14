@@ -68,7 +68,7 @@ def main(args):
 
     # Output the scaler.
     (output_path_no_ext, _ext) = os.path.splitext(args.output_path)
-    scaler_output_path = output_path_no_ext + '.stdscaler'
+    scaler_output_path = output_path_no_ext + '.stdscaler' + '.pkl'
     with open(scaler_output_path, 'wb') as fh:
         pickle.dump(scaler, fh)
 
