@@ -82,15 +82,15 @@ def main(args):
                        spectral_centroid_stdev,
                        spectral_bandwidth_mean,
                        spectral_bandwidth_stdev]),
-             mfccs_mean,
-             mfccs_stdev),)
+             np.array(list(_intersperse(mfccs_mean, mfccs_stdev))),))
         all_features.append((args.path, file_name, features.tolist(),))
 
     with open(args.output, 'w', newline='') as fh:
         csvw = csv.writer(fh)
         rows = ['path', 'file_name', 'rmse_mean', 'rmse_stdev', 'spectral_centroid_mean', 'spectral_centroid_stdev', 'spectral_bandwidth_mean', 'spectral_bandwidth_stdev']
-        rows.extend(['mfcc_mean_{}'.format(x) for x in range(0, len(mfccs_mean))])
-        rows.extend(['mfcc_stdev_{}'.format(x) for x in range(0, len(mfccs_stdev))])
+        for i in range(0, len(mfccs_mean)):
+            rows.append(f'mfcc_mean_{i}')
+            rows.append(f'mfcc_stdev_{i}')
         csvw.writerow(rows)
         for (file_path, file_name, features,) in all_features:
             csvw.writerow([path, file_name] + features)
@@ -99,6 +99,11 @@ def _list_audio_files(dir_path):
     for path in os.listdir(dir_path):
         if path.endswith('.wav') or path.endswith('.flac'):
             yield path
+
+def _intersperse(it1, it2):
+    for (i1, i2) in zip(it1, it2):
+        yield i1
+        yield i2
 
 if __name__ == '__main__':
 
