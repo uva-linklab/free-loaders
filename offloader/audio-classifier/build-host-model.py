@@ -24,20 +24,25 @@ def main(args):
 
             labels[row[0]] = row[7]
 
+        # Remove those that are not specified by --classes, if given.
+        if args.classes != None:
+            included_classes = args.classes.split(',')
+            labels = { k: v for (k, v) in labels.items() if v in included_classes}
+            print('Filtered labels to {} items.'.format(len(labels)))
+
     # Match labels to the computed features.
     training_labels = []
     training_features = []
     with open(args.input, 'r') as csv_fh:
         csvr = csv.reader(csv_fh)
-        skip_first_row = True
+        _header = next(csvr)
         for row in csvr:
-            if skip_first_row:
-                skip_first_row = False
-                continue
-
             file_name = row[1]
             features = row[2:]
             # print(features)
+
+            if file_name not in labels.keys():
+                continue
 
             training_labels.append(labels[file_name])
             training_features.append(features)
@@ -76,6 +81,8 @@ if __name__ == '__main__':
     ap = argparse.ArgumentParser(description='Build host SVM model from features.')
     ap.add_argument('-o', '--output', help='Path to output model.',
                     dest='output_path', type=str, default='./aec.svc.pkl')
+    ap.add_argument('--classes', help='Restrict model to classes in a comma-separated list.', metavar='CLASSES',
+                    type=str, dest='classes', default=None)
     ap.add_argument('labels', help='Path to CSV containing labels.')
     ap.add_argument('input', help='Path to input CSV containing data.')
 

@@ -34,12 +34,8 @@ def main(args):
     training_features = []
     with open(args.input, 'r') as csv_fh:
         csvr = csv.reader(csv_fh)
-        skip_first_row = True
+        _header = next(csvr)
         for row in csvr:
-            if skip_first_row:
-                skip_first_row = False
-                continue
-
             file_name = row[1]
             feature_count = 11
             features = row[2:2+feature_count]
