@@ -103,8 +103,7 @@ def main(args):
              mfccs_mean,
              mfccs_stdev),)
 
-        if args.embedded == True:
-            features = features[:11]
+        features = features[:args.feature_count]
         features = features.reshape(1, -1)
 
         pred = aec_svm.predict(aec_scaler.transform(features))
@@ -140,8 +139,8 @@ if __name__ == '__main__':
                     dest='sample_rate', type=int, default=11025)
     ap.add_argument('-b', '--sample-buffer-length', help='Specify sample buffer length.',
                     dest='sample_buffer_len', type=int, default=4096)
-    ap.add_argument('-e', '--embedded-model', help='Indicate the model is the embedded one.',
-                    dest='embedded', action='store_true', default=False)
+    ap.add_argument('-f', '--feature-count', help='Specify the feature count.',
+                    dest='feature_count', type=int, default=32)
     ap.add_argument('-l', '--limit', help='Limit to N predictions.', metavar='N',
                     dest='limit', type=int, default=None)
     ap.add_argument('--classes', help='Restrict testing to classes in a comma-separated list.', metavar='CLASSES',

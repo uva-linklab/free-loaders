@@ -38,7 +38,7 @@ def main(args):
         _header = next(csvr)
         for row in csvr:
             file_name = row[1]
-            features = row[2:]
+            features = row[2:2+args.feature_count]
             # print(features)
 
             if file_name not in labels.keys():
@@ -83,6 +83,8 @@ if __name__ == '__main__':
                     dest='output_path', type=str, default='./aec.svc.pkl')
     ap.add_argument('--classes', help='Restrict model to classes in a comma-separated list.', metavar='CLASSES',
                     type=str, dest='classes', default=None)
+    ap.add_argument('-f', '--feature-count', help='Specify the number of features the model takes as input.',
+                    dest='feature_count', type=int, default=32)
     ap.add_argument('labels', help='Path to CSV containing labels.')
     ap.add_argument('input', help='Path to input CSV containing data.')
 
