@@ -43,9 +43,11 @@ static void stateChangeCallback(uint32_t flags, void* context);
 
 bool _g_ready = false;
 uint32_t _g_last_pressed_debounce_ms = 0;
-void button_press_cb(returncode_t rtc,
-					 int button_no,
-					 bool pressed);
+bool _g_send_offload = false;
+void button_cb_offload_audio(
+	__attribute__ ((unused)) returncode_t rtc,
+	__attribute__ ((unused)) int button_no,
+	bool pressed);
 
 // helper utility to print ip address
 static void print_ip_addr(otInstance* instance);
@@ -55,17 +57,19 @@ otInstance* _g_instance = NULL;
 // OPTIONS:
 // 1. Use prepared audio. ==============
 #include "sample-data.h"
-uint16_t* _g_audio_samples = MDL_SampleAudio;
+const uint16_t* const _g_audio_samples = MDL_SampleAudio;
 // 2. Capture audio with the ADC. ======
 /* uint16_t _g_audio_samples[ACLS_SAMPLE_LEN]; */
 // =====================================
 
+#define MAX_UDP_PAYLOAD_BYTES 79
+
 int main(__attribute__((unused)) int argc, __attribute__((unused)) char* argv[]) {
 	// Write to the audio sample buffer to make sure the entire buffer is writeable.
-	for (uint32_t i = 0; i < ACLS_SAMPLE_LEN; i++)
-	{
-		_g_audio_samples[i] = 0xACFE;
-	}
+	/* for (uint32_t i = 0; i < ACLS_SAMPLE_LEN; i++) */
+	/* { */
+	/* 	_g_audio_samples[i] = 0xACFE; */
+	/* } */
 
 	// Let ACLS check its buffers.
 	check_initialize();
@@ -168,14 +172,28 @@ int main(__attribute__((unused)) int argc, __attribute__((unused)) char* argv[])
 		libtocksync_alarm_delay_ms(100);
 	}
 
+	otError error = OT_ERROR_NONE;
+	otMessageInfo messageInfo;
+	otIp6Address destinationAddr;
+
+	memset(&messageInfo, 0, sizeof(messageInfo));
+
+	otIp6AddressFromString("fe80::4873:c036:da29:d88b", &destinationAddr);
+	messageInfo.mPeerAddr = destinationAddr;
+	messageInfo.mPeerPort = 12122;
+
+	uint32_t t_offload_start;
+	uint32_t t_offload_done;
+
+
 	// Set up button callback.
-	libtock_button_notify_on_press(0, button_press_cb);
+	libtock_button_notify_on_press(0, button_cb_offload_audio);
 
 	//
 	////////////////////////////////////////////////////
 
 	// OpenThread main loop.
-	bool done_once = false;
+	uint32_t next_byte_idx = 0;
 	for (;;) {
 		// Execute any pending OpenThread related work.
 		otTaskletsProcess(instance);
@@ -188,12 +206,51 @@ int main(__attribute__((unused)) int argc, __attribute__((unused)) char* argv[])
 		// related work -- yield.
 		if (!otTaskletsArePending(instance) &&
 			!openthread_platform_pending_work()) {
-			yield();
-			/* send_tpm_packet(instance); */
-			if (_g_ready && !done_once)
-			{
-				done_once = true;
-				capture(_g_audio_samples);
+
+			// Offload to fReeLoaders when button is pressed.
+			if (_g_send_offload && _g_ready) {
+				const uint32_t offload_size_bytes = MDL_WAVTOC_SAMPLE_AUDIO_LEN * sizeof(uint16_t);
+				if (next_byte_idx >= offload_size_bytes) {
+					_g_send_offload = false;
+
+					libtock_alarm_command_read(&t_offload_done);
+					const uint32_t d_classify_ms = libtock_alarm_ticks_to_ms(t_offload_done - t_offload_start);
+					printf("Offload done in %lu ms.\n", d_classify_ms);
+				} else {
+					if (next_byte_idx == 0) {
+						libtock_alarm_command_read(&t_offload_start);
+					}
+
+					otMessage* message = NULL;
+					message = otUdpNewMessage(instance, NULL);
+					if (message == NULL) {
+						printf("Error creating UDP message.\n");
+						continue;
+					}
+
+					const uint32_t bytes_pending = offload_size_bytes - next_byte_idx;
+					const uint32_t message_len = bytes_pending < MAX_UDP_PAYLOAD_BYTES ? bytes_pending : MAX_UDP_PAYLOAD_BYTES;
+					printf("Bytes pending: %lu\n", bytes_pending);
+					error = otMessageAppend(message, ((uint8_t*) _g_audio_samples) + next_byte_idx, message_len);
+					if (error != OT_ERROR_NONE) {
+						printf("Error appending to message.\n");
+						otMessageFree(message);
+						continue;
+					}
+
+					/* printf("sending... "); */
+					error = otUdpSend(instance, &sUdpSocket, message, &messageInfo);
+					if (error != OT_ERROR_NONE && message != NULL) {
+						printf("error sending packet: %d\n", error);
+						otMessageFree(message);
+						continue;
+					} else {
+						next_byte_idx += message_len;
+						/* printf("Sent %lu bytes.\n", message_len); */
+					}
+				}
+			} else {
+				yield();
 			}
 		}
 
@@ -267,9 +324,30 @@ static void stateChangeCallback(uint32_t flags, void* context) {
 	}
 }
 
-void button_press_cb(__attribute__ ((unused)) returncode_t rtc,
-					 __attribute__ ((unused)) int button_no,
-					 bool pressed)
+void button_cb_offload_audio(
+	__attribute__ ((unused)) returncode_t rtc,
+	__attribute__ ((unused)) int button_no,
+	bool pressed)
+{
+	if (!_g_ready || !pressed) { return; }
+
+	uint32_t t_now;
+	uint32_t t_now_ms;
+	libtock_alarm_command_read(&t_now);
+	t_now_ms = libtock_alarm_ticks_to_ms(t_now);
+
+	uint32_t d_last_pressed_ms = t_now_ms -_g_last_pressed_debounce_ms;
+	if (d_last_pressed_ms < 300) { return; }
+	_g_last_pressed_debounce_ms = t_now_ms;
+
+	_g_send_offload = true;
+
+	return;
+}
+
+void run_sample_classification(__attribute__ ((unused)) returncode_t rtc,
+							   __attribute__ ((unused)) int button_no,
+							   bool pressed)
 {
 	if (!_g_ready) { return; }
 
@@ -277,28 +355,23 @@ void button_press_cb(__attribute__ ((unused)) returncode_t rtc,
 
 	if (!pressed) { return; }
 
-	printf("Button pressed.\n");
+	uint32_t t_now;
+	uint32_t t_now_ms;
+	libtock_alarm_command_read(&t_now);
+	t_now_ms = libtock_alarm_ticks_to_ms(t_now);
 
-	uint32_t now;
-	uint32_t now_ms;
-	libtock_alarm_command_read(&now);
-	now_ms = libtock_alarm_ticks_to_ms(now);
-
-	uint32_t d_last_pressed_ms = now_ms -_g_last_pressed_debounce_ms;
+	uint32_t d_last_pressed_ms = t_now_ms -_g_last_pressed_debounce_ms;
 	if (d_last_pressed_ms < 300) { return; }
-	_g_last_pressed_debounce_ms = now_ms;
+	_g_last_pressed_debounce_ms = t_now_ms;
 
 	otInstance* const ot = _g_instance;
 
-	if (!_g_ready)
-	{
-		printf("Not ready yet.\n");
-		return;
-	}
-
-	printf("Sending packet.\n");
-
-	send_tpm_packet(ot);
+	printf("Running classification...\n");
+	classify(_g_audio_samples);
+	uint32_t t_classify_done;
+	libtock_alarm_command_read(&t_classify_done);
+	const uint32_t d_classify_ms = libtock_alarm_ticks_to_ms(t_classify_done - t_now);
+	printf("Done in %lu ms.\n", d_classify_ms);
 
 	return;
 }
@@ -374,44 +447,4 @@ void sendUdpTemperature(otInstance* aInstance, uint8_t temperature) {
 		printf("Error sending udp packet\n");
 		otMessageFree(message);
 	}
-}
-
-#define TPM_MESSAGE_LEN 100
-uint8_t tpm_message[TPM_MESSAGE_LEN];
-
-void send_tpm_packet(otInstance* ot)
-{
-	otError error = OT_ERROR_NONE;
-	otMessage*   message;
-	otMessageInfo messageInfo;
-	otIp6Address destinationAddr;
-
-	memset(&messageInfo, 0, sizeof(messageInfo));
-	memset(tpm_message, 0xE1, TPM_MESSAGE_LEN);
-
-	otIp6AddressFromString("fe80::4873:c036:da29:d88b", &destinationAddr);
-	/* otIp6AddressFromString("fde3:8f5e:f206:2::c0a8:0246", &destinationAddr); */
-	messageInfo.mPeerAddr = destinationAddr;
-	messageInfo.mPeerPort = 1212;
-
-	message = otUdpNewMessage(ot, NULL);
-	if (message == NULL) {
-		/* printf("Error creating UDP message\n"); */
-		return;
-	}
-
-	error = otMessageAppend(message, tpm_message, TPM_MESSAGE_LEN);
-	if (error != OT_ERROR_NONE && message != NULL) {
-		/* printf("Error appending to UDP message\n"); */
-		otMessageFree(message);
-		return;
-	}
-
-	error = otUdpSend(ot, &sUdpSocket, message, &messageInfo);
-	if (error != OT_ERROR_NONE && message != NULL) {
-		/* printf("Error sending udp packet: %d\n", error); */
-		otMessageFree(message);
-	}
-
-	return;
 }
