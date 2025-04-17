@@ -41,6 +41,10 @@ void send_tpm_packet(otInstance* ot);
 // callback for Thread state change events
 static void stateChangeCallback(uint32_t flags, void* context);
 
+#define FL_CONTROLLER_IP6_STR "2001:470:5:9af:1::fe01"
+#define FL_CONTROLLER_IP4_IP6_STR "fde3:8f5e:f206:2::c0a8:023d"
+#define BORDER_ROUTER_IP6_STR "fe80::4873:c036:da29:d88b"
+
 bool _g_ready = false;
 uint32_t _g_last_pressed_debounce_ms = 0;
 bool _g_send_offload = false;
@@ -48,6 +52,10 @@ void button_cb_offload_audio(
 	__attribute__ ((unused)) returncode_t rtc,
 	__attribute__ ((unused)) int button_no,
 	bool pressed);
+
+void run_sample_classification(__attribute__ ((unused)) returncode_t rtc,
+							   __attribute__ ((unused)) int button_no,
+							   bool pressed);
 
 // helper utility to print ip address
 static void print_ip_addr(otInstance* instance);
@@ -178,7 +186,11 @@ int main(__attribute__((unused)) int argc, __attribute__((unused)) char* argv[])
 
 	memset(&messageInfo, 0, sizeof(messageInfo));
 
-	otIp6AddressFromString("fe80::4873:c036:da29:d88b", &destinationAddr);
+	error = otIp6AddressFromString(BORDER_ROUTER_IP6_STR, &destinationAddr);
+	if (error != OT_ERROR_NONE) {
+		printf("Failed to convert destination address.\n");
+		while (true) {  }
+	}
 	messageInfo.mPeerAddr = destinationAddr;
 	messageInfo.mPeerPort = 12122;
 
@@ -216,6 +228,7 @@ int main(__attribute__((unused)) int argc, __attribute__((unused)) char* argv[])
 					libtock_alarm_command_read(&t_offload_done);
 					const uint32_t d_classify_ms = libtock_alarm_ticks_to_ms(t_offload_done - t_offload_start);
 					printf("Offload done in %lu ms.\n", d_classify_ms);
+					next_byte_idx = 0;
 				} else {
 					if (next_byte_idx == 0) {
 						libtock_alarm_command_read(&t_offload_start);
@@ -230,7 +243,7 @@ int main(__attribute__((unused)) int argc, __attribute__((unused)) char* argv[])
 
 					const uint32_t bytes_pending = offload_size_bytes - next_byte_idx;
 					const uint32_t message_len = bytes_pending < MAX_UDP_PAYLOAD_BYTES ? bytes_pending : MAX_UDP_PAYLOAD_BYTES;
-					printf("Bytes pending: %lu\n", bytes_pending);
+					/* printf("Bytes pending: %lu\n", bytes_pending); */
 					error = otMessageAppend(message, ((uint8_t*) _g_audio_samples) + next_byte_idx, message_len);
 					if (error != OT_ERROR_NONE) {
 						printf("Error appending to message.\n");
@@ -307,6 +320,7 @@ static void stateChangeCallback(uint32_t flags, void* context) {
 		break;
     case OT_DEVICE_ROLE_DETACHED:
 		printf("[State Change] - Detached.\n");
+		_g_ready = false;
 		break;
     case OT_DEVICE_ROLE_CHILD:
 		printf("[State Change] - Child.\n");
