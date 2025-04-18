@@ -1,10 +1,12 @@
 #include <math.h>
+#include <stdio.h>
 
 #include <libtock-sync/peripherals/adc.h>
 
 #include "acls.h"
 
 #include "fft.h"
+#include "svm.h"
 
 float __spectral_bandwidth_frame(
 	const uint16_t* const samples,
@@ -52,18 +54,29 @@ void check_initialize(void)
 	return;
 }
 
-void capture(
+void classify(
 	uint16_t* const sample_buffer)
 {
 	float features[11];
 
-	libtocksync_adc_sample_buffer(
-		0,
-		ACLS_SAMPLE_FREQ,
-		sample_buffer,
-		/* ACLS_SAMPLE_LEN */
-		128
-		);
+	// +     146 ms
+	rmse_statistics(sample_buffer, features);
+	// +   3,629 ms
+    fft(sample_buffer, ACLS_SAMPLE_LEN, __acls_buffer_a, __acls_buffer_b);
+	// +      29 ms
+	centroid_statistics(__acls_buffer_a, features + 2);
+	// +   1,465 ms
+	const float* const coefs =
+		mfccs(__acls_buffer_a, __acls_buffer_b, __acls_buffer_b);
+	// +   8,485 ms
+	spectral_bandwidth(sample_buffer, features[2], features + 4);
+	// ------------
+	//     13,765 ms (observed)
+
+	//+       89 ms
+	/* predict(features); */
+	// ------------
+	//     8,915 ms
 
 	return;
 }
@@ -99,12 +112,9 @@ void rmse_statistics(
 }
 
 void centroid_statistics(
-	const uint16_t* const samples,
+	const float* const fdm,
 	float* statistics_out)
 {
-    fft(samples, ACLS_SAMPLE_LEN, __acls_buffer_a, __acls_buffer_b);
-	const float* const fdm = __acls_buffer_a;
-
 	float total_energy = 0.0;
 	for (uint16_t i = 0; i < ACLS_SAMPLE_LEN / 2; i++)
 	{
@@ -174,7 +184,7 @@ float __spectral_bandwidth_frame(
 	//
 	// For the case of a single frame of audio:
 	// (sum_k: S[k] * (freq[k] - centroid)^p)^(1/p)
-    fft(samples, ACLS_SB_FRAME_SAMPLE_LEN, __acls_buffer_a, __acls_buffer_b);
+	fft(samples, ACLS_SB_FRAME_SAMPLE_LEN, __acls_buffer_a, __acls_buffer_b);
 	const float* const fdm = __acls_buffer_a;
 	// e = sum_k S[k] * (freq[k] - centroid)^2
 	float e = 0.0;
@@ -197,13 +207,13 @@ float __acls_mfcc_filterbank_output[ACLS_MFCC_FILTER_COUNT];
 float __acls_mfcc_dct_output[ACLS_MFCC_DCT_OUTPUT_LEN];
 
 float* mfccs(
-	const uint16_t* const samples)
+	const float* const fdm_real,
+	const float* const fdm_imag,
+	float* const psd_scratch)
 {
 	// This implementation treats the entire input as a frame.
-
-    fft(samples, ACLS_SAMPLE_LEN, __acls_buffer_a, __acls_buffer_b);
-	psd(__acls_buffer_a, __acls_buffer_b, __acls_buffer_a, ACLS_SAMPLE_LEN);
-	const float* const psd = __acls_buffer_a;
+	psd(fdm_real, fdm_imag, psd_scratch, ACLS_SAMPLE_LEN);
+	const float* const psd = psd_scratch;
 
 	__apply_filterbank(
 		psd,

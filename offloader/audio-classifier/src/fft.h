@@ -14,7 +14,7 @@ void fft(
 /** Compute the power spectrum of the FFT.
  *
  * Places the result in out_psd.
- * It is possible to alias real to out_psd.
+ * It is possible to alias out_real or out_imag to out_psd.
  */
 void psd(
 	const float* const real,

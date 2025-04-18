@@ -9,9 +9,9 @@
  */
 void check_initialize(void);
 
-/** Capture audio.
+/** Perform audio event classification.
  */
-void capture(
+void classify(
 	uint16_t* const sample_buffer);
 
 /** Calculate RMSE statistics for audio samples.
@@ -27,7 +27,7 @@ void rmse_statistics(
  * Records centroid mean and stdev in `statistics_out`.
  */
 void centroid_statistics(
-	const uint16_t* const samples,
+	const float* const fdm,
 	float* statistics_out);
 
 /** Calculate spectral bandwidth for audio samples.
@@ -40,8 +40,13 @@ void spectral_bandwidth(
 	float* const statistics_out);
 
 /** Calculate MFCCs for audio samples.
+ *
+ * Either fdm_real or fdm_imag can be aliased to psd_scratch.
+ * The contents of psd_scratch will be overwritten.
  */
 float* mfccs(
-	const uint16_t* const samples);
+	const float* const fdm_real,
+	const float* const fdm_imag,
+	float* const psd_scratch);
 
 #endif
