@@ -13,6 +13,7 @@ import paho.mqtt.client
 
 import config
 import stats
+from tasker.aec import classify_audio
 from tasker.loop import run_loop_task
 from tasker.mm import run_mm_task
 from tasker.fft import run_fft_task
@@ -303,6 +304,12 @@ def __process_task_entry(pipe, executor_id, power, task_request, additional_data
     elif task_id < 60:
         image_bytes = additional_data
         res_data = run_room_classification_task(image_bytes).encode('utf-8')
+
+    elif task_id == 62:
+        import numpy as np
+        samples = np.frombuffer(additional_data, dtype='<i2')
+        res = classify_audio(samples)[0]
+        res_data = res.encode('utf-8')
 
     # elif task_id < 40:
     #     import numpy as np

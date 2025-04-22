@@ -74,6 +74,8 @@ def classify_audio(samples):
 
     print('  - predicting...')
     p = aec.predict([features])
+    print('  - prediction: {}'.format(p))
+
     return p
 
 def _to_float_samples(sample):
