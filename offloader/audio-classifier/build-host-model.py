@@ -50,19 +50,13 @@ def main(args):
     feature_count = len(training_features[0])
     print('feature count: {}'.format(len(training_features[0])))
     feature_arr = np.array(training_features, dtype=np.float32)
-    for i in range(0, feature_count):
-        # print(feature_arr[:,i])
-        mean = np.mean(feature_arr[:,i])
-        stdev = np.std(feature_arr[:,i])
-        print('Feature {}: {:.3}, {:.3}'.format(i, mean, stdev))
 
     # Scale the training data.
     scaler = sklearn.preprocessing.StandardScaler()
     scaler.fit(training_features)
-    # print(scaler.transform(training_features))
 
     # Build the SVM.
-    svm = sklearn.svm.SVC(C=1000.0, gamma=0.1)
+    svm = sklearn.svm.SVC(gamma=0.1)
     svm.fit(scaler.transform(training_features), training_labels)
 
     # Try a prediction.

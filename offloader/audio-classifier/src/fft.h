@@ -5,6 +5,8 @@
 
 #include "acls-config.h"
 
+#define FFT_OUT_SIZE 256
+
 void fft(
 	const uint16_t* const samples,
 	const uint32_t samples_len,

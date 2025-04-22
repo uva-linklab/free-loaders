@@ -22,17 +22,18 @@ void fft(
 {
 	float* const real = out_real;
 	float* const imag = out_imag;
+	const uint32_t out_size = min(FFT_OUT_SIZE, samples_len);
 
 	// Convert 16-bit unsigned integer samples to floating-point and
 	// scale to the range -1.0 to 1.0
-	for (uint16_t i = 0; i < samples_len; i++) {
+	for (uint16_t i = 0; i < out_size; i++) {
 		real[i] = (float) samples[i] / 32767.5f - 1.0f;
 		imag[i] = 0.0f;
 	}
 
 	// Bit reversal permutation
-	for (uint16_t i = 0; i < samples_len; i++) {
-		uint16_t j = __bit_reverse(i, log2(samples_len));
+	for (uint16_t i = 0; i < out_size; i++) {
+		uint16_t j = __bit_reverse(i, log2(out_size));
 		if (j > i) {
 			// Swap real and imaginary components
 			float temp = real[i];
@@ -45,10 +46,10 @@ void fft(
 	}
 
 	// Butterfly stages
-	for (uint16_t s = 1; s <= log2(samples_len); s++) {
+	for (uint16_t s = 1; s <= log2(out_size); s++) {
 		uint16_t m = 1 << s;
 		float theta = 2.0 * 3.14 / m;
-		for (uint16_t k = 0; k < samples_len; k += m) {
+		for (uint16_t k = 0; k < out_size; k += m) {
 			float w_real = 1.0;
 			float w_imag = 0.0;
 			for (uint16_t j = 0; j < m / 2; j++) {

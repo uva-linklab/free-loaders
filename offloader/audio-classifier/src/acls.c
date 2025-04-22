@@ -59,21 +59,29 @@ void classify(
 {
 	float features[11];
 
+	/* libtocksync_adc_sample_buffer( */
+	/* 	0, */
+	/* 	ACLS_SAMPLE_FREQ, */
+	/* 	sample_buffer, */
+	/* 	/\* ACLS_SAMPLE_LEN *\/ */
+	/* 	128 */
+	/* 	); */
+
 	// +     146 ms
 	rmse_statistics(sample_buffer, features);
 	// +   3,629 ms
-    fft(sample_buffer, ACLS_SAMPLE_LEN, __acls_buffer_a, __acls_buffer_b);
+    fft(sample_buffer, 256, __acls_buffer_a, __acls_buffer_b);
 	// +      29 ms
 	centroid_statistics(__acls_buffer_a, features + 2);
 	// +   1,465 ms
-	const float* const coefs =
-		mfccs(__acls_buffer_a, __acls_buffer_b, __acls_buffer_b);
+	/* const float* const coefs = */
+	/* 	mfccs(__acls_buffer_a, __acls_buffer_b, __acls_buffer_b); */
 	// +   8,485 ms
-	spectral_bandwidth(sample_buffer, features[2], features + 4);
+	/* spectral_bandwidth(sample_buffer, features[2], features + 4); */
 	// ------------
 	//     13,765 ms (observed)
 
-	//+       89 ms
+	// +       89 ms
 	/* predict(features); */
 	// ------------
 	//     8,915 ms
@@ -116,7 +124,7 @@ void centroid_statistics(
 	float* statistics_out)
 {
 	float total_energy = 0.0;
-	for (uint16_t i = 0; i < ACLS_SAMPLE_LEN / 2; i++)
+	for (uint16_t i = 0; i < 256 / 2; i++)
 	{
 		total_energy += fdm[i];
 	}
@@ -184,13 +192,13 @@ float __spectral_bandwidth_frame(
 	//
 	// For the case of a single frame of audio:
 	// (sum_k: S[k] * (freq[k] - centroid)^p)^(1/p)
-	fft(samples, ACLS_SB_FRAME_SAMPLE_LEN, __acls_buffer_a, __acls_buffer_b);
+	fft(samples, 256, __acls_buffer_a, __acls_buffer_b);
 	const float* const fdm = __acls_buffer_a;
 	// e = sum_k S[k] * (freq[k] - centroid)^2
 	float e = 0.0;
-	for (uint32_t i = 0; i < ACLS_SB_FRAME_SAMPLE_LEN / 2; i++)
+	for (uint32_t i = 0; i < 256 / 2; i++)
 	{
-		const uint32_t bin_freq = i * ACLS_SAMPLE_FREQ / ACLS_SB_FRAME_SAMPLE_LEN;
+		const uint32_t bin_freq = i * ACLS_SAMPLE_FREQ / 256;
 		e += fdm[i] * pow(bin_freq - centroid_freq, 2);
 	}
 
@@ -199,9 +207,15 @@ float __spectral_bandwidth_frame(
 	return bw;
 }
 
-
 #define ACLS_MFCC_FILTER_COUNT ((uint32_t) 20)
 #define ACLS_MFCC_DCT_OUTPUT_LEN ((uint32_t) 13)
+
+#define ACLS_MFCC_FRAME_SAMPLE_LEN 2048
+#define ACLS_MFCC_FRAME_HOP_SAMPLE_LEN 512
+// Calculate how many frames can be created by "hopping" forward by the hop length.
+#define ACLS_MFCC_FRAME_COUNT \
+	1 + (ACLS_SAMPLE_LEN - ACLS_SB_FRAME_SAMPLE_LEN)	\
+	/ ACLS_SB_FRAME_HOP_SAMPLE_LEN
 
 float __acls_mfcc_filterbank_output[ACLS_MFCC_FILTER_COUNT];
 float __acls_mfcc_dct_output[ACLS_MFCC_DCT_OUTPUT_LEN];

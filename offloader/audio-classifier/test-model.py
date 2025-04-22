@@ -44,7 +44,7 @@ def main(args):
     it = tqdm.tqdm(
         enumerate(audio_file_names),
         unit=' files',
-        total=len(audio_file_names))
+        total=(args.limit if args.limit != None else len(audio_file_names)))
     for (sample_no, audio_file_name) in it:
         if args.limit != None and sample_no >= args.limit:
             break
@@ -89,7 +89,7 @@ def main(args):
             sr=sample_rate,
             n_mfcc=13,
             n_fft=args.sample_buffer_len,
-            hop_length=args.sample_buffer_len)
+            hop_length=512)
         mfccs_mean = np.mean(mfccs, axis=1)
         mfccs_stdev = np.std(mfccs, axis=1)
 
@@ -99,9 +99,9 @@ def main(args):
                        spectral_centroid_mean,
                        spectral_centroid_stdev,
                        spectral_bandwidth_mean,
-                       spectral_bandwidth_stdev]),
-             mfccs_mean,
-             mfccs_stdev),)
+                       spectral_bandwidth_stdev,
+                       ]),
+             np.array(list(_intersperse(mfccs_mean, mfccs_stdev))),))
 
         features = features[:args.feature_count]
         features = features.reshape(1, -1)
@@ -123,6 +123,10 @@ def _list_audio_files(dir_path):
         if path.endswith('.wav') or path.endswith('.flac'):
             yield path
 
+def _intersperse(it1, it2):
+    for (i1, i2) in zip(it1, it2):
+        yield i1
+        yield i2
 
 if __name__ == '__main__':
     ap = argparse.ArgumentParser(description='Get prediction accuracy results for a model')

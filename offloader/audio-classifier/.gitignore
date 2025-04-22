@@ -1,2 +1,4 @@
 build/
 *.tab
+*.csv
+*.pkl

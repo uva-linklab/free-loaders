@@ -22,7 +22,6 @@
 
 #include "acls.h"
 #include "acls-config.h"
-#include "svm.h"
 
 // helper utility demonstrating network config setup
 static void setNetworkConfiguration(otInstance* aInstance);
@@ -200,6 +199,7 @@ int main(__attribute__((unused)) int argc, __attribute__((unused)) char* argv[])
 
 	// Set up button callback.
 	libtock_button_notify_on_press(0, button_cb_offload_audio);
+	libtock_button_notify_on_press(1, run_sample_classification);
 
 	//
 	////////////////////////////////////////////////////
@@ -363,8 +363,6 @@ void run_sample_classification(__attribute__ ((unused)) returncode_t rtc,
 							   __attribute__ ((unused)) int button_no,
 							   bool pressed)
 {
-	if (!_g_ready) { return; }
-
 	printf("Button event.\n");
 
 	if (!pressed) { return; }
