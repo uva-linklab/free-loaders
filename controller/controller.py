@@ -28,6 +28,8 @@ ap.add_argument('-s', '--scheduler', help='Set the scheduler.',
                 choices=['rl', 'random', 'time-greedy', 'energy-greedy', 'time-wrr', 'energy-wrr', 'load-bal',
                          'heteroedge', 'heros', 'adpt-lb-v1', 'adpt-lb-v2', 'adpt-lb-v3'],
                 dest='scheduler', default='rl')
+ap.add_argument('-e', '--executor-metadata', help='Path to executor JSON file',
+                dest='executor_metadata_path', type=str, default=os.path.join(os.getcwd(), 'executors.json'))
 ap.add_argument('--mqtt-broker-ip', help='IP address of the MQTT broker',
                 dest='broker_ip', default='localhost')
 ap.add_argument('-l', '--enable-load-testing', help='Enable synthetic load testing',
@@ -40,7 +42,7 @@ ap.add_argument('--enable-lpo-server', help='Listen for offloads from low-power 
 args = ap.parse_args()
 
 # Assume that the CWD will always be the top of the repository.
-executer_json_path = os.path.join(os.getcwd(), 'executers.json')
+executer_json_path = args.executor_metadata_path
 print('[controller] loaded executers from {}'.format(executer_json_path))
 executers = classes.executer.from_file(executer_json_path)
 executers = { e.executer_id: e for e in executers }
