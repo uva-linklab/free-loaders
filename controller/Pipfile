@@ -11,6 +11,7 @@ setuptools = "<65"
 aiohttp = "~=3.8.3"
 more-itertools = "*"
 "jaraco.functools" = "*"
+pandas = "~=1.5.1"
 
 [dev-packages]
 
