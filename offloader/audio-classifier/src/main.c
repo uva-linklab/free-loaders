@@ -6,6 +6,7 @@
 
 #include <libtock-sync/services/alarm.h>
 #include <libtock/interface/button.h>
+#include <libtock/interface/led.h>
 #include <libtock/kernel/ipc.h>
 #include <libtock/services/alarm.h>
 #include <libtock/tock.h>
@@ -42,7 +43,7 @@ static void stateChangeCallback(uint32_t flags, void* context);
 
 #define FL_CONTROLLER_IP6_STR "2001:470:5:9af:1::fe01"
 #define FL_CONTROLLER_IP4_IP6_STR "fde3:8f5e:f206:2::c0a8:023d"
-#define BORDER_ROUTER_IP6_STR "fe80::4873:c036:da29:d88b"
+#define BORDER_ROUTER_IP6_STR "fe80::40fd:17fa:4b68:1390"
 
 bool _g_ready = false;
 uint32_t _g_last_pressed_debounce_ms = 0;
@@ -199,7 +200,7 @@ int main(__attribute__((unused)) int argc, __attribute__((unused)) char* argv[])
 
 	// Set up button callback.
 	libtock_button_notify_on_press(0, button_cb_offload_audio);
-	libtock_button_notify_on_press(1, run_sample_classification);
+	/* libtock_button_notify_on_press(1, run_sample_classification); */
 
 	//
 	////////////////////////////////////////////////////
@@ -336,6 +337,12 @@ static void stateChangeCallback(uint32_t flags, void* context) {
     default:
 		break;
 	}
+
+	if (_g_ready) {
+		libtock_led_on(0);
+	} else {
+		libtock_led_off(0);
+	}
 }
 
 void button_cb_offload_audio(
@@ -353,6 +360,8 @@ void button_cb_offload_audio(
 	uint32_t d_last_pressed_ms = t_now_ms -_g_last_pressed_debounce_ms;
 	if (d_last_pressed_ms < 300) { return; }
 	_g_last_pressed_debounce_ms = t_now_ms;
+
+	printf("%lu ms: offload start\n", t_now_ms);
 
 	_g_send_offload = true;
 
@@ -408,6 +417,11 @@ void handleUdpRecvTemperature(void* aContext, otMessage* aMessage,
 	OT_UNUSED_VARIABLE(aContext);
 	OT_UNUSED_VARIABLE(aMessageInfo);
 	char buf[2];
+	uint32_t t_now;
+	uint32_t t_now_ms;
+	libtock_alarm_command_read(&t_now);
+	t_now_ms = libtock_alarm_ticks_to_ms(t_now);
+	printf("%lu ms: response received\n", t_now_ms);
 
 	const otIp6Address sender_addr = aMessageInfo->mPeerAddr;
 	otIp6AddressToString(&sender_addr, buf, sizeof(buf));
@@ -422,7 +436,7 @@ void initUdp(otInstance* aInstance) {
 	memset(&sUdpSocket, 0, sizeof(sUdpSocket));
 	memset(&listenSockAddr, 0, sizeof(listenSockAddr));
 
-	listenSockAddr.mPort = 1212;
+	listenSockAddr.mPort = 12122;
 
 	otUdpOpen(aInstance, &sUdpSocket, handleUdpRecvTemperature, aInstance);
 	otUdpBind(aInstance, &sUdpSocket, &listenSockAddr, OT_NETIF_THREAD);
