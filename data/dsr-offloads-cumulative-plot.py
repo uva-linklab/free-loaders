@@ -8,7 +8,7 @@ import numpy
 
 ap = argparse.ArgumentParser()
 ap.add_argument('-o', '--output', help='Output file path.',
-                type=str, dest='output', default='dsr-offloads-cumulative.pdf')
+                type=str, dest='output', default='/tmp')
 ap.add_argument('-s', '--starting-offload', help='ID of the first offload to count',
                 type=int, dest='start', default=0)
 ap.add_argument('-e', '--ending-offload', help='ID of the last offload to count',
@@ -21,6 +21,8 @@ ap.add_argument('--date-runs', help='Append date labels to legends',
                 dest='date_runs', action='store_true', default=False)
 ap.add_argument('--override-labels', help='Force the labels in the plot',
                 dest='override_labels', action='store', default=None)
+ap.add_argument('--dir-name-runs', help='Append containing directory names to legend',
+                dest='dir_name_runs', action='store_true', default=False)
 
 ap.add_argument('paths', help='path to log file',
             nargs='+', type=str)
@@ -34,8 +36,11 @@ colors = {
     'load-bal': [[199 / 255, 157 / 255, 250 / 255]],
     'random': [[217 / 255, 28 / 255, 44 / 255]],
     'time-wrr': [[252 / 255, 186 / 255,   3 / 255]],
-    'heros': [[111 / 255, 166 / 255, 17 / 255],
-              [170 / 255, 227 / 255, 73 / 255]],
+    'heros': [[40 / 255, 100 / 255, 20 / 255],
+              [80 / 255, 150 / 255, 40 / 255],
+              [120 / 255, 200 / 255, 60 / 255],
+              [170 / 255, 227 / 255, 90 / 255],
+              [200 / 255, 255 / 255, 120 / 255]],
     'adpt-lb-v1': [[200 / 255, 200 / 255, 200 / 255]],
     'adpt-lb-v3': [[25 / 255, 25 / 255, 25 / 255]],
 }
@@ -124,6 +129,12 @@ for (path, color) in zip(args.paths, range(0,10)):
 
         last_met = met
 
+    # Order the points.
+    points = [(x,y,) for (x,y,) in zip(x,y)]
+    points.sort()
+    x = [x for (x,y,) in points]
+    y = [y for (x,y,) in points]
+
     skipped = 0
     plot_label = ''
     if override_labels != None:
@@ -136,6 +147,10 @@ for (path, color) in zip(args.paths, range(0,10)):
             date_r = '^[A-Za-z]+ \d+ [0-9:]+'
             timestamp = re.search(date_r, log_lines[1])[0]
             plot_label = '{} ({})'.format(plot_label, timestamp)
+
+        if args.dir_name_runs == True:
+            (_p1, containing_dir_name) = os.path.split(os.path.split(path)[0])
+            plot_label = '{} ({})'.format(plot_label, containing_dir_name)
 
         color2_idx = len(list(filter(lambda l: l == label, plotted)))
 
