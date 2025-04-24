@@ -40,7 +40,7 @@ def main(args):
             else:
                 new_data = current_data + payload
                 if len(new_data) >= 8192:
-                    print('[offl-relay] relaying to FL')
+                    print(f'[offl-relay] relaying to FL (time={time.time()})')
                     task_data = {
                         'device_id': 1128,
                         'task_id': 62,
@@ -77,7 +77,7 @@ def _response_receiver(br_bind_address, offloader_addr):
     print('[cont-relay] started')
     while True:
         payload, src_addr = recv_sock.recvfrom(1024)
-        print(f'received from {src_addr}: {payload}')
+        print(f'[cont-relay] received from {src_addr}: {payload} (time={time.time():.2f})')
         lpo_send_socket.sendto(payload, (offloader_addr, 12122,))
 
 
