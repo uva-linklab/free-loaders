@@ -38,9 +38,11 @@ colors = {
     'load-bal': [[199 / 255, 157 / 255, 250 / 255]],
     'random': [[217 / 255, 28 / 255, 44 / 255]],
     'time-wrr': [[252 / 255, 186 / 255,   3 / 255]],
-    'heros': [[111 / 255, 166 / 255, 17 / 255],
-              [170 / 255, 227 / 255, 73 / 255],
-              [208 / 255, 242 / 255, 150 / 255]],
+    'heros': [[40 / 255, 100 / 255, 20 / 255],
+              [80 / 255, 150 / 255, 40 / 255],
+              [120 / 255, 200 / 255, 60 / 255],
+              [170 / 255, 227 / 255, 90 / 255],
+              [200 / 255, 255 / 255, 120 / 255]],
     'adpt-lb-v1': [[200 / 255, 200 / 255, 200 / 255]],
     'adpt-lb-v3': [[25 / 255, 25 / 255, 25 / 255]],
 }
@@ -63,6 +65,9 @@ def which_scheduler(log):
         if m != None:
             scheduler_name = m['sched']
             break
+
+    if scheduler_name == 'heros-is':
+        scheduler_name = 'heros'
 
     return scheduler_name
 
@@ -122,6 +127,12 @@ for (path, color) in zip(args.paths, range(0,10)):
 
         x.append(oid)
         y.append(dsr)
+
+    # Order the points.
+    points = [(x,y,) for (x,y,) in zip(x,y)]
+    points.sort()
+    x = [x for (x,y,) in points]
+    y = [y for (x,y,) in points]
 
     plot_label = pretty_names[label]
     if add_labels != None:

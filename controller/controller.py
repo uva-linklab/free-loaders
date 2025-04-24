@@ -16,17 +16,32 @@ from schedulers.energy_greedy_scheduler import EnergyGreedyScheduler
 from schedulers.time_wrr_scheduler import TimeWRRScheduler
 from schedulers.energy_wrr_scheduler import EnergyWRRScheduler
 from schedulers.load_balancing_scheduler import LoadBalancingScheduler
-from schedulers.heros import HerosScheduler
+from schedulers.heros import HerosScheduler, HerosInSituScheduler
 from schedulers.heteroedge_online import HeteroedgeScheduler
 from schedulers.adaptive_scheduler_v1 import AdaptiveSchedulerV1
 from schedulers.adaptive_scheduler_v2 import AdaptiveSchedulerV2
 from schedulers.adaptive_scheduler_v3 import AdaptiveSchedulerV3
 
+SCHEDULERS = [
+    'adpt-lb-v1',
+    'adpt-lb-v2',
+    'adpt-lb-v3',
+    'energy-greedy',
+    'energy-wrr',
+    'heros',
+    'heros-is',
+    'heteroedge',
+    'load-bal',
+    'random',
+    'rl',
+    'time-greedy',
+    'time-wrr',
+]
+
 ap = argparse.ArgumentParser(description='fReeLoaders controller.')
 ap.add_argument('-s', '--scheduler', help='Set the scheduler.',
                 metavar='SCHEDULER',
-                choices=['rl', 'random', 'time-greedy', 'energy-greedy', 'time-wrr', 'energy-wrr', 'load-bal',
-                         'heteroedge', 'heros', 'adpt-lb-v1', 'adpt-lb-v2', 'adpt-lb-v3'],
+                choices=SCHEDULERS,
                 dest='scheduler', default='rl')
 ap.add_argument('-e', '--executor-metadata', help='Path to executor JSON file',
                 dest='executor_metadata_path', type=str, default=os.path.join(os.getcwd(), 'executors.json'))
@@ -82,6 +97,8 @@ elif args.scheduler == "load-bal":
     scheduler = LoadBalancingScheduler(executers)
 elif args.scheduler == "heros":
     scheduler = HerosScheduler(executers)
+elif args.scheduler == "heros-is":
+    scheduler = HerosInSituScheduler(executers)
 elif args.scheduler == "heteroedge":
     scheduler = HeteroedgeScheduler(executers)
 elif args.scheduler == "adpt-lb-v1":

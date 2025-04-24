@@ -17,7 +17,7 @@ ap.add_argument('--data', help='Which data to include',
                 dest='data', type=str, choices=['all', 'hits', 'misses'], default='all')
 
 ap.add_argument('dataset', help='dataset to calculate',
-                type=str, choices=['runtime', 'runtime-stdev', 'slack', 'slack-stdev', 'dsr', 'energy'])
+                type=str, choices=['runtime', 'runtime-stdev', 'slack', 'slack-stdev', 'dsr', 'energy', 'net', 'net-stdev'])
 ap.add_argument('log_file', help='Log file to parse')
 
 args = ap.parse_args()
@@ -35,7 +35,7 @@ def raw_or_imp(a, raw, fancy):
         return fancy
 
 # open log file
-regexp = '.*finished task.*offload_id=(?P<oid>\d+).*task_id=(?P<tid>\d+).*executer_id=(?P<eid>\d+).*time\(ms\)=(?P<t>\d+|\d+\.\d+).*deadline=(?P<dl>\d+|\d+\.\d+).*energy=(?P<energy>\d+\.\d+)'
+regexp = '.*finished task.*offload_id=(?P<oid>\d+).*task_id=(?P<tid>\d+).*executer_id=(?P<eid>\d+).*time\(ms\)=(?P<t>\d+|\d+\.\d+).*deadline=(?P<dl>\d+|\d+\.\d+).*energy=(?P<energy>\d+\.\d+).*apparent_bw=(?P<bw>\d+\.\d+)'
 with open(args.log_file, 'r') as f:
     data = f.read()
     for m in re.findall(regexp, data):
@@ -45,6 +45,7 @@ with open(args.log_file, 'r') as f:
         t_exec = float(m[3])
         t_dl = float(m[4])
         energy = float(m[5])
+        bw = float(m[6])
 
         if oid < args.oid_start:
             continue
@@ -65,6 +66,8 @@ with open(args.log_file, 'r') as f:
                     ex_slack_times.append(round(t_dl - t_exec, 1))
             elif args.dataset == 'energy':
                 ex_slack_times.append(energy)
+            elif args.dataset.startswith('net'):
+                ex_slack_times.append(bw)
 
             task_slack_times[eid] = ex_slack_times
             task_to_executor_mapping[tid] = task_slack_times
@@ -85,10 +88,17 @@ for (tid, eid_slack_times) in task_to_executor_mapping.items():
             else:
                 avg = sum(slack_times) / len(slack_times)
                 stdev = statistics.stdev(slack_times)
+                unit = 'ms'
+                if args.dataset.startswith('net'):
+                    slack_times.sort()
+                    stdev = slack_times[int(min(round(len(slack_times) * .25, 0), len(slack_times)-1))]
+                    stdev = stdev / 1000.0
+                    unit = 'Kbps'
+
                 if args.percent == False:
                     row.append(raw_or_imp(args,
                                           stdev,
-                                          '{} ms'.format(round(stdev, 1))))
+                                          '{} {}'.format(round(stdev, 1), unit)))
                 else:
                     row.append(raw_or_imp(args,
                                           stdev / avg,
@@ -124,6 +134,11 @@ for (tid, eid_slack_times) in task_to_executor_mapping.items():
                         row.append(raw_or_imp(args,
                                               avg,
                                               '{:.1f} ms'.format(round(avg, 1))))
+                elif args.dataset == 'net':
+                    avg = (sum(slack_times) / 1000.0) / len(slack_times)
+                    row.append(raw_or_imp(args,
+                                          avg,
+                                          '{:.1f} Kbps'.format(avg)))
 
     rows.append(row)
 
@@ -147,3 +162,6 @@ if args.importable == True:
     print(tabulate(rows, headers=headers, tablefmt='tsv'))
 else:
     print(tabulate(rows, headers=headers, colalign=tuple(alignment)))
+
+# for r in rows:
+#     print('{}: [{}],'.format(int(r[0]), ','.join([str(round(x, 2)) for x in r[1:]])))
