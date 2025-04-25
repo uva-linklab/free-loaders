@@ -200,7 +200,7 @@ int main(__attribute__((unused)) int argc, __attribute__((unused)) char* argv[])
 
 	// Set up button callback.
 	libtock_button_notify_on_press(0, button_cb_offload_audio);
-	/* libtock_button_notify_on_press(1, run_sample_classification); */
+	libtock_button_notify_on_press(1, run_sample_classification);
 
 	//
 	////////////////////////////////////////////////////

@@ -45,8 +45,9 @@ void spectral_bandwidth(
  * The contents of psd_scratch will be overwritten.
  */
 float* mfccs(
-	const float* const fdm_real,
-	const float* const fdm_imag,
+	const float* const samples,
+	float* const fdm_real,
+	float* const fdm_imag,
 	float* const psd_scratch);
 
 #endif

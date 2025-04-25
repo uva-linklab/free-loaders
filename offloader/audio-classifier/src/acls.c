@@ -68,14 +68,16 @@ void classify(
 	/* 	); */
 
 	// +     146 ms
-	rmse_statistics(sample_buffer, features);
+	/* rmse_statistics(sample_buffer, features); */
 	// +   3,629 ms
-    fft(sample_buffer, 256, __acls_buffer_a, __acls_buffer_b);
+    /* fft(sample_buffer, 256, __acls_buffer_a, __acls_buffer_b); */
 	// +      29 ms
-	centroid_statistics(__acls_buffer_a, features + 2);
+	/* centroid_statistics(__acls_buffer_a, features + 2); */
 	// +   1,465 ms
-	/* const float* const coefs = */
-	/* 	mfccs(__acls_buffer_a, __acls_buffer_b, __acls_buffer_b); */
+	const float* const coefs = mfccs(sample_buffer,
+									 __acls_buffer_a,
+									 __acls_buffer_b,
+									 __acls_buffer_b);
 	// +   8,485 ms
 	/* spectral_bandwidth(sample_buffer, features[2], features + 4); */
 	// ------------
@@ -210,8 +212,8 @@ float __spectral_bandwidth_frame(
 #define ACLS_MFCC_FILTER_COUNT ((uint32_t) 20)
 #define ACLS_MFCC_DCT_OUTPUT_LEN ((uint32_t) 13)
 
-#define ACLS_MFCC_FRAME_SAMPLE_LEN 2048
-#define ACLS_MFCC_FRAME_HOP_SAMPLE_LEN 512
+#define ACLS_MFCC_FRAME_SAMPLE_LEN (FFT_OUT_SIZE)
+#define ACLS_MFCC_FRAME_HOP_SAMPLE_LEN ((uint32_t) 2048)
 // Calculate how many frames can be created by "hopping" forward by the hop length.
 #define ACLS_MFCC_FRAME_COUNT \
 	1 + (ACLS_SAMPLE_LEN - ACLS_SB_FRAME_SAMPLE_LEN)	\
@@ -221,25 +223,30 @@ float __acls_mfcc_filterbank_output[ACLS_MFCC_FILTER_COUNT];
 float __acls_mfcc_dct_output[ACLS_MFCC_DCT_OUTPUT_LEN];
 
 float* mfccs(
-	const float* const fdm_real,
-	const float* const fdm_imag,
+	const float* const samples,
+	float* const fdm_real,
+	float* const fdm_imag,
 	float* const psd_scratch)
 {
-	// This implementation treats the entire input as a frame.
-	psd(fdm_real, fdm_imag, psd_scratch, ACLS_SAMPLE_LEN);
-	const float* const psd = psd_scratch;
+	printf("calculating mfccs for %lu frames\n", ACLS_MFCC_FRAME_COUNT);
+	for (uint8_t frame_no = 0; frame_no < 2; frame_no++)
+	{
+		fft(samples, ACLS_MFCC_FRAME_SAMPLE_LEN, fdm_real, fdm_imag);
+		psd(fdm_real, fdm_imag, psd_scratch, FFT_OUT_SIZE);
+		const float* const psd = psd_scratch;
 
-	__apply_filterbank(
-		psd,
-		ACLS_SAMPLE_LEN,
-		ACLS_SAMPLE_FREQ,
-		__acls_mfcc_filterbank_output,
-		20);
+		__apply_filterbank(
+			psd,
+			ACLS_SAMPLE_LEN,
+			ACLS_SAMPLE_FREQ,
+			__acls_mfcc_filterbank_output,
+			20);
 
-	__dct(__acls_mfcc_filterbank_output,
-		  __acls_mfcc_dct_output,
-		  ACLS_MFCC_FILTER_COUNT,
-		  ACLS_MFCC_DCT_OUTPUT_LEN);
+		__dct(__acls_mfcc_filterbank_output,
+			  __acls_mfcc_dct_output,
+			  ACLS_MFCC_FILTER_COUNT,
+			  ACLS_MFCC_DCT_OUTPUT_LEN);
+	}
 
 	return __acls_mfcc_dct_output;
 }
