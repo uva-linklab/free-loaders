@@ -1,6 +1,8 @@
 FROM ubuntu:20.04
 
-RUN apt update && apt install -y git pipenv
+RUN \
+    apt update \
+    && DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt install -y git pipenv ffmpeg
 
 WORKDIR free-loaders
 
