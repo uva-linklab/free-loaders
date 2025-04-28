@@ -8,6 +8,7 @@
 #include <libtock/interface/button.h>
 #include <libtock/interface/led.h>
 #include <libtock/kernel/ipc.h>
+#include <libtock/peripherals/gpio.h>
 #include <libtock/services/alarm.h>
 #include <libtock/tock.h>
 
@@ -197,16 +198,25 @@ int main(__attribute__((unused)) int argc, __attribute__((unused)) char* argv[])
 	uint32_t t_offload_start;
 	uint32_t t_offload_done;
 
-
 	// Set up button callback.
 	libtock_button_notify_on_press(0, button_cb_offload_audio);
-	libtock_button_notify_on_press(1, run_sample_classification);
+	/* libtock_button_notify_on_press(1, run_sample_classification); */
+
+	// Set up GPIO for measurements.
+	int rc, gpio_count;
+	rc = libtock_gpio_count(&gpio_count);
+	printf("gpio count: %d\n", gpio_count);
+	/* rc = libtock_gpio_enable_output(0); */
+	/* printf("gpio output enable: %d\n", rc); */
+	/* rc = libtock_gpio_clear(0); */
+	/* printf("gpio clear: %d\n", rc); */
 
 	//
 	////////////////////////////////////////////////////
 
 	// OpenThread main loop.
 	uint32_t next_byte_idx = 0;
+	uint8_t packet_no = 0;
 	for (;;) {
 		// Execute any pending OpenThread related work.
 		otTaskletsProcess(instance);
@@ -226,25 +236,33 @@ int main(__attribute__((unused)) int argc, __attribute__((unused)) char* argv[])
 				if (next_byte_idx >= offload_size_bytes) {
 					_g_send_offload = false;
 
+					rc = libtock_gpio_clear(0);
+					/* printf("gpio clear: %d\n", rc); */
 					libtock_alarm_command_read(&t_offload_done);
 					const uint32_t d_classify_ms = libtock_alarm_ticks_to_ms(t_offload_done - t_offload_start);
 					printf("Offload done in %lu ms.\n", d_classify_ms);
 					next_byte_idx = 0;
+					packet_no = 0;
 				} else {
 					if (next_byte_idx == 0) {
 						libtock_alarm_command_read(&t_offload_start);
+						rc = libtock_gpio_set(0);
+						/* printf("gpio set: %d\n", rc); */
 					}
 
 					otMessage* message = NULL;
 					message = otUdpNewMessage(instance, NULL);
 					if (message == NULL) {
-						printf("Error creating UDP message.\n");
+						printf("Error creating UDP message no. %d.\n", packet_no);
 						continue;
+					} else {
+						/* printf("Created UDP message no. %d.\n", packet_no); */
 					}
 
 					const uint32_t bytes_pending = offload_size_bytes - next_byte_idx;
-					const uint32_t message_len = bytes_pending < MAX_UDP_PAYLOAD_BYTES ? bytes_pending : MAX_UDP_PAYLOAD_BYTES;
+					const uint32_t message_len = bytes_pending < (MAX_UDP_PAYLOAD_BYTES - 1) ? bytes_pending : (MAX_UDP_PAYLOAD_BYTES - 1);
 					/* printf("Bytes pending: %lu\n", bytes_pending); */
+					error = otMessageAppend(message, (uint8_t*) &packet_no, 1);
 					error = otMessageAppend(message, ((uint8_t*) _g_audio_samples) + next_byte_idx, message_len);
 					if (error != OT_ERROR_NONE) {
 						printf("Error appending to message.\n");
@@ -255,11 +273,12 @@ int main(__attribute__((unused)) int argc, __attribute__((unused)) char* argv[])
 					/* printf("sending... "); */
 					error = otUdpSend(instance, &sUdpSocket, message, &messageInfo);
 					if (error != OT_ERROR_NONE && message != NULL) {
-						printf("error sending packet: %d\n", error);
+						printf("error sending packet no. %d: %d\n", packet_no, error);
 						otMessageFree(message);
 						continue;
 					} else {
 						next_byte_idx += message_len;
+						packet_no++;
 						/* printf("Sent %lu bytes.\n", message_len); */
 					}
 				}
