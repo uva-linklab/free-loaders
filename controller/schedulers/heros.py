@@ -108,7 +108,7 @@ class HerosScheduler:
 
 class HerosInSituScheduler:
 
-    def __init__(self, executors, per_task_executor_bandwidth=False):
+    def __init__(self, executors, per_task_executor_bandwidth=False, preprofile=False):
 
         self.needs_before_state = True
         self.needs_feedback = False
@@ -118,7 +118,10 @@ class HerosInSituScheduler:
         self._profile_requests = queue.Queue()
         self._profiling_thread = threading.Thread(name='heros-ondemand-profiler',
                                                   target=HerosInSituScheduler._on_demand_profiler_entry,
-                                                  args=(executors, self._task_data, self._profile_requests,))
+                                                  args=(executors,
+                                                        self._task_data,
+                                                        self._profile_requests,
+                                                        preprofile,))
         self._profiling_thread.start()
 
         self._heros = HerosScheduler(executors, per_task_executor_bandwidth, self._task_data)
@@ -148,7 +151,7 @@ class HerosInSituScheduler:
 
         return True
 
-    def _on_demand_profiler_entry(executors, task_data, profile_requests):
+    def _on_demand_profiler_entry(executors, task_data, profile_requests, preprofile):
         '''Entry for on-demand profiling thread.
         '''
 
@@ -185,6 +188,11 @@ class HerosInSituScheduler:
                 pass
 
         print('[heros-is-profiler] done clearing profiling data')
+
+        if preprofile == True:
+            print('[heros-is-profiler] queueing up tasks for pre-profiling')
+            for task_id in range(0, 60):
+                profile_requests.put(task_id)
 
         while True:
             task_id = profile_requests.get()
@@ -240,6 +248,8 @@ class HerosInSituScheduler:
 
             # Track profiled task IDs.
             profiled_task_ids.append(task_id)
+            print('[heros-is-profiler] done profiling task {}'.format(task_id))
+            time.sleep(2)
 
 _ExecutorData = {
     0: ExecutorSpecification(2560.35, 'aarch64-nano'),

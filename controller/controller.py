@@ -98,7 +98,7 @@ elif args.scheduler == "load-bal":
 elif args.scheduler == "heros":
     scheduler = HerosScheduler(executers)
 elif args.scheduler == "heros-is":
-    scheduler = HerosInSituScheduler(executers)
+    scheduler = HerosInSituScheduler(executers, per_task_executor_bandwidth=True, preprofile=True)
 elif args.scheduler == "heteroedge":
     scheduler = HeteroedgeScheduler(executers)
 elif args.scheduler == "adpt-lb-v1":
