@@ -44,7 +44,8 @@ static void stateChangeCallback(uint32_t flags, void* context);
 
 #define FL_CONTROLLER_IP6_STR "2001:470:5:9af:1::fe01"
 #define FL_CONTROLLER_IP4_IP6_STR "fde3:8f5e:f206:2::c0a8:023d"
-#define BORDER_ROUTER_IP6_STR "fe80::40fd:17fa:4b68:1390"
+/* #define BORDER_ROUTER_IP6_STR "fe80::40fd:17fa:4b68:1390" */
+#define BORDER_ROUTER_IP6_STR "fe80::4873:c036:da29:d88b"
 
 bool _g_ready = false;
 uint32_t _g_last_pressed_debounce_ms = 0;
@@ -62,6 +63,8 @@ void run_sample_classification(__attribute__ ((unused)) returncode_t rtc,
 static void print_ip_addr(otInstance* instance);
 
 otInstance* _g_instance = NULL;
+
+uint32_t _g_t_offload_classification_start;
 
 // OPTIONS:
 // 1. Use prepared audio. ==============
@@ -200,15 +203,16 @@ int main(__attribute__((unused)) int argc, __attribute__((unused)) char* argv[])
 
 	// Set up button callback.
 	libtock_button_notify_on_press(0, button_cb_offload_audio);
-	/* libtock_button_notify_on_press(1, run_sample_classification); */
+	libtock_button_notify_on_press(1, run_sample_classification);
 
 	// Set up GPIO for measurements.
-	int rc, gpio_count;
-	rc = libtock_gpio_count(&gpio_count);
-	printf("gpio count: %d\n", gpio_count);
-	/* rc = libtock_gpio_enable_output(0); */
+	int rc;
+	/* int gpio_count; */
+	/* rc = libtock_gpio_count(&gpio_count); */
+	/* printf("gpio count: %d\n", gpio_count); */
+	rc = libtock_gpio_enable_output(0);
 	/* printf("gpio output enable: %d\n", rc); */
-	/* rc = libtock_gpio_clear(0); */
+	rc = libtock_gpio_clear(0);
 	/* printf("gpio clear: %d\n", rc); */
 
 	//
@@ -237,6 +241,7 @@ int main(__attribute__((unused)) int argc, __attribute__((unused)) char* argv[])
 					_g_send_offload = false;
 
 					rc = libtock_gpio_clear(0);
+					rc = libtock_led_off(1);
 					/* printf("gpio clear: %d\n", rc); */
 					libtock_alarm_command_read(&t_offload_done);
 					const uint32_t d_classify_ms = libtock_alarm_ticks_to_ms(t_offload_done - t_offload_start);
@@ -246,7 +251,9 @@ int main(__attribute__((unused)) int argc, __attribute__((unused)) char* argv[])
 				} else {
 					if (next_byte_idx == 0) {
 						libtock_alarm_command_read(&t_offload_start);
+						_g_t_offload_classification_start = t_offload_start;
 						rc = libtock_gpio_set(0);
+						rc = libtock_led_on(1);
 						/* printf("gpio set: %d\n", rc); */
 					}
 
@@ -447,6 +454,7 @@ void handleUdpRecvTemperature(void* aContext, otMessage* aMessage,
 
 	otMessageRead(aMessage, otMessageGetOffset(aMessage), buf, sizeof(buf) - 1);
 	printf("Received UDP Packet: %d\r\n", buf[0]);
+	printf("E2E offload time: %lu\r\n", libtock_alarm_ticks_to_ms(_g_t_offload_classification_start - t_now));
 }
 
 void initUdp(otInstance* aInstance) {

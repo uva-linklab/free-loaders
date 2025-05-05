@@ -68,11 +68,11 @@ void classify(
 	/* 	); */
 
 	// +     146 ms
-	/* rmse_statistics(sample_buffer, features); */
+	rmse_statistics(sample_buffer, features);
 	// +   3,629 ms
-    /* fft(sample_buffer, 256, __acls_buffer_a, __acls_buffer_b); */
+    fft(sample_buffer, 256, __acls_buffer_a, __acls_buffer_b);
 	// +      29 ms
-	/* centroid_statistics(__acls_buffer_a, features + 2); */
+	centroid_statistics(__acls_buffer_a, features + 2);
 	// +   1,465 ms
 	const float* const coefs = mfccs(sample_buffer,
 									 __acls_buffer_a,
