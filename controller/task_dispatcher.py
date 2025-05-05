@@ -1,15 +1,17 @@
-from threading import Thread
-import paho.mqtt.client as mqtt
 import json
+import time
+from threading import Thread, Timer
+
 import asyncio
+import paho.mqtt.client as mqtt
 from aiohttp import ClientSession
 from aiohttp import ClientTimeout
 from aiohttp import ServerTimeoutError
-import time
+
 import flomqtt.serialize as flserialize
-from threading import Timer
-from schedulers.rl_scheduler import RLScheduler
+import response_dispatcher
 import slt
+from schedulers.rl_scheduler import RLScheduler
 
 executer_server_port = 8088
 
@@ -73,6 +75,10 @@ class TaskDispatcher:
         self.total_tasks = 0
         self.load_tester = load_tester
         self.broker_ip = broker_ip
+
+        # Start the response dispatcher.
+        (_response_dispatcher_thread, response_queue) = response_dispatcher.start()
+        self.response_queue = response_queue
 
         # The callback for when the client receives a CONNACK response from the server.
         clientloop_thread = Thread(target=self.connect, args=(self.mqtt_client,))
@@ -159,6 +165,13 @@ class TaskDispatcher:
         # compute total time
         exec_time_ms = (time.time() - self.execution_times[offload_id]) * 1000
         deadline = self.deadlines[offload_id]
+
+        serialized_result_data = b'\x00'
+        self.response_queue.put({
+            'task_id': task_id,
+            'status': status,
+            'result': serialized_result_data
+        })
 
         if status != 0:
             # execution failed to finish

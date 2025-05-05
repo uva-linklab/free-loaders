@@ -15,6 +15,8 @@ ap.add_argument('-e', '--ending-offload', help='ID of the last offload to count'
                 type=int, dest='end', default=None)
 ap.add_argument('--y-limit', help='Set the y-limit of the y-axis in joules.',
                 type=int, dest='y_limit', default=None)
+ap.add_argument('--append-labels', help='Apply additional labeling to legend',
+                dest='append_labels', type=str, action='store', default=None)
 ap.add_argument('--manual-adjust', help="Apply manual adjustment to plot's T/B/L/R",
                 type=str, dest='manual_adjust', default=None)
 ap.add_argument('paths', help='paths to log files',
@@ -48,13 +50,17 @@ def which_scheduler(log):
             scheduler_name = m['sched']
             break
 
+    if scheduler_name == 'heros-is':
+        scheduler_name = 'heros'
+
     return scheduler_name
 
 xlabels = []
 dsrs = []
 energy_consumptions = []
+add_labels = args.append_labels.split(',') if args.append_labels != None else None
 
-w, h = pltf.figaspect(1)
+w, h = pltf.figaspect(.6)
 fig, ax1 = plt.subplots(figsize=(w,h,))
 if args.manual_adjust != None:
     d = [float(d) for d in args.manual_adjust.split(',')]
@@ -121,7 +127,12 @@ for path in args.paths:
         e.append(energy)
 
     energy_consumptions.append(y[-1] / 1000)
-    xlabels.append(pretty_names[sched_label])
+
+    if add_labels != None:
+        xlabels.append(f'{pretty_names[sched_label]}\n{add_labels[0]}')
+        add_labels = add_labels[1:]
+    else:
+        xlabels.append(pretty_names[sched_label])
 
     print('Total energy consumed by {}: {:.2f} J; Avg. rate: {} J/offload'.format(
         pretty_names[sched_label],
@@ -146,12 +157,13 @@ ax1.set_axisbelow(True)
 bar_dist = 0.7
 ax1.bar(list(map(lambda x: x * bar_dist, range(0, len(args.paths)))),
         energy_consumptions,
-        width=0.4,
+        width=bar_dist * 0.6,
     color=energy_color)
 # xticks are integers mapped to labels provided in the second argument...
 ax1.set_xticks(list(map(lambda x: x * bar_dist, range(0, len(args.paths)))),
                labels=xlabels,
                fontsize=12)
+ax1.set_xlim(0 - bar_dist / 2, bar_dist * len(args.paths) - bar_dist / 2)
 ax1.set_ylabel('Energy usage (J)', fontsize=16)
 
 yticks = None

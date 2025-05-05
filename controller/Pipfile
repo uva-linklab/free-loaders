@@ -1,0 +1,19 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+requests = "*"
+paho-mqtt = "*"
+chainer = "*"
+setuptools = "<65"
+aiohttp = "~=3.8.3"
+more-itertools = "*"
+"jaraco.functools" = "*"
+pandas = "~=1.5.1"
+
+[dev-packages]
+
+[requires]
+python_version = "3.8"

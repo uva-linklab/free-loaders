@@ -4,6 +4,7 @@ import os.path
 import sys
 
 import classes.executer
+import lpo_server
 import slt
 
 from server import ControllerServer
@@ -42,17 +43,21 @@ ap.add_argument('-s', '--scheduler', help='Set the scheduler.',
                 metavar='SCHEDULER',
                 choices=SCHEDULERS,
                 dest='scheduler', default='rl')
+ap.add_argument('-e', '--executor-metadata', help='Path to executor JSON file',
+                dest='executor_metadata_path', type=str, default=os.path.join(os.getcwd(), 'executors.json'))
 ap.add_argument('--mqtt-broker-ip', help='IP address of the MQTT broker',
                 dest='broker_ip', default='localhost')
 ap.add_argument('-l', '--enable-load-testing', help='Enable synthetic load testing',
                 dest='slt', action='store_true', default=False)
 ap.add_argument('--test-load-spec', help='Parse and verify synthetic load specification',
                 dest='test_load_spec', action='store_true', default=False)
+ap.add_argument('--enable-lpo-server', help='Listen for offloads from low-power offloaders',
+                dest='enable_lpo_server', action='store_true', default=False)
 
 args = ap.parse_args()
 
 # Assume that the CWD will always be the top of the repository.
-executer_json_path = os.path.join(os.getcwd(), 'executers.json')
+executer_json_path = args.executor_metadata_path
 print('[controller] loaded executers from {}'.format(executer_json_path))
 executers = classes.executer.from_file(executer_json_path)
 executers = { e.executer_id: e for e in executers }
@@ -107,6 +112,11 @@ print(f'[controller] using {args.scheduler} scheduler')
 
 # start the task dispatcher
 task_dispatcher = TaskDispatcher(scheduler, executers, sl_tester, broker_ip=args.broker_ip)
+
+# start the lpo listener
+lpo_server_thread = None
+if args.enable_lpo_server == True:
+    lpo_server_thread = lpo_server.start_server(task_dispatcher)
 
 # start the http server to receive tasks from offloaders
 controller_server = ControllerServer(task_dispatcher)
