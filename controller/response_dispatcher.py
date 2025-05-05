@@ -32,6 +32,6 @@ def _response_dispatcher_entry(response_queue):
         r = response_queue.get()
         print(f"[rd] handling response for {r['task_id']}")
 
-        if task_id == 62:
+        if r['task_id'] == 62:
             sock.sendto(r['result'], ('192.168.86.37', 12123,))
             print(f"[rd] sent response for {r['task_id']}")
