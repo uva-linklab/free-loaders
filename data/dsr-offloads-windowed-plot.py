@@ -136,7 +136,7 @@ for (path, color) in zip(args.paths, range(0,10)):
 
     plot_label = pretty_names[label]
     if add_labels != None:
-        plot_label = '{}-{}'.format(plot_label, add_labels[0])
+        plot_label = '{} {}'.format(plot_label, add_labels[0])
         add_labels = add_labels[1:]
 
     if args.date_runs == True:
@@ -158,7 +158,7 @@ for (path, color) in zip(args.paths, range(0,10)):
 
 ax.set_xlabel('Number of offloads', fontsize=16)
 ax.set_ylabel('Windowed deadline satisfaction ratio', fontsize=16)
-ax.legend(fancybox=True, fontsize=12, ncols=2, reverse=True)
+ax.legend(fancybox=True, fontsize=12, ncols=1, reverse=True)
 
 if args.x_limit != None:
     x_limit = args.x_limit
