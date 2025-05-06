@@ -16,7 +16,7 @@ from schedulers.energy_greedy_scheduler import EnergyGreedyScheduler
 from schedulers.time_wrr_scheduler import TimeWRRScheduler
 from schedulers.energy_wrr_scheduler import EnergyWRRScheduler
 from schedulers.load_balancing_scheduler import LoadBalancingScheduler
-from schedulers.heros import HerosScheduler, HerosInSituScheduler
+from schedulers.heros import HerosScheduler, HerosSchedulerV2, HerosInSituScheduler
 from schedulers.heteroedge_online import HeteroedgeScheduler
 from schedulers.adaptive_scheduler_v1 import AdaptiveSchedulerV1
 from schedulers.adaptive_scheduler_v2 import AdaptiveSchedulerV2
@@ -29,6 +29,7 @@ SCHEDULERS = [
     'energy-greedy',
     'energy-wrr',
     'heros',
+    'heros-d',
     'heros-is',
     'heteroedge',
     'load-bal',
@@ -96,7 +97,9 @@ elif args.scheduler == "energy-wrr":
 elif args.scheduler == "load-bal":
     scheduler = LoadBalancingScheduler(executers)
 elif args.scheduler == "heros":
-    scheduler = HerosScheduler(executers)
+    scheduler = HerosScheduler(executers, per_task_executor_bandwidth=True)
+elif args.scheduler == "heros2":
+    scheduler = HerosSchedulerV2(executers)
 elif args.scheduler == "heros-is":
     scheduler = HerosInSituScheduler(executers, per_task_executor_bandwidth=True, preprofile=True)
 elif args.scheduler == "heteroedge":

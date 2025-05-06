@@ -106,6 +106,82 @@ class HerosScheduler:
 
         return (cpu_good and memory_good, est_time_ms,)
 
+class DeprecatedHerosScheduler:
+
+    def __init__(self, executors):
+        self.executors = executors
+        self.total_executor = len(executors.keys())
+        self.needs_before_state = True
+        self.needs_feedback = False
+
+    def schedule(self, before_state, task):
+        # Filter to only those that can handle the task.
+        eligible_executors = []
+        for (eid, exec_spec) in _ExecutorData.items():
+            # See if the executor is defined in the dictionary in controller.py.
+            is_online = str(eid) in before_state.keys()
+            if not is_online:
+                continue
+
+            is_eligible = self.executor_is_eligible(eid, before_state[str(eid)], task)
+            #print('{} is online? {}, is eligible? {}'.format(eid, is_online, is_eligible))
+            if is_eligible:
+                eligible_executors.append(eid)
+
+        print('[heros] executors eligible for task_id={}: {}'.format(
+            task.task_id, eligible_executors))
+
+        best_h = -999999
+        best_eid = 0
+
+        print('[heros] CPU load values:  {}'.format(
+            [(eid, '{:.2f}'.format(s['cpu-load']),) for (eid, s) in before_state.items()]))
+        print('[heros] selection scores: {}'.format(
+            [(eid, '{:.2f}'.format(s['h']),) for (eid, s) in before_state.items()]))
+
+        # Use the executor with the greatest H.
+        for (eid, state) in before_state.items():
+            eid = int(eid)
+            # Executor must be eligible.
+            if eid not in eligible_executors:
+                continue
+
+            if state['h'] > best_h:
+                best_eid = eid
+                best_h = state['h']
+
+        print(f'[heros] scheduled task(offload_id={task.offload_id}, task_id={task.task_id}) ' +
+              f'on executer_id={best_eid}, h={round(best_h, 2)}.')
+
+        return best_eid
+
+    # status = 0 => successful task, status != 0 => failed task
+    def task_finished(self, offload_id, exec_id, status, exec_time, energy, new_state_of_executor):
+        pass
+
+    def executor_is_eligible(self, eid, state, task):
+        executor_data = _ExecutorData[eid]
+
+        task_type_id = int(task.task_id / 10) # 0 = loop, 1 = matrix mult., 2 = FFT, ...
+        task_type_level = task.task_id % 10 # 0 = MM 500x500, 1 = MM 556x556, ...
+
+        task_m_ins = _TaskData[executor_data.device][task.task_id].ins / 1000000
+        est_computation_time = task_m_ins / _ExecutorData[eid].max_mips * 1000
+
+        # Estimate network time.
+        est_network_time = (_TaskSizeData[task.task_id] / (state['link-capacity-mbits'] / 8 * 1024 * 1024))
+
+        # Estimated required time in milliseconds.
+        est_req_time = est_computation_time + est_network_time
+        print(f'Est. req. time for EID {eid}: {round(est_req_time, 2)} ms = {round(est_computation_time, 2)} + {round(est_network_time, 2)} ms')
+        cpu_good = est_req_time <= task.deadline
+
+        # Memory usage
+        free_ram_kb = state['free-ram'] / 1024
+        memory_good = free_ram_kb > _TaskData[executor_data.device][task.task_id].memory
+
+        return cpu_good and memory_good
+
 class HerosInSituScheduler:
 
     def __init__(self, executors, per_task_executor_bandwidth=False, preprofile=False):
@@ -255,11 +331,11 @@ _ExecutorData = {
     0: ExecutorSpecification(2560.35, 'aarch64-nano'),
     1: ExecutorSpecification(1140.61, 'aarch64-rpi3'),
     2: ExecutorSpecification(1140.61, 'aarch64-rpi3'),
-    3: ExecutorSpecification(4059.44, 'aarch64-rpi4'),
-    4: ExecutorSpecification(4059.44, 'aarch64-rpi4'),
-    5: ExecutorSpecification(4059.44, 'aarch64-rpi4'),
-    6: ExecutorSpecification(4059.44, 'aarch64-rpi4'),
-    7: ExecutorSpecification(4059.44, 'aarch64-rpi4'),
+    3: ExecutorSpecification(2422.04, 'aarch64-rpi4'),
+    4: ExecutorSpecification(2422.04, 'aarch64-rpi4'),
+    5: ExecutorSpecification(2422.04, 'aarch64-rpi4'),
+    6: ExecutorSpecification(2422.04, 'aarch64-rpi4'),
+    7: ExecutorSpecification(2422.04, 'aarch64-rpi4'),
     8: ExecutorSpecification(3876.54, 'aarch64-tx2'),
     9: ExecutorSpecification(13187.94, 'x86_64-pc'),
 }
