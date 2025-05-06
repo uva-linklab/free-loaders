@@ -250,6 +250,8 @@ class HerosInSituScheduler:
             'x86_64-pc',
         ]
 
+        executor_ip_archs = {e.executer_ip: arch for (e, arch) in zip(executors, archs) }
+
         # Which tasks have been profiled.
         profiled_task_ids = []
 
@@ -280,8 +282,13 @@ class HerosInSituScheduler:
             profiling_waits = 0
 
             # Launch profiling on each executor.
-            profile_url = 'http://{}:8088/profile/{}'.format(e.executer_ip, task_id)
             for e in executors:
+                arch = executor_ip_archs[e.executer_ip]
+                if task_id in task_data[arch].keys():
+                    print(f'[heros-is-profiler] already have profiling for task {task_id} on {arch}.')
+                    continue
+
+                profile_url = 'http://{}:8088/profile/{}'.format(e.executer_ip, task_id)
                 try:
                     resp = requests.get(profile_url)
                 except requests.exceptions.ConnectionError:
@@ -315,6 +322,13 @@ class HerosInSituScheduler:
                             print('[heros-is-profiler] task {} not possible for {}'.format(task_id, arch))
                             task_data[arch][task_id] = Task(999999999999, 999999999999)
                             profiled.append(arch)
+
+                            # Assume the executor cannot run higher tasks in the same class.
+                            task_variant_id = task_id
+                            while task_variant_id % 10 <= 9:
+                                print(f'[heros-is-profiler] assuming {arch} cannot run task {task_variant_id}')
+                                task_data[arch][task_variant_id] = Task(999999999999, 999999999999)
+                                task_variant_id += 1
 
                 if len(profiled) == len(task_data.keys()):
                     break
