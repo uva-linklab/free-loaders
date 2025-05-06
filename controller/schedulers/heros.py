@@ -184,7 +184,7 @@ class DeprecatedHerosScheduler:
 
 class HerosInSituScheduler:
 
-    def __init__(self, executors, per_task_executor_bandwidth=False, preprofile=False):
+    def __init__(self, heros, executors, per_task_executor_bandwidth=False, preprofile=False):
 
         self.needs_before_state = True
         self.needs_feedback = False
@@ -200,7 +200,7 @@ class HerosInSituScheduler:
                                                         preprofile,))
         self._profiling_thread.start()
 
-        self._heros = HerosScheduler(executors, per_task_executor_bandwidth, self._task_data)
+        self._heros = heros
 
     def schedule(self, before_state, task):
 
@@ -325,6 +325,7 @@ class HerosInSituScheduler:
             # Track profiled task IDs.
             profiled_task_ids.append(task_id)
             print('[heros-is-profiler] done profiling task {}'.format(task_id))
+
             time.sleep(2)
 
 _ExecutorData = {

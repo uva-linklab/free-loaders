@@ -101,7 +101,11 @@ elif args.scheduler == "heros":
 elif args.scheduler == "heros2":
     scheduler = HerosSchedulerV2(executers)
 elif args.scheduler == "heros-is":
-    scheduler = HerosInSituScheduler(executers, per_task_executor_bandwidth=True, preprofile=True)
+    scheduler = HerosInSituScheduler(
+        HerosScheduler(executors, per_task_executor_bandwidth, self._task_data),
+        executers,
+        per_task_executor_bandwidth=True,
+        preprofile=True)
 elif args.scheduler == "heteroedge":
     scheduler = HeteroedgeScheduler(executers)
 elif args.scheduler == "adpt-lb-v1":
