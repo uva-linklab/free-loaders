@@ -203,7 +203,9 @@ class HerosInSituScheduler:
         self.needs_feedback = False
 
         # Get task data set up like the pre-filled dictionary.
-        self._task_data = { arch: {} for arch in _TaskData.keys() }
+        global _TaskData
+        # self._task_data = { arch: {} for arch in _TaskData.keys() }
+        self._task_data = _TaskData
         self._profile_requests = queue.Queue()
         self._profiling_thread = threading.Thread(name='heros-ondemand-profiler',
                                                   target=HerosInSituScheduler._on_demand_profiler_entry,
@@ -235,9 +237,9 @@ class HerosInSituScheduler:
         '''Returns true if profiling data for a task is available.
         '''
 
-        for arch in self._task_data.keys():
-            if task_id not in self._task_data[arch].keys():
-                return False
+        # for arch in self._task_data.keys():
+        #     if task_id not in self._task_data[arch].keys():
+        #         return False
 
         return True
 
@@ -254,7 +256,6 @@ class HerosInSituScheduler:
 
         # Only need one executor of each type.
         all_executors = executors
-        print(all_executors)
         executors = [executors[0],
                      executors[1],
                      executors[3],
@@ -288,15 +289,15 @@ class HerosInSituScheduler:
         for eid in _ExecutorData.keys():
             _ExecutorData[eid].max_mips = 0
 
-        mips_rounds = 1
+        mips_rounds = 3
         print(f'[heros-is-profiler] performing MIPS profiling ({mips_rounds} rounds)')
-        for _round_no in range(0, mips_rounds):
+        for round_no in range(0, mips_rounds):
             for (eid, e) in all_executors.items():
                 arch = _ExecutorData[eid].device
                 url = 'http://{}:8088/profile/9'.format(e.executer_ip)
+                print(f'[heros-is-profiler] triggering MIPS profiling on EID {eid}')
                 while True:
                     try:
-                        print(f'[heros-is-profiler] triggering MIPS profiling on EID {eid}')
                         resp = requests.get(url)
                         break
                     except requests.exceptions.ConnectionError:
@@ -317,6 +318,16 @@ class HerosInSituScheduler:
                     except requests.exceptions.ConnectionError:
                         time.sleep(3)
 
+                if round_no == mips_rounds - 1:
+                    print(f'[heros-is-profiler] updating MIPS on EID {eid} to {_ExecutorData[eid].max_mips}')
+                    url = f'http://{e.executer_ip}:8088/stats'
+                    while True:
+                        try:
+                            resp = requests.post(url, json=json.dumps({ 'mips': _ExecutorData[eid].max_mips }))
+                            break
+                        except requests.exceptions.ConnectionError:
+                            time.sleep(0.5)
+
                 # Clear for re-profiling.
                 url = f'http://{e.executer_ip}:8088/profile/clear'
                 try:
@@ -328,7 +339,8 @@ class HerosInSituScheduler:
             print(f'{ed.device} mips: {ed.max_mips}')
 
         # Which tasks have been profiled.
-        profiled_task_ids = []
+        # profiled_task_ids = []
+        profiled_task_ids = [x for x in range(0, 60)]
 
         if preprofile == True:
             # print('[heros-is-profiler] queueing up tasks for pre-profiling')

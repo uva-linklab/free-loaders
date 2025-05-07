@@ -75,6 +75,15 @@ class ExecutorHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
             self.send_response(204)
             log.i('cleared profiling data')
 
+        elif self.path == '/stats':
+            content = self.rfile.read(int(self.headers['content-length']))
+            stats_json = json.loads(content)
+
+            mips = stats_json['mips']
+            stats.set_max_mips(mips)
+
+            self.send_response(204)
+
     def log_message(self, format, *args):
         pass
 

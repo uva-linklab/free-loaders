@@ -185,11 +185,11 @@ def _get_net_load():
     return net_load_avg
 
 MIPSTable = {
-    'rpi3':    1137.11,
-    'rpi4':    2422.04,
-    'nano':    3085.06,
-    'tx2':     4140.84,
-    'dellxps': 15274.47,
+    'rpi3':    1137.11, # PpW = 242.45
+    'rpi4':    2422.04, #     = 471.21
+    'nano':    3085.06, #     = 402.22
+    'tx2':     4140.84, #     = 547.01
+    'dellxps': 15274.47, #    = 135.20
 }
 
 PowerTables = {
@@ -316,3 +316,14 @@ def __selection_power_value(current_load):
         est_power = lower_power_bound + (power_range * factor)
 
         return est_power
+
+def set_max_mips(max_mips):
+    '''Set the maximum MIPS of the device.
+    '''
+
+    global MIPSTable
+    global __ExecutorName
+
+    MIPSTable[__ExecutorName] = max_mips
+
+    log.i(f'maximum MIPS set to {max_mips}')
