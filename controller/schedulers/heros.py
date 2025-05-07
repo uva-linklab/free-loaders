@@ -247,6 +247,7 @@ class HerosInSituScheduler:
         '''Entry for on-demand profiling thread.
         '''
 
+        import json
         import pickle
 
         import requests
@@ -323,10 +324,12 @@ class HerosInSituScheduler:
                     url = f'http://{e.executer_ip}:8088/stats'
                     while True:
                         try:
-                            resp = requests.post(url, json=json.dumps({ 'mips': _ExecutorData[eid].max_mips }))
-                            break
-                        except requests.exceptions.ConnectionError:
-                            time.sleep(0.5)
+                            resp = requests.post(url, json={ 'mips': _ExecutorData[eid].max_mips })
+                            if resp.status_code == 204:
+                                break
+                        except requests.exceptions.ConnectionError as err:
+                            print(f'[heros-is-profiler] error sending request to {url}')
+                            time.sleep(1)
 
                 # Clear for re-profiling.
                 url = f'http://{e.executer_ip}:8088/profile/clear'
