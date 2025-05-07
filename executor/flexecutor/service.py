@@ -83,6 +83,7 @@ class ExecutorHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
             stats.set_max_mips(mips)
 
             self.send_response(204)
+            self.end_headers()
 
     def log_message(self, format, *args):
         pass
