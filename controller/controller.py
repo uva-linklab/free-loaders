@@ -29,7 +29,7 @@ SCHEDULERS = [
     'energy-greedy',
     'energy-wrr',
     'heros',
-    'heros-d',
+    'heros-v2',
     'heros-is',
     'heteroedge',
     'load-bal',
@@ -98,11 +98,11 @@ elif args.scheduler == "load-bal":
     scheduler = LoadBalancingScheduler(executers)
 elif args.scheduler == "heros":
     scheduler = HerosScheduler(executers, per_task_executor_bandwidth=True)
-elif args.scheduler == "heros2":
+elif args.scheduler == "heros-v2":
     scheduler = HerosSchedulerV2(executers)
 elif args.scheduler == "heros-is":
     scheduler = HerosInSituScheduler(
-        HerosScheduler(executors, per_task_executor_bandwidth, self._task_data),
+        HerosSchedulerV2(executers),
         executers,
         per_task_executor_bandwidth=True,
         preprofile=True)

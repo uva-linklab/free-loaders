@@ -106,7 +106,7 @@ class HerosScheduler:
 
         return (cpu_good and memory_good, est_time_ms,)
 
-class DeprecatedHerosScheduler:
+class HerosSchedulerV2:
 
     def __init__(self, executors):
         self.executors = executors
