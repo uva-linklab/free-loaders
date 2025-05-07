@@ -253,6 +253,8 @@ class HerosInSituScheduler:
         print('[heros-is-profiler] started')
 
         # Only need one executor of each type.
+        all_executors = executors
+        print(all_executors)
         executors = [executors[0],
                      executors[1],
                      executors[3],
@@ -268,9 +270,6 @@ class HerosInSituScheduler:
 
         executor_ip_archs = {e.executer_ip: arch for (e, arch) in zip(executors, archs) }
 
-        # Which tasks have been profiled.
-        profiled_task_ids = []
-
         # Clear profiling data on all executors.
         print('[heros-is-profiler] clearing profiling data')
         for e in executors:
@@ -282,11 +281,61 @@ class HerosInSituScheduler:
                 pass
 
         print('[heros-is-profiler] done clearing profiling data')
+        time.sleep(0.5)
+
+        # Profile MIPS first.
+        global _ExecutorData
+        for eid in _ExecutorData.keys():
+            _ExecutorData[eid].max_mips = 0
+
+        mips_rounds = 1
+        print(f'[heros-is-profiler] performing MIPS profiling ({mips_rounds} rounds)')
+        for _round_no in range(0, mips_rounds):
+            for (eid, e) in all_executors.items():
+                arch = _ExecutorData[eid].device
+                url = 'http://{}:8088/profile/9'.format(e.executer_ip)
+                while True:
+                    try:
+                        print(f'[heros-is-profiler] triggering MIPS profiling on EID {eid}')
+                        resp = requests.get(url)
+                        break
+                    except requests.exceptions.ConnectionError:
+                        # print(f'[heros-is-profiler] connection error...')
+                        time.sleep(3)
+
+                while True:
+                    url = 'http://{}:8088/profile/9'.format(e.executer_ip)
+                    try:
+                        print(f'[heros-is-profiler] fetching MIPS profile for EID {eid}')
+                        resp = requests.get(url)
+                        if resp.status_code == 200:
+                            rjd = resp.json()
+                            mips = rjd['mips']
+                            print(f'[heros-is-profiler] got MIPS profile for EID {eid} arch. {arch}: {mips}')
+                            _ExecutorData[eid].max_mips += (mips / mips_rounds)
+                            break
+                    except requests.exceptions.ConnectionError:
+                        time.sleep(3)
+
+                # Clear for re-profiling.
+                url = f'http://{e.executer_ip}:8088/profile/clear'
+                try:
+                    resp = requests.post(url)
+                except requests.exceptions.ConnectionError:
+                    pass
+
+        for ed in _ExecutorData.values():
+            print(f'{ed.device} mips: {ed.max_mips}')
+
+        # Which tasks have been profiled.
+        profiled_task_ids = []
 
         if preprofile == True:
-            print('[heros-is-profiler] queueing up tasks for pre-profiling')
-            for task_id in range(0, 60):
-                profile_requests.put(task_id)
+            # print('[heros-is-profiler] queueing up tasks for pre-profiling')
+            # for task_id in range(0, 60):
+            #     profile_requests.put(task_id)
+            global _TaskData
+            task_data = _TaskData
 
         while True:
             task_id = profile_requests.get()
