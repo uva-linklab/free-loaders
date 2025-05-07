@@ -28,6 +28,9 @@ class HerosScheduler:
 
         self._use_per_executor_task_bandwidth = per_task_executor_bandwidth
 
+    def set_task_data(self, task_data):
+        self._task_data = task_data
+
     def schedule(self, before_state, task):
         # Filter to only those that can handle the task.
         eligible_executors = []
@@ -108,11 +111,19 @@ class HerosScheduler:
 
 class HerosSchedulerV2:
 
-    def __init__(self, executors):
+    def __init__(self, executors, task_data=None):
         self.executors = executors
         self.total_executor = len(executors.keys())
         self.needs_before_state = True
         self.needs_feedback = False
+
+        if task_data == None:
+            self._task_data = _TaskData
+        else:
+            self._task_data = task_data
+
+    def set_task_data(self, task_data):
+        self._task_data = task_data
 
     def schedule(self, before_state, task):
         # Filter to only those that can handle the task.
@@ -165,11 +176,13 @@ class HerosSchedulerV2:
         task_type_id = int(task.task_id / 10) # 0 = loop, 1 = matrix mult., 2 = FFT, ...
         task_type_level = task.task_id % 10 # 0 = MM 500x500, 1 = MM 556x556, ...
 
-        task_m_ins = _TaskData[executor_data.device][task.task_id].ins / 1000000
+        task_m_ins = self._task_data[executor_data.device][task.task_id].ins / 1000000
         est_computation_time = task_m_ins / _ExecutorData[eid].max_mips * 1000
 
         # Estimate network time.
-        est_network_time = (_TaskSizeData[task.task_id] / (state['link-capacity-mbits'] / 8 * 1024 * 1024))
+        # Use "clairvoyant" worst case of input + output data size.
+        #est_network_time = (_TaskSizeData[task.task_id] / (state['link-capacity-mbits'] / 8 * 1024 * 1024))
+        est_network_time = len(task.input_data) / (state['link-capacity-mbits'] / 8 * 1024 * 1024)
 
         # Estimated required time in milliseconds.
         est_req_time = est_computation_time + est_network_time
@@ -178,7 +191,7 @@ class HerosSchedulerV2:
 
         # Memory usage
         free_ram_kb = state['free-ram'] / 1024
-        memory_good = free_ram_kb > _TaskData[executor_data.device][task.task_id].memory
+        memory_good = free_ram_kb > self._task_data[executor_data.device][task.task_id].memory
 
         return cpu_good and memory_good
 
@@ -201,6 +214,7 @@ class HerosInSituScheduler:
         self._profiling_thread.start()
 
         self._heros = heros
+        self._heros.set_task_data(self._task_data)
 
     def schedule(self, before_state, task):
 
@@ -230,6 +244,8 @@ class HerosInSituScheduler:
     def _on_demand_profiler_entry(executors, task_data, profile_requests, preprofile):
         '''Entry for on-demand profiling thread.
         '''
+
+        import pickle
 
         import requests
         import requests.exceptions
@@ -282,10 +298,12 @@ class HerosInSituScheduler:
             profiling_waits = 0
 
             # Launch profiling on each executor.
+            profiled = []
             for e in executors:
                 arch = executor_ip_archs[e.executer_ip]
                 if task_id in task_data[arch].keys():
                     print(f'[heros-is-profiler] already have profiling for task {task_id} on {arch}.')
+                    profiled.append(arch)
                     continue
 
                 profile_url = 'http://{}:8088/profile/{}'.format(e.executer_ip, task_id)
@@ -298,7 +316,6 @@ class HerosInSituScheduler:
 
             # Get data back from each executor.
             # Continue this loop until we have data for all architectures.
-            profiled = []
             while True:
                 print('[heros-is-profiler] fetching profiling for task {}'.format(task_id))
                 print('[heros-is-profiler] done: {}'.format(profiled))
@@ -325,8 +342,9 @@ class HerosInSituScheduler:
 
                             # Assume the executor cannot run higher tasks in the same class.
                             task_variant_id = task_id
-                            while task_variant_id % 10 <= 9:
-                                print(f'[heros-is-profiler] assuming {arch} cannot run task {task_variant_id}')
+                            last_variant_id = int(task_id / 10) * 10 + 9
+                            while task_variant_id <= last_variant_id:
+                                print(f'[heros-is-profiler] assuming {arch} cannot run task {task_variant_id} (<={last_variant_id})')
                                 task_data[arch][task_variant_id] = Task(999999999999, 999999999999)
                                 task_variant_id += 1
 
@@ -339,6 +357,10 @@ class HerosInSituScheduler:
             # Track profiled task IDs.
             profiled_task_ids.append(task_id)
             print('[heros-is-profiler] done profiling task {}'.format(task_id))
+
+            # Write to file.
+            with open('/tmp/heros-profiling.pkl', 'wb') as fh:
+                pickle.dump(task_data, fh)
 
             time.sleep(2)
 
