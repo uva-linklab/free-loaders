@@ -13,13 +13,6 @@ import paho.mqtt.client
 
 import config
 import stats
-from tasker.aec import classify_audio
-from tasker.loop import run_loop_task
-from tasker.mm import run_mm_task
-from tasker.fft import run_fft_task
-from tasker.obj_detection import run_obj_detection_task
-from tasker.room_classification.room_classification import run_room_classification_task
-from tasker.har.human_act_rec import run_har_task
 
 
 # MQTT server port; fixed to 1883.
@@ -260,11 +253,15 @@ def __process_task_entry(pipe, executor_id, power, task_request, additional_data
     res_data = b''
 
     if task_id < 10:
+        from tasker.loop import run_loop_task
+
         # Additional data is the value to start loop iterations with.
         loop_iter_count = struct.unpack('I', additional_data[:4])[0]
         res = run_loop_task(loop_iter_count)
         res_data = struct.pack('I', res)
     elif task_id < 20:
+        from tasker.mm import run_mm_task
+
         # Additional data is the length of the first matrix, the first matrix, and the second matrix.
         first_matrix_data_len = struct.unpack('I', additional_data[:4])[0]
         matrix_a_bytes = additional_data[4:(4+first_matrix_data_len)]
@@ -284,31 +281,44 @@ def __process_task_entry(pipe, executor_id, power, task_request, additional_data
     elif task_id < 30:
         # Additional data is the signal samples.
         import numpy as np
+
+        from tasker.fft import run_fft_task
+
         samples = np.frombuffer(additional_data, dtype='<f8')
         res_data = run_fft_task(samples).tobytes()
 
     elif task_id < 40:
+        import numpy as np
+
+        from tasker.har.human_act_rec import run_har_task
+
         # Additional data has batch_size,r,c of data + array data bytes
         batch_size = struct.unpack('I', additional_data[:4])[0]
         r = struct.unpack('I', additional_data[4:8])[0]
         c = struct.unpack('I', additional_data[8:12])[0]
         array_bytes = additional_data[12:]
 
-        import numpy as np
         samples = np.frombuffer(array_bytes, dtype='<f8')
         input_data = samples.reshape(batch_size, r, c)
         res_data = run_har_task(input_data).encode('utf-8')
 
     elif task_id < 50:  # object detection
+        from tasker.obj_detection import run_obj_detection_task
+
         image_bytes = additional_data
         res_data = run_obj_detection_task(image_bytes).encode('utf-8')
 
     elif task_id < 60:
+        from tasker.room_classification.room_classification import run_room_classification_task
+
         image_bytes = additional_data
         res_data = run_room_classification_task(image_bytes).encode('utf-8')
 
     elif task_id == 62:
         import numpy as np
+
+        from tasker.aec import classify_audio
+
         samples = np.frombuffer(additional_data, dtype='<i2')
         res = classify_audio(samples)[0]
         res_data = res.encode('utf-8')
