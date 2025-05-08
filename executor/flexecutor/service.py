@@ -85,6 +85,16 @@ class ExecutorHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
             self.send_response(204)
             self.end_headers()
 
+        elif self.path == '/profile/rounds':
+            content = self.rfile.read(int(self.headers['content-length']))
+            rounds_json = json.loads(content)
+
+            profiling_rounds = rounds_json['rounds']
+            stats.set_profiling_rounds(profiling_rounds)
+
+            self.send_response(204)
+            self.end_headers()
+
     def log_message(self, format, *args):
         pass
 

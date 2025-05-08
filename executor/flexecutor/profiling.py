@@ -18,6 +18,7 @@ if not os.path.isfile(_PerfPath):
     print('perf does not exist at {}'.format(_PerfPath))
     sys.exit(1)
 
+_TaskProfilingRounds = 1
 _TaskProfilingData = {}
 
 def get_profiling_data(task_id):
@@ -58,6 +59,14 @@ def clear_profiling_data():
     log.i('Cleared all profiling data.')
 
     return
+
+def set_profiling_rounds(rounds):
+    '''Set the number of rounds of profiling to determine task profile.
+    '''
+
+    global _TaskProfilingRounds
+    _TaskProfilingRounds = rounds
+    log.i(f'set profiling rounds to {rounds}')
 
 def _profile_task_entry(task_id):
     '''Profile a task and store results.
@@ -113,20 +122,29 @@ def _profile_task_entry(task_id):
         script_args.extend([input_path])
 
     import subprocess
-    cli = ['pipenv', 'run',
-           _PerfPath, 'stat',
-           python_path,
-           script_path]
-    cli.extend(script_args)
-    log.i('Launching: {}'.format(cli))
-    r = subprocess.run(cli, capture_output=True, cwd=fl_path)
 
-    if r.returncode != 0:
-        log.e('Profiling task {} failed.\nSTDOUT: {}\nSTDERR: {}'.format(
-            task_id, r.stdout, r.stderr))
-        return
+    global _TaskProfilingRounds
+    wc_ins_count = None
+    for _round_no in range(0, _TaskProfilingRounds):
+        cli = ['pipenv', 'run',
+               _PerfPath, 'stat',
+               python_path,
+               script_path]
+        cli.extend(script_args)
+        log.i('Launching: {}'.format(cli))
+        r = subprocess.run(cli, capture_output=True, cwd=fl_path)
 
-    (ins_count, mips,) = _extract_perf_stats(r.stderr)
+        if r.returncode != 0:
+            log.e('Profiling task {} failed.\nSTDOUT: {}\nSTDERR: {}'.format(
+                task_id, r.stdout, r.stderr))
+            return
+
+        (ins_count, mips,) = _extract_perf_stats(r.stderr)
+        if wc_ins_count == None:
+            wc_ins_count = ins_count
+        else:
+            wc_ins_count = max(wc_ins_count, ins_count)
+
     log.i('Profiling task {} done: ({} ins. @ {} MIPS)'.format(
         task_id, ins_count, mips))
 
