@@ -140,10 +140,12 @@ def _profile_task_entry(task_id):
             return
 
         (ins_count, mips,) = _extract_perf_stats(r.stderr)
+        log.i(f'Task instruction count was {ins_count}')
         if wc_ins_count == None:
             wc_ins_count = ins_count
         else:
             wc_ins_count = max(wc_ins_count, ins_count)
+            log.i(f'Worst task instruction count is now {wc_ins_count}')
 
     log.i('Profiling task {} done: ({} ins. @ {} MIPS)'.format(
         task_id, ins_count, mips))
