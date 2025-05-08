@@ -90,7 +90,7 @@ class ExecutorHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
             rounds_json = json.loads(content)
 
             profiling_rounds = rounds_json['rounds']
-            stats.set_profiling_rounds(profiling_rounds)
+            profiling.set_profiling_rounds(profiling_rounds)
 
             self.send_response(204)
             self.end_headers()
