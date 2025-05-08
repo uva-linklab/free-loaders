@@ -204,8 +204,8 @@ class HerosInSituScheduler:
 
         # Get task data set up like the pre-filled dictionary.
         global _TaskData
-        # self._task_data = { arch: {} for arch in _TaskData.keys() }
-        self._task_data = _TaskData
+        self._task_data = { arch: {} for arch in _TaskData.keys() }
+        # self._task_data = _TaskData
         self._profile_requests = queue.Queue()
         self._profiling_thread = threading.Thread(name='heros-ondemand-profiler',
                                                   target=HerosInSituScheduler._on_demand_profiler_entry,
@@ -355,16 +355,16 @@ class HerosInSituScheduler:
                     time.sleep(1)
 
         # Which tasks have been profiled.
-        # profiled_task_ids = []
-        profiled_task_ids = [x for x in range(0, 60)]
+        profiled_task_ids = []
+        # profiled_task_ids = [x for x in range(0, 60)]
 
         if preprofile == True:
-            # print('[heros-is-profiler] queueing up tasks for pre-profiling')
-            # for task_id in range(0, 60):
-            #     profile_requests.put(task_id)
+            print('[heros-is-profiler] queueing up tasks for pre-profiling')
+            for task_id in range(0, 60):
+                profile_requests.put(task_id)
 
-            global _TaskData
-            task_data = _TaskData
+            # global _TaskData
+            # task_data = _TaskData
 
         while True:
             task_id = profile_requests.get()
@@ -440,7 +440,7 @@ class HerosInSituScheduler:
             import os.path
             data_files = [
                 (task_data, 'heros-task-profiles.pkl',),
-                (executor_data, f'heros-executor-data-r{mips_rounds}.pkl',)
+                (_ExecutorData, f'heros-executor-data-r{profiling_rounds}.pkl',)
             ]
             for (d, file_name) in data_files:
                 path = os.path.join('/tmp', file_name)
