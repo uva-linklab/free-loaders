@@ -15,6 +15,8 @@ ap.add_argument('-o', '--output', help='path to output',
                 default='/tmp')
 ap.add_argument('--x-limit', help='x-axis max value',
                 type=int, dest='x_limit', default=None)
+ap.add_argument('--append-labels', help='Apply additional labeling to legend',
+                dest='append_labels', type=str, action='store', default=None)
 ap.add_argument('--date-runs', help='Append date labels to legends',
                 dest='date_runs', action='store_true', default=False)
 ap.add_argument('--dir-name-runs', help='Append containing directory names to legend',
@@ -90,6 +92,7 @@ to_plot = []
 plotted = []
 x_lim = args.x_limit
 y_lim = 0
+add_labels = args.append_labels.split(',') if args.append_labels != None else None
 for path in args.paths:
     log_lines = ''
     with open(path, 'r') as fh:
@@ -130,6 +133,10 @@ for path in args.paths:
                 x_lim = max(x_lim, len(x))
 
     plot_label = pretty_names[sched_label]
+    if add_labels != None:
+        plot_label = '{} {}'.format(plot_label, add_labels[0])
+        add_labels = add_labels[1:]
+
     if args.date_runs == True:
         date_r = '^[A-Za-z]+ \d+ [0-9:]+'
         timestamp = re.search(date_r, log_lines[1])[0]

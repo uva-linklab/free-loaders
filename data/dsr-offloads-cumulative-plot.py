@@ -17,6 +17,8 @@ ap.add_argument('-f', '--initial-window', help='Assume a perfect initial DSR win
                 dest='initial_window', action='store_true', default=False)
 ap.add_argument('--x-limit', help='Max offload no. to plot',
                 dest='x_limit', type=int, action='store', default=None)
+ap.add_argument('--append-labels', help='Apply additional labeling to legend',
+                dest='append_labels', type=str, action='store', default=None)
 ap.add_argument('--date-runs', help='Append date labels to legends',
                 dest='date_runs', action='store_true', default=False)
 ap.add_argument('--override-labels', help='Force the labels in the plot',
@@ -68,6 +70,9 @@ def which_scheduler(log):
             scheduler_name = m['sched']
             break
 
+    if scheduler_name == 'heros-is':
+        scheduler_name = 'heros'
+
     return scheduler_name
 
 w, h = pltf.figaspect(.6)
@@ -82,6 +87,7 @@ plotted = []
 skipped = 0
 met_offset = 0
 proc_offset = 0
+add_labels = args.append_labels.split(',') if args.append_labels != None else None
 for (path, color) in zip(args.paths, range(0,10)):
     log_lines = ''
     with open(path, 'r') as fh:
@@ -143,6 +149,9 @@ for (path, color) in zip(args.paths, range(0,10)):
         override_labels = override_labels[1:]
     else:
         plot_label = pretty_names[label]
+        if add_labels != None:
+            plot_label = '{} {}'.format(plot_label, add_labels[0])
+            add_labels = add_labels[1:]
         if args.date_runs == True:
             date_r = '^[A-Za-z]+ \d+ [0-9:]+'
             timestamp = re.search(date_r, log_lines[1])[0]
