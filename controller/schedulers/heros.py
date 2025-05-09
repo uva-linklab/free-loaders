@@ -218,6 +218,16 @@ class HerosInSituScheduler:
         self._heros = heros
         self._heros.set_task_data(self._task_data)
 
+    def set_task_profile(self, file_path):
+        '''Use the specified source for task profiling data.
+        '''
+
+        import pickle
+
+        task_data = None
+        with open(file_path, 'rb') as fh:
+            self._task_data = pickle.read(fh)
+
     def schedule(self, before_state, task):
 
         # Check internal task data for the task ID being requested.
