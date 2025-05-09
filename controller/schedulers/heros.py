@@ -395,8 +395,8 @@ class HerosInSituScheduler:
             # Get data back from each executor.
             # Continue this loop until we have data for all architectures.
             while True:
-                print('[heros-is-profiler] fetching profiling for task {}'.format(task_id))
-                print('[heros-is-profiler] done: {}'.format(profiled))
+                # print('[heros-is-profiler] fetching profiling for task {}'.format(task_id))
+                # print('[heros-is-profiler] done: {}'.format(profiled))
 
                 for (e, arch) in zip(executors, archs):
                     if arch in profiled:
@@ -406,15 +406,15 @@ class HerosInSituScheduler:
                     try:
                         resp = requests.get(profile_url)
                         if resp.status_code == 200:
-                            print('[heros-is-profiler] got profile for arch. {}'.format(arch))
+                            print(f'[heros-is-profiler] got task {task_id} profile for {arch}')
                             rjd = resp.json()
                             task_data[arch][task_id] = Task(rjd['ins_count'], 0) # Don't care about memory usage.
                             profiled.append(arch)
                     except requests.exceptions.ConnectionError:
-                        print('[heros-is-profiler] arch. {} not done'.format(arch))
+                        # print('[heros-is-profiler] arch. {} not done'.format(arch))
                         # Don't try profiling forever.
-                        if profiling_waits >= 45:
-                            print('[heros-is-profiler] task {} not possible for {}'.format(task_id, arch))
+                        if profiling_waits >= 15 * profiling_rounds:
+                            print(f'[heros-is-profiler] task {task_id} did not complete in time on {arch}')
                             task_data[arch][task_id] = Task(999999999999, 999999999999)
                             profiled.append(arch)
 
