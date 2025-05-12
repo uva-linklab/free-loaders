@@ -177,12 +177,14 @@ class HerosSchedulerV2:
         task_type_level = task.task_id % 10 # 0 = MM 500x500, 1 = MM 556x556, ...
 
         task_m_ins = self._task_data[executor_data.device][task.task_id].ins / 1000000
+        # Estimated computation time in milliseconds.
         est_computation_time = task_m_ins / _ExecutorData[eid].max_mips * 1000
 
         # Estimate network time.
         # Use "clairvoyant" worst case of input + output data size.
-        #est_network_time = (_TaskSizeData[task.task_id] / (state['link-capacity-mbits'] / 8 * 1024 * 1024))
-        est_network_time = len(task.input_data) / (state['link-capacity-mbits'] / 8 * 1024 * 1024)
+        #est_network_time = (_TaskSizeData[task.task_id] / (state['link-capacity-mbits'] / 8 * 1024 * 1024)) * 1000
+        # Use estimate derived only from input data size.
+        est_network_time = len(task.input_data) / (state['link-capacity-mbits'] / 8 * 1024 * 1024) * 1000
 
         # Estimated required time in milliseconds.
         est_req_time = est_computation_time + est_network_time
