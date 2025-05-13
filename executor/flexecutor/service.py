@@ -86,6 +86,12 @@ class ExecutorHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
             self.send_response(204)
             self.end_headers()
 
+        elif self.path == '/stats/reset-energy':
+            stats.reset_energy()
+
+            self.send_response(204)
+            self.end_headers()
+
         elif self.path == '/profile/rounds':
             content = self.rfile.read(int(self.headers['content-length']))
             rounds_json = json.loads(content)

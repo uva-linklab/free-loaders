@@ -71,6 +71,7 @@ def fetch():
         'link-load-bits': _get_net_load(),
         'link-capacity-mbits': __NetworkInterfaceCapacityMbits,
         'h': _selection_value(),
+        'total-energy': total_energy(),
     }
 
     return state
@@ -96,6 +97,7 @@ def _process_thread_count():
     return (process_count, thread_count)
 
 __CPULoads = [float(os.cpu_count())]
+__TotalEnergy = 0
 __CPULoadLock = multiprocessing.Lock()
 
 def _cpu_stload():
@@ -114,6 +116,32 @@ def _cpu_stload():
 
     return cpu_load
 
+def total_energy():
+    '''Return the total energy usage.
+    '''
+
+    global __CPULoadLock
+    global __TotalEnergy
+
+    __CPULoadLock.acquire(block=True)
+    total_energy = __TotalEnergy
+    __CPULoadLock.release()
+
+    return total_energy
+
+def reset_energy():
+    '''Reset the total energy usage counter.
+    '''
+
+    global __CPULoadLock
+    global __TotalEnergy
+
+    __CPULoadLock.acquire(block=True)
+    __TotalEnergy = 0.0
+    __CPULoadLock.release()
+
+    return
+
 # Path to the NVIDIA SMI binary.
 __NVIDIASMIPath = '/usr/bin/nvidia-smi'
 # Path to the tegrastats binary.
@@ -124,12 +152,13 @@ def __cpu_load_entry():
     '''
 
     global __CPULoads
+    global __TotalEnergy
     global __CPULoadLock
 
     log.i('started')
 
     target_sample_count = 20
-    load_history_secs = 5
+    load_history_secs = 5.0
     sample_interval = load_history_secs / target_sample_count
 
     while True:
@@ -137,6 +166,8 @@ def __cpu_load_entry():
 
         __CPULoadLock.acquire(block=True)
         __CPULoads.append(current_usage)
+        __TotalEnergy += __selection_power_value(sum(__CPULoads) / len(__CPULoads)) \
+            * (load_history_secs / target_sample_count)
         while len(__CPULoads) > target_sample_count:
             __CPULoads = __CPULoads[1:]
         __CPULoadLock.release()
