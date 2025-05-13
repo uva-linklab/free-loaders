@@ -268,10 +268,33 @@ class TaskDispatcher:
         url_tuples = list(map(lambda item: (str(item[0]), f'http://{item[1].executer_ip}:{executer_server_port}/state'), executer_items))
         return dict(asyncio.run(make_requests(url_tuples=url_tuples)))
 
+    def reset_executer_energy(self):
+        '''Reset the energy usage accumulator on all executers.
+        '''
+
+        import requests
+
+        print('[td] resetting energy counters on all executors')
+        urls = [ f'http://{e.executer_ip}:{executer_server_port}/stats/reset-energy' for e in self.executers.values() ]
+        for url in urls:
+            while True:
+                try:
+                    resp = requests.post(url)
+                    break
+                except requests.exceptions.ConnectionError:
+                    print(f'[td] failed to reset energy counter at {url}')
+                    time.sleep(0.5)
+
+        print('[td] done resetting energy counters on all executors')
+
     def submit_task(self, task):
         # Update synthetic load.
         if self.load_tester != None:
             self.load_tester.update_load(task.offload_id)
+
+        # Reset energy counters.
+        if task.offload_id == 0:
+            self.reset_executer_energy()
 
         print(f"[td] new task(offload_id={task.offload_id}, task_id={task.task_id}, job_id={task.job_id}, deadline={task.deadline})")
 
@@ -296,7 +319,10 @@ class TaskDispatcher:
                     print('[td] timeout fetching state; retrying in {} second(s)'.format(wait_time))
                     time.sleep(wait_time)
 
-            print('executor loads: {}'.format([state_of_executors[eid]['cpu-load'] for eid in sorted(list(state_of_executors.keys()))]))
+            eids = sorted(list(state_of_executors.keys()))
+            print('[td] executor loads: {}'.format([state_of_executors[eid]['cpu-load'] for eid in eids]))
+            print('[td] executor energy usage (kJ): {}'.format(
+                [ round(state_of_executors[eid]['total-energy'] / 1000, 1) for eid in eids ]))
 
             if isinstance(self.scheduler, RLScheduler):
                 for value in state_of_executors.values():
