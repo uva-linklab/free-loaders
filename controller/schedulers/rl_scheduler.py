@@ -118,7 +118,7 @@ class RLScheduler:
         # print('[rls] input state: {}'.format(input_vec))
 
         from joblib import load
-        path_to_scaler = os.path.join(os.getcwd(), 'controller', 'rl', 'std_scaler.bin')
+        path_to_scaler = os.path.join(os.getcwd(), 'rl', 'std_scaler.bin')
         scaler = load(path_to_scaler)
         scaled_input_vec = scaler.transform(np.array(input_vec).reshape(1, -1))
         # print('[rls] scaled state: {}'.format(scaled_input_vec))
