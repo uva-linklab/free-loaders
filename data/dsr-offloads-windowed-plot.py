@@ -19,6 +19,8 @@ ap.add_argument('-f', '--initial-window', help='Assume a perfect initial DSR win
                 dest='initial_window', action='store_true', default=False)
 ap.add_argument('--x-limit', help='Max offload no. to plot',
                 dest='x_limit', type=int, action='store', default=None)
+ap.add_argument('--use-markers', help='Place markers on plots',
+                dest='use_markers', type=str, action='store', default=None)
 ap.add_argument('--append-labels', help='Apply additional labeling to legend',
                 dest='append_labels', type=str, action='store', default=None)
 ap.add_argument('--date-runs', help='Append date labels to legends',
@@ -56,6 +58,12 @@ pretty_names = {
     'adpt-lb-v1': 'energy-priority',
     'adpt-lb-v3': 'performance-priority',
 }
+
+use_markers = None
+if args.use_markers != None:
+    use_markers = args.use_markers.split(',')
+else:
+    use_markers = ['' for _i in range(0, len(args.paths))]
 
 def which_scheduler(log):
     scheduler_name = None

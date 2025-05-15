@@ -17,6 +17,8 @@ ap.add_argument('-f', '--initial-window', help='Assume a perfect initial DSR win
                 dest='initial_window', action='store_true', default=False)
 ap.add_argument('--x-limit', help='Max offload no. to plot',
                 dest='x_limit', type=int, action='store', default=None)
+ap.add_argument('--use-markers', help='Place markers on plots',
+                dest='use_markers', type=str, action='store', default=None)
 ap.add_argument('--append-labels', help='Apply additional labeling to legend',
                 dest='append_labels', type=str, action='store', default=None)
 ap.add_argument('--date-runs', help='Append date labels to legends',
@@ -60,6 +62,12 @@ pretty_names = {
 override_labels = None
 if args.override_labels != None:
     override_labels = args.override_labels.split(',')
+
+use_markers = None
+if args.use_markers != None:
+    use_markers = args.use_markers.split(',')
+else:
+    use_markers = ['' for _i in range(0, len(args.paths))]
 
 def which_scheduler(log):
     scheduler_name = None
@@ -164,10 +172,15 @@ for (path, color) in zip(args.paths, range(0,10)):
         color2_idx = len(list(filter(lambda l: l == label, plotted)))
 
         ax.plot(x, y,
-        label=plot_label,
+                label=plot_label,
                 color=colors[label][color2_idx],
+                marker=use_markers[0],
+                markevery=250,
+                # markersize=2.0
                 )
         plotted.append(label)
+        use_markers = use_markers[1:]
+
     x_limit = max(x_limit, len(y))
     print('{}\n    DSR: {:.2f}%'.format(plot_label, y[-1] * 100))
 
