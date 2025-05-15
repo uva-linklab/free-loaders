@@ -88,6 +88,11 @@ class TaskDispatcher:
         if self.scheduler.needs_feedback:
             Thread(target=scheduler.feedback_consumer).start()
 
+        # Perform the startup energy counter reset.
+        # This allows us to see the energy usage for a scheduler (e.g., profiling) to get ready.
+        print('[td] performing post-start energy counter reset')
+        self.reset_executer_energy()
+
     def on_connect(self, client, userdata, flags, rc):
         print("[td] connected to mqtt with result code " + str(rc))
 
@@ -292,8 +297,12 @@ class TaskDispatcher:
         if self.load_tester != None:
             self.load_tester.update_load(task.offload_id)
 
-        # Reset energy counters.
+        # Reset energy counters before the first task.
         if task.offload_id == 0:
+            s = self.get_executer_state()
+            print('[td] pre-session executor energy usage (kJ): {}'.format(
+                [ round(s[eid]['total-energy'] / 1000, 2) for eid in eids ]))
+
             self.reset_executer_energy()
 
         print(f"[td] new task(offload_id={task.offload_id}, task_id={task.task_id}, job_id={task.job_id}, deadline={task.deadline})")
@@ -322,7 +331,7 @@ class TaskDispatcher:
             eids = sorted(list(state_of_executors.keys()))
             print('[td] executor loads: {}'.format([state_of_executors[eid]['cpu-load'] for eid in eids]))
             print('[td] executor energy usage (kJ): {}'.format(
-                [ round(state_of_executors[eid]['total-energy'] / 1000, 1) for eid in eids ]))
+                [ round(state_of_executors[eid]['total-energy'] / 1000, 2) for eid in eids ]))
 
             if isinstance(self.scheduler, RLScheduler):
                 for value in state_of_executors.values():
