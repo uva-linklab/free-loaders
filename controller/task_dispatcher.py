@@ -300,8 +300,10 @@ class TaskDispatcher:
         # Reset energy counters before the first task.
         if task.offload_id == 0:
             s = self.get_executer_state()
-            print('[td] pre-session executor energy usage (kJ): {}'.format(
-                [ round(s[eid]['total-energy'] / 1000, 2) for eid in eids ]))
+            energy_usage = [ round(s[eid]['total-energy'] / 1000, 2) for eid in eids ]
+            print('[td] pre-session executor energy usage (kJ): {} = {} kJ'.format(
+                energy_usage,
+                sum(energy_usage)))
 
             self.reset_executer_energy()
 
@@ -330,8 +332,10 @@ class TaskDispatcher:
 
             eids = sorted(list(state_of_executors.keys()))
             print('[td] executor loads: {}'.format([state_of_executors[eid]['cpu-load'] for eid in eids]))
-            print('[td] executor energy usage (kJ): {}'.format(
-                [ round(state_of_executors[eid]['total-energy'] / 1000, 2) for eid in eids ]))
+            energy_usage = [ round(state_of_executors[eid]['total-energy'] / 1000, 2) for eid in eids ]
+            print('[td] executor energy usage (kJ): {} = {} kJ'.format(
+                energy_usage,
+                sum(energy_usage)))
 
             if isinstance(self.scheduler, RLScheduler):
                 for value in state_of_executors.values():
