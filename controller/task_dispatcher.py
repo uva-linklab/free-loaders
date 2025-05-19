@@ -300,6 +300,7 @@ class TaskDispatcher:
         # Reset energy counters before the first task.
         if task.offload_id == 0:
             s = self.get_executer_state()
+            eids = sorted(list(s.keys()))
             energy_usage = [ round(s[eid]['total-energy'] / 1000, 2) for eid in eids ]
             print('[td] pre-session executor energy usage (kJ): {} = {} kJ'.format(
                 energy_usage,
