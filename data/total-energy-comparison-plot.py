@@ -17,6 +17,10 @@ ap.add_argument('--y-limit', help='Set the y-limit of the y-axis in joules.',
                 type=int, dest='y_limit', default=None)
 ap.add_argument('--append-labels', help='Apply additional labeling to legend',
                 dest='append_labels', type=str, action='store', default=None)
+ap.add_argument('--stack-values', help='Apply stacked values to bars',
+                dest='stack_values', type=str, action='store', default=None)
+ap.add_argument('--log-scale', help='Use log scale for the y-axis',
+                dest='log_scale', action='store_true', default=False)
 ap.add_argument('--manual-adjust', help="Apply manual adjustment to plot's T/B/L/R",
                 type=str, dest='manual_adjust', default=None)
 ap.add_argument('paths', help='paths to log files',
@@ -157,33 +161,67 @@ ax1.set_axisbelow(True)
 bar_dist = 0.7
 ax1.bar(list(map(lambda x: x * bar_dist, range(0, len(args.paths)))),
         energy_consumptions,
+        label='runtime energy',
         width=bar_dist * 0.6,
-    color=energy_color)
+        color=energy_color)
+
+if args.stack_values != None:
+    stack_values = [float(x) for x in args.stack_values.split(',')]
+    ax1.bar(list(map(lambda x: x * bar_dist, range(0, len(args.paths)))),
+            stack_values,
+            label='profiling energy',
+            bottom=energy_consumptions,
+            width=bar_dist * 0.6,
+            color=[235 / 255, 207 / 255, 131 / 255])
+
 # xticks are integers mapped to labels provided in the second argument...
 ax1.set_xticks(list(map(lambda x: x * bar_dist, range(0, len(args.paths)))),
                labels=xlabels,
                fontsize=12)
 ax1.set_xlim(0 - bar_dist / 2, bar_dist * len(args.paths) - bar_dist / 2)
-ax1.set_ylabel('Energy usage (J)', fontsize=16)
+if args.log_scale == True:
+    ax1.set_ylabel('''Energy usage
+(log scale)''', fontsize=16)
+else:
+    ax1.set_ylabel('Energy usage', fontsize=16)
+
+# Determine highest bar.
+max_energy_consumption = max(energy_consumptions)
+if args.stack_values != None:
+    max_energy_consumption = max(
+        [b + p for (b, p) in zip(energy_consumptions, stack_values)])
+
+if args.log_scale == True:
+    ax1.set_yscale('log')
 
 yticks = None
-if args.y_limit == None:
+if args.y_limit == None and args.log_scale == False:
     # Small complexity to make the y-ticks scale correctly.
     # Discover what the order of magnitude of the greatest value we deal with is.
-    oom = len(str(int(max(energy_consumptions)))) - 1
+    oom = len(str(int(max_energy_consumption))) - 1
     oom = 2
     # Use it to determine how many ticks we will need in counting up
     # in the same increment matching its order of magnitude.
     # Plus one for the 0 tick, plus one to exceed the greatest value.
-    num_yticks = int(max(energy_consumptions) / pow(10, oom-1)) + 1 + 1
+    num_yticks = int(max_energy_consumption / pow(10, oom-1)) + 1 + 1
     yticks = [x * pow(10, oom-1) for x in range(0, num_yticks)]
-else:
+elif args.y_limit != None and args.log_scale == False:
     num_yticks = int(args.y_limit / 10000) + 1
     yticks = [x * 10 for x in range(0, num_yticks)]
-ax1.set_ylim(0, (max(energy_consumptions) + 10))
-ax1.set_yticks(yticks,
-               labels=['{} kJ'.format(x) for x in yticks],
-               fontsize=14)
+
+if args.log_scale == False:
+    ax1.set_ylim(0, max_energy_consumption + 10)
+    ax1.set_yticks(yticks,
+                   labels=['{} kJ'.format(x) for x in yticks],
+                   fontsize=14)
+else:
+    ax1.set_ylim(1, 1000)
+    ax1.set_yticks([1, 10, 100, 1000],
+                   labels=[f'{x} kJ' for x in [1, 10, 100, 1000]],
+                   fontsize=14)
+
+if args.stack_values != None:
+    ax1.legend()
 
 plt.gca().spines['right'].set_visible(False)
 plt.gca().spines['top'].set_visible(False)
