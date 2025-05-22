@@ -15,6 +15,8 @@ ap.add_argument('-o', '--output', help='path to output',
                 default='/tmp')
 ap.add_argument('--x-limit', help='x-axis max value',
                 type=int, dest='x_limit', default=None)
+ap.add_argument('--use-markers', help='Place markers on plots',
+                dest='use_markers', type=str, action='store', default=None)
 ap.add_argument('--append-labels', help='Apply additional labeling to legend',
                 dest='append_labels', type=str, action='store', default=None)
 ap.add_argument('--date-runs', help='Append date labels to legends',
@@ -50,6 +52,12 @@ pretty_names = {
     'adpt-lb-v1': 'energy-priority',
     'adpt-lb-v3': 'performance-priority',
 }
+
+use_markers = None
+if args.use_markers != None:
+    use_markers = args.use_markers.split(',')
+else:
+    use_markers = ['' for _i in range(0, len(args.paths))]
 
 def which_scheduler(log):
     scheduler_name = None
@@ -148,8 +156,14 @@ for path in args.paths:
 
     color2_idx = len(list(filter(lambda l: l == sched_label, plotted)))
     y_lim = max(y_lim, y[-1])
-    plt.plot(x, y, label=plot_label, color=colors[sched_label][color2_idx])
+    plt.plot(x, y,
+             label=plot_label,
+             color=colors[sched_label][color2_idx],
+             marker=use_markers[0],
+             markevery=250,
+             )
     plotted.append(sched_label)
+    use_markers = use_markers[1:]
     print('Total energy consumed by {}: {:.2f} J; Avg. rate: {} J/offload'.format(
         pretty_names[sched_label],
         y[-1],

@@ -25,6 +25,8 @@ ap.add_argument('--date-runs', help='Append date labels to legends',
                 dest='date_runs', action='store_true', default=False)
 ap.add_argument('--override-labels', help='Force the labels in the plot',
                 dest='override_labels', action='store', default=None)
+ap.add_argument('--legend-order', help='Force the ordering of the legend',
+                dest='legend_order', action='store', default=None)
 ap.add_argument('--dir-name-runs', help='Append containing directory names to legend',
                 dest='dir_name_runs', action='store_true', default=False)
 
@@ -186,7 +188,14 @@ for (path, color) in zip(args.paths, range(0,10)):
 
 ax.set_xlabel('Number of offloads', fontsize=16)
 ax.set_ylabel('Cumulative deadline satisfaction ratio', fontsize=16)
-ax.legend(fancybox=True, reverse=True, fontsize=12, ncols=2)
+
+if args.legend_order != None:
+    handles, labels = plt.gca().get_legend_handles_labels()
+    order = [int(x) for x in args.legend_order.split(',')]
+    plt.legend([handles[i] for i in order],
+               [labels[i] for i in order])
+else:
+    ax.legend(fancybox=True, reverse=True, fontsize=12)
 
 # plt.axvline(500, ymin=0, ymax=2.0, linestyle=':', color=[0.0, 0.0, 0.0], linewidth=3.0)
 
