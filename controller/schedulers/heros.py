@@ -276,12 +276,22 @@ class HerosInSituScheduler:
         all_executors = executors
         executors = [executors[0],
                      executors[1],
+                     executors[2],
                      executors[3],
+                     executors[4],
+                     executors[5],
+                     executors[6],
+                     executors[7],
                      executors[8],
                      executors[9]]
         archs = [
             'aarch64-nano',
             'aarch64-rpi3',
+            'aarch64-rpi3',
+            'aarch64-rpi4',
+            'aarch64-rpi4',
+            'aarch64-rpi4',
+            'aarch64-rpi4',
             'aarch64-rpi4',
             'aarch64-tx2',
             'x86_64-pc',
@@ -307,6 +317,9 @@ class HerosInSituScheduler:
         for eid in _ExecutorData.keys():
             _ExecutorData[eid].max_mips = 99999999
 
+        # Track energy usage of the profiling process.
+        profiling_energy_usage = [0.0 for _i in range(0, len(executors))]
+
         # Use a single round at a time on the executor side.
         print(f'[heros-is-profiler] setting profiling rounds to 1 for MIPS profiling')
         for (_eid, e) in all_executors.items():
@@ -314,25 +327,30 @@ class HerosInSituScheduler:
             while True:
                 try:
                     resp = requests.post(url, json={'rounds': 1})
-                    print(f'[heros-is-profiler] set profiling rounds on {e.executer_ip} to {profiling_rounds} ({resp.status_code})')
+                    # print(f'[heros-is-profiler] set profiling rounds on {e.executer_ip} to {profiling_rounds} ({resp.status_code})')
                     break
                 except:
                     print(f'[heros-is-profiler] error setting profiling rounds on {e.executer_ip}')
                     time.sleep(1)
 
         print(f'[heros-is-profiler] performing MIPS profiling ({profiling_rounds} rounds)')
-        for round_no in range(0, profiling_rounds):
-            for (eid, e) in all_executors.items():
+        for (eid, e) in all_executors.items():
+            # Clear energy total.
+            resp = requests.post(f'http://{e.executer_ip}:8088/stats/reset-energy')
+
+            for round_no in range(0, profiling_rounds):
                 arch = _ExecutorData[eid].device
                 url = f'http://{e.executer_ip}:8088/profile/{profiling_task_id}'
                 print(f'[heros-is-profiler] triggering MIPS profiling on EID {eid}')
                 while True:
                     try:
+                        # Start profiling.
                         resp = requests.get(url)
+
                         break
                     except requests.exceptions.ConnectionError:
                         # print(f'[heros-is-profiler] connection error...')
-                        time.sleep(3)
+                        time.sleep(1)
 
                 while True:
                     url = f'http://{e.executer_ip}:8088/profile/{profiling_task_id}'
@@ -353,9 +371,17 @@ class HerosInSituScheduler:
                     url = f'http://{e.executer_ip}:8088/stats'
                     while True:
                         try:
+                            # Get the energy usage for the profiling.
+                            resp = requests.get(f'http://{e.executer_ip}:8088/state')
+                            energy_usage = resp.json()['total-energy']
+                            profiling_energy_usage[eid] += energy_usage
+                            print(f'[heros-is-profiler] MIPS profiling energy usage for {eid} = {profiling_energy_usage[eid]} J')
+
+                            # Set the MIPS for the device.
                             resp = requests.post(url, json={ 'mips': _ExecutorData[eid].max_mips })
                             if resp.status_code == 204:
                                 break
+
                         except requests.exceptions.ConnectionError as err:
                             print(f'[heros-is-profiler] error sending request to {url}')
                             time.sleep(1)
