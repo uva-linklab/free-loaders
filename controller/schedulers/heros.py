@@ -7,6 +7,7 @@ class Task:
     def __init__(self, ins, memory):
         self.ins = ins
         self.memory = memory
+        self.mips = 0
 
 class ExecutorSpecification:
     def __init__(self, max_mips, device):
@@ -209,6 +210,8 @@ class HerosInSituScheduler:
         self._task_data = { arch: {} for arch in _TaskData.keys() }
         # self._task_data = _TaskData
 
+        self._executors = executors
+
         self._profiling_rounds = 3
         self._profiling_task_id = 9
         self._profile_requests = queue.Queue()
@@ -314,84 +317,105 @@ class HerosInSituScheduler:
 
         # Profile MIPS first.
         global _ExecutorData
-        for eid in _ExecutorData.keys():
-            _ExecutorData[eid].max_mips = 99999999
 
-        # Track energy usage of the profiling process.
-        profiling_energy_usage = [0.0 for _i in range(0, len(executors))]
+        # Try loading MIPS profiling from file.
+        profile_mips = False
+        try:
+            with open('heros-executor-data.pkl', 'rb') as fh:
+                import pickle
+                _ExecutorData = pickle.load(fh)
+                print(f'[heros-is-profiler] loaded executor data from file')
+        except:
+            print(f'[heros-is-profiler] could not load executor profiling data; must profile MIPS')
+            profile_mips = True
 
-        # Use a single round at a time on the executor side.
-        print(f'[heros-is-profiler] setting profiling rounds to 1 for MIPS profiling')
-        for (_eid, e) in all_executors.items():
-            url = 'http://{}:8088/profile/rounds'.format(e.executer_ip)
-            while True:
-                try:
-                    resp = requests.post(url, json={'rounds': 1})
-                    # print(f'[heros-is-profiler] set profiling rounds on {e.executer_ip} to {profiling_rounds} ({resp.status_code})')
-                    break
-                except:
-                    print(f'[heros-is-profiler] error setting profiling rounds on {e.executer_ip}')
-                    time.sleep(1)
+        if profile_mips == True:
+            for eid in _ExecutorData.keys():
+                _ExecutorData[eid].max_mips = 99999999
 
-        print(f'[heros-is-profiler] performing MIPS profiling ({profiling_rounds} rounds)')
-        for (eid, e) in all_executors.items():
-            # Clear energy total.
-            resp = requests.post(f'http://{e.executer_ip}:8088/stats/reset-energy')
+            # Track energy usage of the profiling process.
+            profiling_energy_usage = [0.0 for _i in range(0, len(executors))]
 
-            for round_no in range(0, profiling_rounds):
-                arch = _ExecutorData[eid].device
-                url = f'http://{e.executer_ip}:8088/profile/{profiling_task_id}'
-                print(f'[heros-is-profiler] triggering MIPS profiling on EID {eid}')
+            # Use a single round at a time on the executor side.
+            print(f'[heros-is-profiler] setting profiling rounds to 1 for MIPS profiling')
+            for (_eid, e) in all_executors.items():
+                url = 'http://{}:8088/profile/rounds'.format(e.executer_ip)
                 while True:
                     try:
-                        # Start profiling.
-                        resp = requests.get(url)
-
+                        resp = requests.post(url, json={'rounds': 1})
+                        # print(f'[heros-is-profiler] set profiling rounds on {e.executer_ip} to {profiling_rounds} ({resp.status_code})')
                         break
-                    except requests.exceptions.ConnectionError:
-                        # print(f'[heros-is-profiler] connection error...')
+                    except:
+                        print(f'[heros-is-profiler] error setting profiling rounds on {e.executer_ip}')
                         time.sleep(1)
 
-                while True:
-                    url = f'http://{e.executer_ip}:8088/profile/{profiling_task_id}'
-                    try:
-                        print(f'[heros-is-profiler] fetching MIPS profile for EID {eid}')
-                        resp = requests.get(url)
-                        if resp.status_code == 200:
-                            rjd = resp.json()
-                            mips = rjd['mips']
-                            print(f'[heros-is-profiler] got MIPS profile for EID {eid} arch. {arch}: {mips:.2f}')
-                            _ExecutorData[eid].max_mips = min(_ExecutorData[eid].max_mips, mips)
-                            break
-                    except requests.exceptions.ConnectionError:
-                        time.sleep(3)
+            print(f'[heros-is-profiler] performing MIPS profiling ({profiling_rounds} rounds)')
+            for (eid, e) in all_executors.items():
+                # Clear energy total.
+                resp = requests.post(f'http://{e.executer_ip}:8088/stats/reset-energy')
 
-                if round_no == profiling_rounds - 1:
-                    print(f'[heros-is-profiler] updating MIPS on EID {eid} to {_ExecutorData[eid].max_mips:.2f}')
-                    url = f'http://{e.executer_ip}:8088/stats'
+                for round_no in range(0, profiling_rounds):
+                    arch = _ExecutorData[eid].device
+                    url = f'http://{e.executer_ip}:8088/profile/{profiling_task_id}'
+                    print(f'[heros-is-profiler] triggering MIPS profiling on EID {eid}')
                     while True:
                         try:
-                            # Get the energy usage for the profiling.
-                            resp = requests.get(f'http://{e.executer_ip}:8088/state')
-                            energy_usage = resp.json()['total-energy']
-                            profiling_energy_usage[eid] += energy_usage
-                            print(f'[heros-is-profiler] MIPS profiling energy usage for {eid} = {profiling_energy_usage[eid]} J')
+                            # Start profiling.
+                            resp = requests.get(url)
 
-                            # Set the MIPS for the device.
-                            resp = requests.post(url, json={ 'mips': _ExecutorData[eid].max_mips })
-                            if resp.status_code == 204:
-                                break
-
-                        except requests.exceptions.ConnectionError as err:
-                            print(f'[heros-is-profiler] error sending request to {url}')
+                            break
+                        except requests.exceptions.ConnectionError:
+                            # print(f'[heros-is-profiler] connection error...')
                             time.sleep(1)
 
-                # Clear for re-profiling.
-                url = f'http://{e.executer_ip}:8088/profile/clear'
-                try:
-                    resp = requests.post(url)
-                except requests.exceptions.ConnectionError:
-                    pass
+                    while True:
+                        url = f'http://{e.executer_ip}:8088/profile/{profiling_task_id}'
+                        try:
+                            print(f'[heros-is-profiler] fetching MIPS profile for EID {eid}')
+                            resp = requests.get(url)
+                            if resp.status_code == 200:
+                                rjd = resp.json()
+                                mips = rjd['mips']
+                                print(f'[heros-is-profiler] got MIPS profile for EID {eid} arch. {arch}: {mips:.2f}')
+                                _ExecutorData[eid].max_mips = min(_ExecutorData[eid].max_mips, mips)
+                                break
+                        except requests.exceptions.ConnectionError:
+                            time.sleep(3)
+
+                    if round_no == profiling_rounds - 1:
+                        print(f'[heros-is-profiler] updating MIPS on EID {eid} to {_ExecutorData[eid].max_mips:.2f}')
+                        url = f'http://{e.executer_ip}:8088/stats'
+                        while True:
+                            try:
+                                # Get the energy usage for the profiling.
+                                resp = requests.get(f'http://{e.executer_ip}:8088/state')
+                                energy_usage = resp.json()['total-energy']
+                                profiling_energy_usage[eid] += energy_usage
+                                print(f'[heros-is-profiler] MIPS profiling energy usage for {eid} = {profiling_energy_usage[eid]} J')
+
+                                # Set the MIPS for the device.
+                                resp = requests.post(url, json={ 'mips': _ExecutorData[eid].max_mips })
+                                if resp.status_code == 204:
+                                    break
+
+                            except requests.exceptions.ConnectionError as err:
+                                print(f'[heros-is-profiler] error sending request to {url}')
+                                time.sleep(1)
+
+                    # Show MIPS profiling energy usage.
+                    print(f'[heros-is-profiler] MIPS profiling total energy usage: {[round(x, 2) for x in profiling_energy_usage]} = {sum(profiling_energy_usage) / 1000}  kJ')
+
+                    # Clear for re-profiling.
+                    url = f'http://{e.executer_ip}:8088/profile/clear'
+                    try:
+                        resp = requests.post(url)
+                    except requests.exceptions.ConnectionError:
+                        pass
+
+            # Store executor data to file.
+            import pickle
+            with open('heros-executor-data.pkl', 'wb') as fh:
+                pickle.dump(_ExecutorData, fh)
 
         for ed in _ExecutorData.values():
             print(f'{ed.device} mips: {ed.max_mips}')
@@ -411,14 +435,115 @@ class HerosInSituScheduler:
         profiled_task_ids = []
         # profiled_task_ids = [x for x in range(0, 60)]
 
-        if preprofile == True:
-            print('[heros-is-profiler] queueing up tasks for pre-profiling')
-            for task_id in range(0, 60):
-                profile_requests.put(task_id)
+        # if preprofile == True:
+        #     print('[heros-is-profiler] queueing up tasks for pre-profiling')
+        #     for task_id in range(0, 60):
+        #         profile_requests.put(task_id)
 
             # global _TaskData
             # task_data = _TaskData
 
+
+        # Try loading MIPS profiling from file.
+        profile_tasks = False
+        try:
+            with open('heros-task-data.pkl', 'rb') as fh:
+                import pickle
+                loaded_task_data = pickle.load(fh)
+                for (k, v) in loaded_task_data.items():
+                    task_data[k] = v
+                print(f'[heros-is-profiler] loaded task data from file')
+        except:
+            print(f'[heros-is-profiler] could not load task profiling data; must profile tasks')
+            profile_tasks = True
+
+        # Perform pre-profiling.
+        if profile_tasks == True:
+            task_profiling_energy_usage = [0 for _x in range(0, len(executors))]
+            for (ex, eid) in zip(executors, range(0, len(executors))):
+                # Clear profilling data.
+                url = f'http://{e.executer_ip}:8088/profile/clear'
+                try:
+                    resp = requests.post(url)
+                except requests.exceptions.ConnectionError:
+                    pass
+
+                # Reset energy counter.
+                print(f'[heros-is-profiler] resetting energy usage counter on EID {eid}')
+                while True:
+                    try:
+                        requests.post(f'http://{ex.executer_ip}:8088/stats/reset-energy')
+                        break
+                    except requests.exceptions.ConnectionError:
+                        print(f'[heros-is-profiler] error resetting energy usage on {ex.executer_ip}')
+                        time.sleep(1)
+
+                # Profile all tasks in one run.
+                skip_task_ids = []
+                task_data[eid] = {}
+                for task_id in range(0, 60):
+                    if task_id in skip_task_ids:
+                        print(f'[heros-is-profiler] task {task_id} does not run on EID {eid}')
+                        continue
+
+                    t_profile_start = time.time()
+
+                    print(f'[heros-is-profiler] profiling task {task_id} on EID {eid}')
+                    try:
+                        resp = requests.get(f'http://{ex.executer_ip}:8088/profile/{task_id}')
+                    except:
+                        pass
+
+                    time.sleep(1)
+
+                    while True:
+                        try:
+                            resp = requests.get(f'http://{ex.executer_ip}:8088/profile/{task_id}')
+                            if resp.status_code == 200:
+                                rjd = resp.json()
+                                task_data[eid][task_id] = Task(rjd['ins_count'], 0)
+                                task_data[eid][task_id].mips = rjd['mips']
+                                print(f'[heros-is-profiler] EID {eid} ran task {task_id} for {rjd["ins_count"]} at {rjd["mips"]} MIPS')
+                                break
+
+                        except requests.exceptions.ConnectionError:
+                            if time.time() - t_profile_start >= 30:
+                                print(f'[heros-is-profiler] EID {eid} over time; assuming cannot run task {task_id}')
+                                task_data[eid][task_id] = Task(999999999999, 999999999999)
+                                task_data[eid][task_id].mips = 1
+
+                                # Assume the executor cannot run higher tasks in the same class.
+                                task_variant_id = task_id
+                                last_variant_id = int(task_id / 10) * 10 + 9
+                                while task_variant_id <= last_variant_id:
+                                    print(f'[heros-is-profiler] assuming EID {eid} cannot run task {task_variant_id} (<={last_variant_id})')
+                                    task_data[eid][task_variant_id] = Task(999999999999, 999999999999)
+                                    task_data[eid][task_variant_id].mips = 1
+                                    skip_task_ids.append(task_variant_id)
+
+                                    task_variant_id += 1
+
+                                break
+
+                        time.sleep(1)
+
+                # Fetch total energy usage for profiling tasks on this executor.
+                resp = requests.get(f'http://{ex.executer_ip}:8088/state')
+                energy_usage = resp.json()['total-energy']
+                task_profiling_energy_usage[eid] = energy_usage
+
+        # Save task profiling data to file.
+        with open('heros-task-data.pkl', 'wb') as fh:
+            pickle.dump(task_data, fh)
+
+        # Show total energy usage for task profiling.
+        print(f'[heros-is-profiler] MIPS profiling total energy usage: {profiling_energy_usage} = {sum(profiling_energy_usage) / 1000}  kJ')
+        print(f'[heros-is-profiler] task profiling energy usage: {task_profiling_energy_usage} = {sum(task_profiling_energy_usage) / 1000} kJ')
+        # Total...
+        total_profiling_energy_usage = [mp + tp for (mp, tp) in zip(profiling_energy_usage, task_profiling_energy_usage)]
+        print(f'[heros-is-profiler] total profiling energy usage: {total_profiling_energy_usage} = {sum(total_profiling_energy_usage) / 1000} kJ')
+
+        # Enter on-demand profiling loop.
         while True:
             task_id = profile_requests.get()
             if task_id in profiled_task_ids:
@@ -502,6 +627,16 @@ class HerosInSituScheduler:
                     pickle.dump(d, fh)
 
             time.sleep(2)
+
+def _reset_energy_counters(executors):
+    print('[heros-is] resetting energy counters')
+    for e in executors:
+        while True:
+            try:
+                requests.post(f'http://{e.executer_ip}:8088/stats/reset-energy')
+                break
+            except requests.exceptions.ConnectionError:
+                time.sleep(1.0)
 
 _ExecutorData = {
     0: ExecutorSpecification(2560.35, 'aarch64-nano'),
