@@ -27,8 +27,8 @@ class ExecutorHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
                 self.send_response(102)
             else:
                 j = json.dumps({
-                    'ins_count': profile_data[0],
-                    'mips': profile_data[1],
+                    'ins_count': profile_data[0][0],
+                    'mips': [mips for (_ins, mips) in profile_data],
                 })
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json')

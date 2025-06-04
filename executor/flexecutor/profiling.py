@@ -46,28 +46,12 @@ def profile(task_id):
 
     _TaskProfilingData[task_id] = (ProfilingState.PEND, [],)
 
-    # All executors happen to have four real CPU cores.
-    for core_no in range(0, 4):
-        log.i(f'starting profiling for task {task_id} at load {core_no}')
-        if core_no > 0:
-            load.set_constant_load(core_no / 4)
-            time.sleep(2)
+    t = threading.Thread(name='profiler-task-{}'.format(task_id),
+                         target=_profile_task_entry,
+                         args=(task_id,))
+    t.start()
 
-        t = threading.Thread(name='profiler-task-{}'.format(task_id),
-                             target=_profile_task_entry,
-                             args=(task_id,))
-        t.start()
-        t.join()
-
-        load.clear()
-        time.sleep(0.5)
-
-    # Update profiling data for the task.
-    _TaskProfilingData[task_id] = (
-        ProfilingState.DONE,
-        _TaskProfilingData[task_id][1],)
-
-    log.i(f'finished profiling task {task_id}: {_TaskProfilingData[task_id][1]}')
+    return
 
 def clear_profiling_data():
     '''Clear all profiling data.
@@ -98,79 +82,97 @@ def _profile_task_entry(task_id):
 
     fl_path = os.path.join(os.getenv('HOME'), 'free-loaders')
     python_path = os.path.join(os.getenv('VIRTUAL_ENV'), 'bin/python')
-    script_path = os.path.join(os.getenv('HOME'), 'free-loaders')
-    script_args = []
 
-    if task_id < 10:
-        script_path = os.path.join(
-            script_path,
-            'executor/flexecutor/tasker/loop.py')
-        script_args.extend([str((task_id + 1) * 1000000)])
-    elif task_id < 20:
-        import math
-        script_path = os.path.join(
-            script_path,
-            'executor/flexecutor/tasker/mm.py')
-        script_args.extend([str(500 + math.ceil((task_id - 10) * 55.5))])
-    elif task_id < 30:
-        script_path = os.path.join(
-            script_path,
-            'executor/flexecutor/tasker/fft.py')
-        script_args.extend([str(44100 * (task_id - 19) * 3)])
-    elif task_id < 40:
-        script_path = os.path.join(
-            script_path,
-            'executor/flexecutor/tasker/har/human_act_rec.py')
-        script_args.extend([str(task_id - 30 + 1)])
-    elif task_id < 50:
-        input_path = os.path.join(
-            script_path,
-            'mock-offloader/moffloader/obj_det_input_files',
-            'dog{}.jpg'.format(task_id - 40))
-        script_path = os.path.join(
-            script_path,
-            'executor/flexecutor/tasker/obj_detection.py')
-        script_args.extend([input_path])
-    elif task_id < 60:
-        input_path = os.path.join(
-            script_path,
-            'mock-offloader/moffloader/room_classification_input_files',
-            'room{}.jpg'.format(task_id - 50))
-        script_path = os.path.join(
-            script_path,
-            'executor/flexecutor/tasker/room_classification/room_classification.py')
-        script_args.extend([input_path])
+    for core_no in range(0, 4):
+        log.i(f'starting profiling for task {task_id} at load {core_no}')
+        if core_no > 0:
+            load.set_constant_load(core_no / 4)
+            time.sleep(1)
 
-    import subprocess
+        script_path = os.path.join(os.getenv('HOME'), 'free-loaders')
+        script_args = []
 
-    global _TaskProfilingRounds
-    wc_ins_count = None
-    for _round_no in range(0, _TaskProfilingRounds):
-        cli = ['pipenv', 'run',
-               _PerfPath, 'stat',
-               python_path,
-               script_path]
-        cli.extend(script_args)
-        log.i('Launching: {}'.format(cli))
-        r = subprocess.run(cli, capture_output=True, cwd=fl_path)
+        if task_id < 10:
+            script_path = os.path.join(
+                script_path,
+                'executor/flexecutor/tasker/loop.py')
+            script_args.extend([str((task_id + 1) * 1000000)])
+        elif task_id < 20:
+            import math
+            script_path = os.path.join(
+                script_path,
+                'executor/flexecutor/tasker/mm.py')
+            script_args.extend([str(500 + math.ceil((task_id - 10) * 55.5))])
+        elif task_id < 30:
+            script_path = os.path.join(
+                script_path,
+                'executor/flexecutor/tasker/fft.py')
+            script_args.extend([str(44100 * (task_id - 19) * 3)])
+        elif task_id < 40:
+            script_path = os.path.join(
+                script_path,
+                'executor/flexecutor/tasker/har/human_act_rec.py')
+            script_args.extend([str(task_id - 30 + 1)])
+        elif task_id < 50:
+            input_path = os.path.join(
+                script_path,
+                'mock-offloader/moffloader/obj_det_input_files',
+                'dog{}.jpg'.format(task_id - 40))
+            script_path = os.path.join(
+                script_path,
+                'executor/flexecutor/tasker/obj_detection.py')
+            script_args.extend([input_path])
+        elif task_id < 60:
+            input_path = os.path.join(
+                script_path,
+                'mock-offloader/moffloader/room_classification_input_files',
+                'room{}.jpg'.format(task_id - 50))
+            script_path = os.path.join(
+                script_path,
+                'executor/flexecutor/tasker/room_classification/room_classification.py')
+            script_args.extend([input_path])
 
-        if r.returncode != 0:
-            log.e('Profiling task {} failed.\nSTDOUT: {}\nSTDERR: {}'.format(
-                task_id, r.stdout, r.stderr))
-            return
+        import subprocess
 
-        (ins_count, mips,) = _extract_perf_stats(r.stderr)
-        log.i(f'Task instruction count was {ins_count}')
-        if wc_ins_count == None:
-            wc_ins_count = ins_count
-        else:
-            wc_ins_count = max(wc_ins_count, ins_count)
-            log.i(f'Worst task instruction count is now {wc_ins_count}')
+        global _TaskProfilingRounds
+        wc_ins_count = None
+        for _round_no in range(0, _TaskProfilingRounds):
+            cli = ['pipenv', 'run',
+                   _PerfPath, 'stat',
+                   python_path,
+                   script_path]
+            cli.extend(script_args)
+            log.i('Launching: {}'.format(cli))
+            r = subprocess.run(cli, capture_output=True, cwd=fl_path)
 
-    log.i('Profiling task {} done: ({} ins. @ {} MIPS)'.format(
-        task_id, ins_count, mips))
+            if r.returncode != 0:
+                log.e('Profiling task {} failed.\nSTDOUT: {}\nSTDERR: {}'.format(
+                    task_id, r.stdout, r.stderr))
+                return
 
-    _TaskProfilingData[task_id][1].append((ins_count, mips,))
+            (ins_count, mips,) = _extract_perf_stats(r.stderr)
+            log.i(f'Task instruction count was {ins_count}')
+            if wc_ins_count == None and core_no == 0:
+                wc_ins_count = ins_count
+            elif core_no == 0:
+                wc_ins_count = max(wc_ins_count, ins_count)
+                log.i(f'Worst task instruction count is now {wc_ins_count}')
+
+        log.i('Profiling task {} done: ({} ins. @ {} MIPS)'.format(
+            task_id, ins_count, mips))
+
+        _TaskProfilingData[task_id][1].append((ins_count, mips,))
+
+        load.clear()
+        time.sleep(0.5)
+
+    # Indicate profiling is done.
+    _TaskProfilingData[task_id] = (
+        ProfilingState.DONE,
+        _TaskProfilingData[task_id][1],)
+    log.i(f'finished profiling task {task_id}: {_TaskProfilingData[task_id][1]}')
+
+    return
 
 def _extract_perf_stats(output):
     '''Parse perf output for CPU instruction count.
