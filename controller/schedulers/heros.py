@@ -376,8 +376,8 @@ class HerosInSituScheduler:
                             if resp.status_code == 200:
                                 rjd = resp.json()
                                 mips = rjd['mips']
-                                print(f'[heros-is-profiler] got MIPS profile for EID {eid} arch. {arch}: {mips:.2f}')
-                                _ExecutorData[eid].max_mips = min(_ExecutorData[eid].max_mips, mips)
+                                print(f'[heros-is-profiler] got MIPS profile for EID {eid} arch. {arch}: {mips}')
+                                _ExecutorData[eid].max_mips = min(_ExecutorData[eid].max_mips, mips[0])
                                 break
                         except requests.exceptions.ConnectionError:
                             time.sleep(3)
@@ -510,7 +510,7 @@ class HerosInSituScheduler:
                             if time.time() - t_profile_start >= 30:
                                 print(f'[heros-is-profiler] EID {eid} over time; assuming cannot run task {task_id}')
                                 task_data[eid][task_id] = Task(999999999999, 999999999999)
-                                task_data[eid][task_id].mips = 1
+                                task_data[eid][task_id].mips = [1 for _x in range(0, 4)]
 
                                 # Assume the executor cannot run higher tasks in the same class.
                                 task_variant_id = task_id
@@ -518,7 +518,7 @@ class HerosInSituScheduler:
                                 while task_variant_id <= last_variant_id:
                                     print(f'[heros-is-profiler] assuming EID {eid} cannot run task {task_variant_id} (<={last_variant_id})')
                                     task_data[eid][task_variant_id] = Task(999999999999, 999999999999)
-                                    task_data[eid][task_variant_id].mips = 1
+                                    task_data[eid][task_variant_id].mips = [1 for _x in range(0, 4)]
                                     skip_task_ids.append(task_variant_id)
 
                                     task_variant_id += 1
