@@ -1,8 +1,10 @@
 import os
 import os.path
 import sys
+import time
 from enum import Enum
 
+import load
 import log
 
 class ProfilingState(Enum):
@@ -42,12 +44,30 @@ def profile(task_id):
 
     global _TaskProfilingData
 
-    _TaskProfilingData[task_id] = (ProfilingState.PEND, None,)
+    _TaskProfilingData[task_id] = (ProfilingState.PEND, [],)
 
-    t = threading.Thread(name='profiler-task-{}'.format(task_id),
-                         target=_profile_task_entry,
-                         args=(task_id,))
-    t.start()
+    # All executors happen to have four real CPU cores.
+    for core_no in range(0, 4):
+        log.i(f'starting profiling for task {task_id} at load {core_no}')
+        if core_no > 0:
+            load.set_constant_load(core_no / 4)
+            time.sleep(2)
+
+        t = threading.Thread(name='profiler-task-{}'.format(task_id),
+                             target=_profile_task_entry,
+                             args=(task_id,))
+        t.start()
+        t.join()
+
+        load.clear()
+        time.sleep(0.5)
+
+    # Update profiling data for the task.
+    _TaskProfilingData[task_id] = (
+        ProfilingState.DONE,
+        _TaskProfilingData[task_id][1],)
+
+    log.i(f'finished profiling task {task_id}: {_TaskProfilingData[task_id][1]}')
 
 def clear_profiling_data():
     '''Clear all profiling data.
@@ -150,7 +170,7 @@ def _profile_task_entry(task_id):
     log.i('Profiling task {} done: ({} ins. @ {} MIPS)'.format(
         task_id, ins_count, mips))
 
-    _TaskProfilingData[task_id] = (ProfilingState.DONE, (ins_count, mips,),)
+    _TaskProfilingData[task_id][1].append((ins_count, mips,))
 
 def _extract_perf_stats(output):
     '''Parse perf output for CPU instruction count.
