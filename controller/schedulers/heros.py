@@ -174,14 +174,14 @@ class HerosSchedulerV2:
     def executor_is_eligible(self, eid, state, task):
         executor_data = _ExecutorData[eid]
 
-        task_type_id = int(task.task_id / 10) # 0 = loop, 1 = matrix mult., 2 = FFT, ...
-        task_type_level = task.task_id % 10 # 0 = MM 500x500, 1 = MM 556x556, ...
+        task_m_ins = self._task_data[eid][task.task_id].ins / 1000000
+        ex_task_mips = self._task_data[eid][task.task_id].mips
+        print(f'[heros] estimation data... {task_m_ins:2f} M.ins., {ex_task_mips} MIPS for {eid}')
 
-        task_m_ins = self._task_data[executor_data.device][task.task_id].ins / 1000000
         # Estimated computation time in milliseconds.
-        est_computation_time = task_m_ins / _ExecutorData[eid].max_mips * 1000
+        est_computation_time = task_m_ins / ex_task_mips * 1000
 
-        # Estimate network time.
+        # Estimate network time in milliseconds.
         # Use "clairvoyant" worst case of input + output data size.
         #est_network_time = (_TaskSizeData[task.task_id] / (state['link-capacity-mbits'] / 8 * 1024 * 1024)) * 1000
         # Use estimate derived only from input data size.
@@ -190,13 +190,15 @@ class HerosSchedulerV2:
         # Estimated required time in milliseconds.
         est_req_time = est_computation_time + est_network_time
         print(f'Est. req. time for EID {eid}: {round(est_req_time, 2)} ms = {round(est_computation_time, 2)} + {round(est_network_time, 2)} ms')
+
+        # Execution time check.
         cpu_good = est_req_time <= task.deadline
 
-        # Memory usage
+        # Memory usage check.
         free_ram_kb = state['free-ram'] / 1024
-        memory_good = free_ram_kb > self._task_data[executor_data.device][task.task_id].memory
+        memory_good = free_ram_kb > self._task_data[eid][task.task_id].memory
 
-        return cpu_good and memory_good
+        return (cpu_good and memory_good)
 
 class HerosInSituScheduler:
 
@@ -329,12 +331,12 @@ class HerosInSituScheduler:
             print(f'[heros-is-profiler] could not load executor profiling data; must profile MIPS')
             profile_mips = True
 
+        profiling_energy_usage = [0.0 for _i in range(0, len(executors))]
         if profile_mips == True:
             for eid in _ExecutorData.keys():
                 _ExecutorData[eid].max_mips = 99999999
 
             # Track energy usage of the profiling process.
-            profiling_energy_usage = [0.0 for _i in range(0, len(executors))]
 
             # Use a single round at a time on the executor side.
             print(f'[heros-is-profiler] setting profiling rounds to 1 for MIPS profiling')
@@ -458,8 +460,8 @@ class HerosInSituScheduler:
             profile_tasks = True
 
         # Perform pre-profiling.
+        task_profiling_energy_usage = [0 for _x in range(0, len(executors))]
         if profile_tasks == True:
-            task_profiling_energy_usage = [0 for _x in range(0, len(executors))]
             for (ex, eid) in zip(executors, range(0, len(executors))):
                 # Clear profilling data.
                 url = f'http://{e.executer_ip}:8088/profile/clear'
@@ -487,6 +489,19 @@ class HerosInSituScheduler:
                         continue
 
                     t_profile_start = time.time()
+
+                    # Wait for load to fall.
+                    while True:
+                        try:
+                            resp = requests.get(f'http://{ex.executer_ip}:8088/state')
+                            if resp.json()['cpu-load'] < 0.5:
+                                break
+                            else:
+                                print(f'[heros-is-profiler] load too high on EID {eid}... waiting a bit...')
+                                time.sleep(3)
+                        except:
+                            print(f'[heros-is-profiler] error getting state from EID {eid}')
+                            time.sleep(1)
 
                     print(f'[heros-is-profiler] profiling task {task_id} on EID {eid}')
                     try:
@@ -530,7 +545,9 @@ class HerosInSituScheduler:
                 # Fetch total energy usage for profiling tasks on this executor.
                 resp = requests.get(f'http://{ex.executer_ip}:8088/state')
                 energy_usage = resp.json()['total-energy']
+                print(f'[heros-is-profiler] consumed {energy_usage:2f} J profiling for EID {eid}')
                 task_profiling_energy_usage[eid] = energy_usage
+                print(f'[heros-is-profiler] profiling energy usage so far: {[round(e, 2) for e in task_profiling_energy_usage]} = {sum(task_profiling_energy_usage) / 1000:2f} kJ')
 
         # Save task profiling data to file.
         with open('heros-task-data.pkl', 'wb') as fh:
