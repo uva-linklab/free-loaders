@@ -184,7 +184,7 @@ def __executor_task_entry(mqtt_client, executor_id, power, task_request, additio
 
     # set a timer thread to ensure we kill this process when deadline has elapsed
     deadline_sec = task_request["deadline"] / 1000
-    timer = Timer(2 * deadline_sec, timeout_func)
+    timer = Timer(deadline_sec, timeout_func)
     timer.start()
 
     try:
