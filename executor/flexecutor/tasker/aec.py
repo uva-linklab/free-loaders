@@ -89,6 +89,8 @@ if __name__ == '__main__':
     args = ap.parse_args()
 
     import wave
+    import time
+    now = time.time()
     with wave.open(args.path, 'rb') as wfh:
         num_frames = wfh.getnframes()
         num_channels = wfh.getnchannels()
@@ -109,3 +111,4 @@ if __name__ == '__main__':
 
         c = classify_audio(samples)
         print('event class: {}'.format(c))
+        print(f'took a total of {time.time() - now} s')
