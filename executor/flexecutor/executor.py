@@ -13,6 +13,7 @@ import paho.mqtt.client
 
 import config
 import stats
+from tasker.speech import transcribe_audio
 
 
 # MQTT server port; fixed to 1883.
@@ -313,6 +314,10 @@ def __process_task_entry(pipe, executor_id, power, task_request, additional_data
 
         image_bytes = additional_data
         res_data = run_room_classification_task(image_bytes).encode('utf-8')
+        
+    elif task_id == 60:
+        audio_bytes = additional_data
+        res_data = transcribe_audio(audio_bytes).encode('utf-8')
 
     elif task_id == 62:
         import numpy as np

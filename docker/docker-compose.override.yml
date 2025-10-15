@@ -1,0 +1,10 @@
+services:
+  executor:
+    volumes:
+      - ../executor:/free-loaders/executor:rw
+      - ./dev-tools/perf:/bin/perf:ro
+
+  controller:
+    volumes:
+      - ../controller:/free-loaders/controller:rw
+      - ../executors.json:/free-loaders/executors.json:ro
