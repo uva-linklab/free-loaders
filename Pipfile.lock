@@ -453,6 +453,7 @@
             ],
             "markers": "python_version >= '3.8'",
             "version": "==10.5.0"
+        },
         "msgpack": {
             "hashes": [
                 "sha256:06f5fd2f6bb2a7914922d935d3b8bb4a7fff3a9a91cfce6d06c13bc42bec975b",
@@ -1146,6 +1147,7 @@
             ],
             "markers": "python_version >= '3.8'",
             "version": "==0.7.0"
+        },
         "soundfile": {
             "hashes": [
                 "sha256:03267c4e493315294834a0870f31dbb3b28a95561b80b134f0bd3cf2d5f0e618",
